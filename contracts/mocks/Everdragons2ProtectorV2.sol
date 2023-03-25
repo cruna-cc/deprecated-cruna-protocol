@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.17;
 
 import "../implementations/Everdragons2/Everdragons2Protector.sol";

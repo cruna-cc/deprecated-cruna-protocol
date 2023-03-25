@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.17;
 
 // Author: Francesco Sullo <francesco@sullo.co>
