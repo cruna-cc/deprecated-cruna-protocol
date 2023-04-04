@@ -72,6 +72,8 @@ interface IProtector is IERC721Approvable, IERC721DefaultLockable, IProtectorBas
     //    Scope scope;
   }
 
+  function exists(uint256 tokenId) external view returns (bool);
+
   function makeApprovable(uint256 tokenId, bool status) external;
 
   function updateDeployer(address newDeployer) external;

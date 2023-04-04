@@ -103,17 +103,17 @@ describe("Integration", function () {
     // bob creates a vault depositing a particle token
     await particle.connect(bob).setApprovalForAll(everdragons2TransparentVault.address, true);
     await everdragons2TransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect(await everdragons2TransparentVault.ownedAssetAmount(1, particle.address, 2)).equal(1);
+    expect((await everdragons2TransparentVault.ownedAssetsAmounts(1, [particle.address], [2]))[0]).equal(1);
 
     // bob adds a stupidMonk token to his vault
     await stupidMonk.connect(bob).setApprovalForAll(everdragons2TransparentVault.address, true);
     await everdragons2TransparentVault.connect(bob).depositERC721(1, stupidMonk.address, 1);
-    expect(await everdragons2TransparentVault.ownedAssetAmount(1, stupidMonk.address, 1)).equal(1);
+    expect((await everdragons2TransparentVault.ownedAssetsAmounts(1, [stupidMonk.address], [1]))[0]).equal(1);
 
     // bob adds some bulls tokens to his vault
     await bulls.connect(bob).approve(everdragons2TransparentVault.address, amount("10000"));
     await everdragons2TransparentVault.connect(bob).depositERC20(1, bulls.address, amount("5000"));
-    expect(await everdragons2TransparentVault.ownedAssetAmount(1, bulls.address, 0)).equal(amount("5000"));
+    expect((await everdragons2TransparentVault.ownedAssetsAmounts(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
     // the protected cannot be transferred
     await expect(transferNft(everdragons2TransparentVault, bob)(bob.address, alice.address, 1)).revertedWith(
@@ -130,7 +130,7 @@ describe("Integration", function () {
     // bob creates a vault depositing a particle token
     await particle.connect(bob).setApprovalForAll(everdragons2TransparentVault.address, true);
     await everdragons2TransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect(await everdragons2TransparentVault.ownedAssetAmount(1, particle.address, 2)).equal(1);
+    expect((await everdragons2TransparentVault.ownedAssetsAmounts(1, [particle.address], [2]))[0]).equal(1);
 
     await expect(everdragons2Protector.connect(bob).setInitiator(mark.address))
       .emit(everdragons2Protector, "InitiatorStarted")
@@ -146,7 +146,7 @@ describe("Integration", function () {
     // bob creates a vault depositing a particle token
     await particle.connect(bob).setApprovalForAll(everdragons2TransparentVault.address, true);
     await everdragons2TransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect(await everdragons2TransparentVault.ownedAssetAmount(1, particle.address, 2)).equal(1);
+    expect((await everdragons2TransparentVault.ownedAssetsAmounts(1, [particle.address], [2]))[0]).equal(1);
 
     await expect(everdragons2Protector.connect(bob).setInitiator(mark.address))
       .emit(everdragons2Protector, "InitiatorStarted")
@@ -163,7 +163,7 @@ describe("Integration", function () {
     // bob creates a vault depositing a particle token
     await particle.connect(bob).setApprovalForAll(everdragons2TransparentVault.address, true);
     await everdragons2TransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect(await everdragons2TransparentVault.ownedAssetAmount(1, particle.address, 2)).equal(1);
+    expect((await everdragons2TransparentVault.ownedAssetsAmounts(1, [particle.address], [2]))[0]).equal(1);
 
     await expect(everdragons2Protector.connect(bob).setInitiator(mark.address))
       .emit(everdragons2Protector, "InitiatorStarted")

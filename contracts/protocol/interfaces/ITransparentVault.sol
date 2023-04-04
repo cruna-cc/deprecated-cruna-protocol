@@ -43,6 +43,7 @@ interface ITransparentVault {
   error InvalidAmount();
   error InvalidAsset();
   error InvalidId();
+  error InvalidRecipient();
   error InvalidTransfer();
   error InvalidWithdrawal();
   error NotAllowed();
@@ -104,6 +105,13 @@ interface ITransparentVault {
     uint256 amount
   ) external;
 
+  function depositAssets(
+    uint256 protectorId,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts
+  ) external;
+
   function confirmDeposit(
     uint256 protectorId,
     address asset,
@@ -145,12 +153,6 @@ interface ITransparentVault {
     uint256 amount
   ) external;
 
-  function ownedAssetAmount(
-    uint256 protectorId,
-    address asset,
-    uint256 id
-  ) external view returns (uint256);
-
   function withdrawAsset(
     uint256 protectorId,
     address asset,
@@ -175,4 +177,10 @@ interface ITransparentVault {
     uint256 amount,
     address beneficiary
   ) external;
+
+  function ownedAssetsAmounts(
+    uint256 protectorId,
+    address[] memory asset,
+    uint256[] memory id
+  ) external view returns (uint256[] memory);
 }

@@ -131,8 +131,12 @@ contract Protector is
     emit Approvable(tokenId, status);
   }
 
+  function exists(uint256 tokenId) public view virtual override returns (bool) {
+    return _exists(tokenId);
+  }
+
   function isApprovable(uint256 tokenId) public view virtual override returns (bool) {
-    if (!_exists(tokenId)) revert TokenDoesNotExist();
+    if (!exists(tokenId)) revert TokenDoesNotExist();
     return _approvable[tokenId] && !hasInitiator(tokenId);
   }
 
