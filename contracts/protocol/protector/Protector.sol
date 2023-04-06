@@ -107,10 +107,7 @@ contract Protector is
     override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
     returns (bool)
   {
-    return
-      interfaceId == type(IProtectorBase).interfaceId ||
-      interfaceId == type(IERC721Approvable).interfaceId ||
-      super.supportsInterface(interfaceId);
+    return interfaceId == type(IProtectorBase).interfaceId || super.supportsInterface(interfaceId);
   }
 
   // manage approvals
@@ -131,28 +128,32 @@ contract Protector is
     emit Approvable(tokenId, status);
   }
 
-  function isApprovable(uint256 tokenId) public view virtual override returns (bool) {
-    if (!_exists(tokenId)) revert TokenDoesNotExist();
+  function exists(uint256 tokenId) public view virtual override returns (bool) {
+    return _exists(tokenId);
+  }
+
+  function approvable(uint256 tokenId) public view virtual override returns (bool) {
+    if (!exists(tokenId)) revert TokenDoesNotExist();
     return _approvable[tokenId] && !hasInitiator(tokenId);
   }
 
   // lockable
 
   function locked(uint256 tokenId) public view virtual override returns (bool) {
-    return isApprovable(tokenId);
+    return approvable(tokenId);
   }
 
   // overrides approval
 
   function approve(address to, uint256 tokenId) public virtual override(ERC721Upgradeable, IERC721Upgradeable) {
-    if (!isApprovable(tokenId)) revert NotApprovable();
+    if (!approvable(tokenId)) revert NotApprovable();
     super.approve(to, tokenId);
   }
 
   function getApproved(uint256 tokenId) public view virtual override(ERC721Upgradeable, IERC721Upgradeable) returns (address) {
     // a token may have been approved before it was made not approvable
     // so we need a double check
-    if (!isApprovable(tokenId)) {
+    if (!approvable(tokenId)) {
       return address(0);
     }
     return super.getApproved(tokenId);

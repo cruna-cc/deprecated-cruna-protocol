@@ -3,11 +3,11 @@ pragma solidity ^0.8.17;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "./IERC721Approvable.sol";
-import "./IERC721DefaultLockable.sol";
+import "@ndujalabs/erc721subordinate/contracts/IERC721DefaultApprovable.sol";
+import "@ndujalabs/erc721subordinate/contracts/IERC721DefaultLockable.sol";
 import "./IProtectorBase.sol";
 
-interface IProtector is IERC721Approvable, IERC721DefaultLockable, IProtectorBase {
+interface IProtector is IERC721DefaultApprovable, IERC721DefaultLockable, IProtectorBase {
   // status
   // true: transfer initializer is being set
   // false: transfer initializer is being removed
@@ -71,6 +71,8 @@ interface IProtector is IERC721Approvable, IERC721DefaultLockable, IProtectorBas
     // TODO
     //    Scope scope;
   }
+
+  function exists(uint256 tokenId) external view returns (bool);
 
   function makeApprovable(uint256 tokenId, bool status) external;
 

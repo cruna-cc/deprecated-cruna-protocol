@@ -158,7 +158,7 @@ contract TransparentVault is
     uint256 protectorId,
     address asset,
     uint256 id
-  ) external override {
+  ) public override {
     _validateAndEmitEvent(protectorId, asset, id, 1);
     // the following reverts if not an ERC721. We do not pre-check to save gas.
     IERC721Upgradeable(asset).safeTransferFrom(_msgSender(), address(this), id);
@@ -168,7 +168,7 @@ contract TransparentVault is
     uint256 protectorId,
     address asset,
     uint256 amount
-  ) external override {
+  ) public override {
     _validateAndEmitEvent(protectorId, asset, 0, amount);
     // the following reverts if not an ERC20
     bool transferred = IERC20Upgradeable(asset).transferFrom(_msgSender(), address(this), amount);
@@ -180,14 +180,36 @@ contract TransparentVault is
     address asset,
     uint256 id,
     uint256 amount
-  ) external override {
+  ) public override {
     _validateAndEmitEvent(protectorId, asset, id, amount);
     // the following reverts if not an ERC1155
     IERC1155Upgradeable(asset).safeTransferFrom(_msgSender(), address(this), id, amount, "");
   }
 
+  function depositAssets(
+    uint256 protectorId,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts
+  ) external override {
+    if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
+    for (uint256 i = 0; i < assets.length; i++) {
+      if (_tokenUtils.isERC20(assets[i])) {
+        depositERC20(protectorId, assets[i], amounts[i]);
+      } else if (_tokenUtils.isERC721(assets[i])) {
+        depositERC721(protectorId, assets[i], ids[i]);
+      } else if (_tokenUtils.isERC1155(assets[i])) {
+        depositERC1155(protectorId, assets[i], ids[i], amounts[i]);
+      } else revert InvalidAsset();
+    }
+  }
+
   function _unconfirmedDepositExpired(uint256 timestamp) internal view returns (bool) {
     return timestamp + 1 weeks < block.timestamp;
+  }
+
+  function _protectorExists(uint256 protectorId) internal view returns (bool) {
+    return IProtector(dominantToken()).exists(protectorId);
   }
 
   function confirmDeposit(
@@ -204,10 +226,6 @@ contract TransparentVault is
     emit Deposit(protectorId, asset, id, amount);
     delete _unconfirmedDeposits[key];
   }
-
-  // TODO add trash deposit function
-
-  // TODO add batch functions
 
   function withdrawExpiredUnconfirmedDeposit(
     uint256 protectorId,
@@ -243,7 +261,10 @@ contract TransparentVault is
     uint256 amount
   ) internal {
     bytes32 key = _checkIfCanTransfer(protectorId, asset, id, amount);
-    _depositAmounts[keccak256(abi.encodePacked(recipientProtectorId, asset, id))] += amount;
+    if (recipientProtectorId > 0) {
+      if (!_protectorExists(recipientProtectorId)) revert InvalidRecipient();
+      _depositAmounts[keccak256(abi.encodePacked(recipientProtectorId, asset, id))] += amount;
+    } // else the tokens is trashed
     if (_depositAmounts[key] - amount > 0) {
       _depositAmounts[key] -= amount;
     } else {
@@ -399,11 +420,22 @@ contract TransparentVault is
     delete _restrictedWithdrawals[key];
   }
 
-  function ownedAssetAmount(
+  // External services who need to see what a transparent vault contains can call
+  // the Cruna Web API to get the list of assets owned by a protector. Then, they can call
+  // this view to validate the results.
+  function ownedAssetsAmounts(
     uint256 protectorId,
-    address asset,
-    uint256 id
-  ) external view override returns (uint256) {
-    return _depositAmounts[keccak256(abi.encodePacked(protectorId, asset, id))];
+    address[] memory asset,
+    uint256[] memory id
+  ) external view override returns (uint256[] memory) {
+    uint256[] memory amounts = new uint256[](asset.length);
+    for (uint256 i = 0; i < asset.length; i++) {
+      amounts[i] = _depositAmounts[keccak256(abi.encodePacked(protectorId, asset[i], id[i]))];
+    }
+    return amounts;
+  }
+
+  function _allowTransfer(address tokenOwner) internal view virtual override returns (bool) {
+    return _msgSender() == tokenOwner;
   }
 }
