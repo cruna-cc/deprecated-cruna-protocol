@@ -81,7 +81,7 @@ describe("Integration", function () {
     const e2V2 = await ethers.getContractFactory("Everdragons2ProtectorV2");
     const newImplementation = await e2V2.deploy();
     await newImplementation.deployed();
-    expect(await newImplementation.getId()).equal("0xbfdf8f79");
+    expect(await newImplementation.getId()).equal("0x2281ffc3");
     expect(await newImplementation.getId1()).equal("0xb45a3c0e");
     expect(await newImplementation.getId2()).equal("0x855f1e29");
     await everdragons2Protector.connect(deployer).upgradeTo(newImplementation.address);
@@ -117,7 +117,7 @@ describe("Integration", function () {
 
     // the protected cannot be transferred
     await expect(transferNft(everdragons2TransparentVault, bob)(bob.address, alice.address, 1)).revertedWith(
-      "ERC721Subordinate: transfers not allowed"
+      "TransferNotAllowed()"
     );
 
     // bob transfers the protector to alice
