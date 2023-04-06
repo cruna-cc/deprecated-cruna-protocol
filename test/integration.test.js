@@ -117,7 +117,7 @@ describe("Integration", function () {
 
     // the protected cannot be transferred
     await expect(transferNft(everdragons2TransparentVault, bob)(bob.address, alice.address, 1)).revertedWith(
-      "ERC721BadgeUpgradeable: transfers not allowed"
+      "TransferNotAllowed()"
     );
 
     // bob transfers the protector to alice
