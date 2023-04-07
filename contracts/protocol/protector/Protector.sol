@@ -3,11 +3,11 @@ pragma solidity ^0.8.17;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@ndujalabs/erc721subordinate/contracts/upgradeables/ERC721DominantUpgradeable.sol";
 
 import "../interfaces/IProtector.sol";
 import "hardhat/console.sol";
@@ -15,7 +15,7 @@ import "hardhat/console.sol";
 contract Protector is
   IProtector,
   Initializable,
-  ERC721Upgradeable,
+  ERC721DominantUpgradeable,
   ERC721EnumerableUpgradeable,
   OwnableUpgradeable,
   UUPSUpgradeable
@@ -104,7 +104,7 @@ contract Protector is
     public
     view
     virtual
-    override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
+    override(ERC721EnumerableUpgradeable, ERC721DominantUpgradeable)
     returns (bool)
   {
     return interfaceId == type(IProtectorBase).interfaceId || super.supportsInterface(interfaceId);
@@ -309,6 +309,15 @@ contract Protector is
       delete _controlledTransfers[tokenId];
       // No need to emit a specific event, since a Transfer event is emitted anyway
     }
+  }
+
+  function _afterTokenTransfer(
+    address from,
+    address to,
+    uint256 tokenId,
+    uint256 batchSize
+  ) internal virtual override(ERC721Upgradeable, ERC721DominantUpgradeable) {
+    super._afterTokenTransfer(from, to, tokenId, batchSize);
   }
 
   uint256[50] private __gap;
