@@ -435,7 +435,7 @@ contract TransparentVault is
     return amounts;
   }
 
-  function _allowTransfer(address tokenOwner) internal view virtual override returns (bool) {
-    return _msgSender() == tokenOwner;
-  }
+  //  function _allowTransfer(address tokenOwner) internal view virtual override returns (bool) {
+  //    return _msgSender() == tokenOwner;
+  //  }
 }

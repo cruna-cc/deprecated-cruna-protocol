@@ -320,5 +320,9 @@ contract Protector is
     super._afterTokenTransfer(from, to, tokenId, batchSize);
   }
 
+  function addSubordinate(address subordinate) public virtual override onlyDeployer {
+    super.addSubordinate(subordinate);
+  }
+
   uint256[50] private __gap;
 }
