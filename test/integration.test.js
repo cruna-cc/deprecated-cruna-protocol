@@ -20,22 +20,30 @@ describe("Integration", function () {
   beforeEach(async function () {
     everdragons2Protector = await deployContractUpgradeable("Everdragons2Protector", [e2Owner.address], {from: deployer});
 
+    everdragons2TransparentVault = await deployContractUpgradeable("TransparentVault", [
+      everdragons2Protector.address,
+      "Everdragons2",
+    ]);
+
+    await everdragons2Protector.addSubordinate(everdragons2TransparentVault.address);
+
     expect(await everdragons2Protector.isProtector()).to.equal(true);
     expect(await everdragons2Protector.supportsInterface("0x855f1e29")).to.be.true;
 
-    await everdragons2Protector.connect(e2Owner).safeMint(bob.address, 1);
+    await expect(everdragons2Protector.connect(e2Owner).safeMint(bob.address, 1))
+      .emit(everdragons2Protector, "Transfer")
+      .withArgs(ethers.constants.AddressZero, bob.address, 1)
+      .emit(everdragons2TransparentVault, "Transfer")
+      .withArgs(ethers.constants.AddressZero, bob.address, 1);
+
     await everdragons2Protector.connect(e2Owner).safeMint(bob.address, 2);
+
     await everdragons2Protector.connect(e2Owner).safeMint(bob.address, 3);
     await everdragons2Protector.connect(e2Owner).safeMint(bob.address, 4);
     await everdragons2Protector.connect(e2Owner).safeMint(alice.address, 5);
     await everdragons2Protector.connect(e2Owner).safeMint(alice.address, 6);
 
     tokenUtils = await deployContract("TokenUtils");
-
-    everdragons2TransparentVault = await deployContractUpgradeable("TransparentVault", [
-      everdragons2Protector.address,
-      "Everdragons2",
-    ]);
 
     await everdragons2TransparentVault.setTokenUtils(tokenUtils.address);
 
@@ -81,9 +89,7 @@ describe("Integration", function () {
     const e2V2 = await ethers.getContractFactory("Everdragons2ProtectorV2");
     const newImplementation = await e2V2.deploy();
     await newImplementation.deployed();
-    expect(await newImplementation.getId()).equal("0x2281ffc3");
-    expect(await newImplementation.getId1()).equal("0xb45a3c0e");
-    expect(await newImplementation.getId2()).equal("0x855f1e29");
+    expect(await newImplementation.getId()).equal("0x855f1e29");
     await everdragons2Protector.connect(deployer).upgradeTo(newImplementation.address);
     expect(await everdragons2Protector.version()).equal("2.0.0");
   });

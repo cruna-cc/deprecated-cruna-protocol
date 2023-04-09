@@ -4,10 +4,10 @@ pragma solidity ^0.8.17;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@ndujalabs/erc721subordinate/contracts/ERC721SubordinateUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@ndujalabs/erc721subordinate/contracts/upgradeables/ERC721SubordinateUpgradeable.sol";
 
 import "../interfaces/ITransparentVault.sol";
 import "../interfaces/IProtector.sol";
@@ -435,7 +435,7 @@ contract TransparentVault is
     return amounts;
   }
 
-  function _allowTransfer(address tokenOwner) internal view virtual override returns (bool) {
-    return _msgSender() == tokenOwner;
-  }
+  //  function _allowTransfer(address tokenOwner) internal view virtual override returns (bool) {
+  //    return _msgSender() == tokenOwner;
+  //  }
 }
