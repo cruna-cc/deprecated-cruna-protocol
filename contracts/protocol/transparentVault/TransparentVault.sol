@@ -450,7 +450,7 @@ contract TransparentVault is
   // External services who need to see what a transparent vault contains can call
   // the Cruna Web API to get the list of assets owned by a protector. Then, they can call
   // this view to validate the results.
-  function amountsOf(
+  function amountOf(
     uint256 protectorId,
     address[] memory asset,
     uint256[] memory id

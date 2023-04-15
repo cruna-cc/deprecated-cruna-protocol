@@ -178,7 +178,7 @@ interface ITransparentVault {
     address beneficiary
   ) external;
 
-  function amountsOf(
+  function amountOf(
     uint256 protectorId,
     address[] memory asset,
     uint256[] memory id
