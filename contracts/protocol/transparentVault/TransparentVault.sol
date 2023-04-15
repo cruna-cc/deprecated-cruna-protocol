@@ -7,6 +7,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+
 import "@ndujalabs/erc721subordinate/contracts/upgradeables/ERC721SubordinateUpgradeable.sol";
 
 import "../interfaces/ITransparentVault.sol";
@@ -21,6 +23,7 @@ contract TransparentVault is
   ERC721Receiver,
   OwnableUpgradeable,
   ERC721SubordinateUpgradeable,
+  ReentrancyGuardUpgradeable,
   UUPSUpgradeable
 {
   using StringsUpgradeable for uint256;
@@ -150,7 +153,6 @@ contract TransparentVault is
     } else if (_allowWithConfirmation[protectorId]) {
       _unconfirmedDeposits[keccak256(abi.encodePacked(protectorId, asset, id, amount, _msgSender()))] = block.timestamp;
       emit UnconfirmedDeposit(protectorId, asset, id, amount);
-      //        protectorId, _unconfirmedDepositsLength++);
     } else revert NotAllowed();
   }
 
@@ -158,21 +160,16 @@ contract TransparentVault is
     uint256 protectorId,
     address asset,
     uint256 id
-  ) public override {
-    _validateAndEmitEvent(protectorId, asset, id, 1);
-    // the following reverts if not an ERC721. We do not pre-check to save gas.
-    IERC721Upgradeable(asset).safeTransferFrom(_msgSender(), address(this), id);
+  ) public override nonReentrant {
+    _depositERC721(protectorId, asset, id);
   }
 
   function depositERC20(
     uint256 protectorId,
     address asset,
     uint256 amount
-  ) public override {
-    _validateAndEmitEvent(protectorId, asset, 0, amount);
-    // the following reverts if not an ERC20
-    bool transferred = IERC20Upgradeable(asset).transferFrom(_msgSender(), address(this), amount);
-    if (!transferred) revert TransferFailed();
+  ) public override nonReentrant {
+    _depositERC20(protectorId, asset, amount);
   }
 
   function depositERC1155(
@@ -180,7 +177,37 @@ contract TransparentVault is
     address asset,
     uint256 id,
     uint256 amount
-  ) public override {
+  ) public override nonReentrant {
+    _depositERC1155(protectorId, asset, id, amount);
+  }
+
+  function _depositERC721(
+    uint256 protectorId,
+    address asset,
+    uint256 id
+  ) internal {
+    _validateAndEmitEvent(protectorId, asset, id, 1);
+    // the following reverts if not an ERC721. We do not pre-check to save gas.
+    IERC721Upgradeable(asset).safeTransferFrom(_msgSender(), address(this), id);
+  }
+
+  function _depositERC20(
+    uint256 protectorId,
+    address asset,
+    uint256 amount
+  ) internal {
+    _validateAndEmitEvent(protectorId, asset, 0, amount);
+    // the following reverts if not an ERC20
+    bool transferred = IERC20Upgradeable(asset).transferFrom(_msgSender(), address(this), amount);
+    if (!transferred) revert TransferFailed();
+  }
+
+  function _depositERC1155(
+    uint256 protectorId,
+    address asset,
+    uint256 id,
+    uint256 amount
+  ) internal {
     _validateAndEmitEvent(protectorId, asset, id, amount);
     // the following reverts if not an ERC1155
     IERC1155Upgradeable(asset).safeTransferFrom(_msgSender(), address(this), id, amount, "");
@@ -191,15 +218,15 @@ contract TransparentVault is
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts
-  ) external override {
+  ) external override nonReentrant {
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
       if (_tokenUtils.isERC20(assets[i])) {
-        depositERC20(protectorId, assets[i], amounts[i]);
+        _depositERC20(protectorId, assets[i], amounts[i]);
       } else if (_tokenUtils.isERC721(assets[i])) {
-        depositERC721(protectorId, assets[i], ids[i]);
+        _depositERC721(protectorId, assets[i], ids[i]);
       } else if (_tokenUtils.isERC1155(assets[i])) {
-        depositERC1155(protectorId, assets[i], ids[i], amounts[i]);
+        _depositERC1155(protectorId, assets[i], ids[i], amounts[i]);
       } else revert InvalidAsset();
     }
   }
@@ -232,7 +259,7 @@ contract TransparentVault is
     address asset,
     uint256 id,
     uint256 amount
-  ) external override {
+  ) external override nonReentrant {
     bytes32 key = keccak256(abi.encodePacked(protectorId, asset, id, amount, _msgSender()));
     uint256 timestamp = _unconfirmedDeposits[key];
     if (timestamp == 0) revert UnconfirmedDepositNotFoundOrExpired();
@@ -382,7 +409,7 @@ contract TransparentVault is
     uint256 id,
     uint256 amount,
     address beneficiary
-  ) external override onlyProtectorOwner(protectorId) {
+  ) external override onlyProtectorOwner(protectorId) nonReentrant {
     _checkIfStartAllowed(protectorId);
     _withdrawAsset(protectorId, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
   }
@@ -412,7 +439,7 @@ contract TransparentVault is
     uint256 id,
     uint256 amount,
     address beneficiary
-  ) external override onlyProtectorOwner(protectorId) {
+  ) external override onlyProtectorOwner(protectorId) nonReentrant {
     bytes32 key = keccak256(abi.encodePacked(protectorId, beneficiary, asset, id, amount));
     if (_restrictedWithdrawals[key].initiator == address(0)) revert WithdrawalNotFound();
     if (_restrictedWithdrawals[key].expiresAt < block.timestamp) revert Expired();
@@ -423,7 +450,7 @@ contract TransparentVault is
   // External services who need to see what a transparent vault contains can call
   // the Cruna Web API to get the list of assets owned by a protector. Then, they can call
   // this view to validate the results.
-  function ownedAssetsAmounts(
+  function amountsOf(
     uint256 protectorId,
     address[] memory asset,
     uint256[] memory id
@@ -434,8 +461,4 @@ contract TransparentVault is
     }
     return amounts;
   }
-
-  //  function _allowTransfer(address tokenOwner) internal view virtual override returns (bool) {
-  //    return _msgSender() == tokenOwner;
-  //  }
 }
