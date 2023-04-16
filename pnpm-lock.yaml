@@ -1,7 +1,7 @@
 lockfileVersion: 5.4
 
 specifiers:
-  '@ndujalabs/erc721subordinate': ^0.6.2
+  '@ndujalabs/erc721subordinate': ^0.6.3
   '@nomiclabs/hardhat-ethers': ^2.0.3
   '@nomiclabs/hardhat-etherscan': ^2.1.8
   '@nomiclabs/hardhat-waffle': ^2.0.1
@@ -24,7 +24,7 @@ specifiers:
   typescript: ^4.7.3
 
 devDependencies:
-  '@ndujalabs/erc721subordinate': 0.6.2
+  '@ndujalabs/erc721subordinate': 0.6.3
   '@nomiclabs/hardhat-ethers': 2.0.4_metsxjxup4hfgxkchphssyuv5e
   '@nomiclabs/hardhat-etherscan': 2.1.8_hardhat@2.12.7
   '@nomiclabs/hardhat-waffle': 2.0.2_qwx25yt3ygbkd3hprmbcpvxm3i
@@ -497,8 +497,8 @@ packages:
       tweetnacl-util: 0.15.1
     dev: true
 
-  /@ndujalabs/erc721subordinate/0.6.2:
-    resolution: {integrity: sha512-g9dylKYyS4lHrJ6EXOY6mvr+IKH0T5KBXJCWYaxtlneZME5BMSEVp3uy+/pD63zsYzBgegnueT4BPJJSCTb+KA==}
+  /@ndujalabs/erc721subordinate/0.6.3:
+    resolution: {integrity: sha512-aIPWojJbbbjHbb8CmxUZEsw13ntELBbDyJY21fQk1/3DLnZtv13H8Q4y1Fc3fg1qPIWtcUtIuqMTojQ5cpJgzw==}
     dev: true
 
   /@noble/hashes/1.1.1:
