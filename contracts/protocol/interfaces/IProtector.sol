@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "@ndujalabs/erc721subordinate/contracts/interfaces/IERC721DefaultApprovable.sol";
-import "@ndujalabs/erc721subordinate/contracts/interfaces/IERC721DefaultLockable.sol";
+import "@cruna/ds-protocol/contracts/interfaces/IERC721DefaultApprovable.sol";
+import "@cruna/ds-protocol/contracts/interfaces/IERC721DefaultLockable.sol";
 import "./IProtectorBase.sol";
 
 interface IProtector is IERC721DefaultApprovable, IERC721DefaultLockable, IProtectorBase {
@@ -103,4 +103,8 @@ interface IProtector is IERC721DefaultApprovable, IERC721DefaultLockable, IProte
   ) external;
 
   function completeTransfer(uint256 tokenId) external;
+
+  function batchMintProtected(uint256[] memory tokenIds, address subordinate) external;
+
+  function mintProtected(uint256 tokenId, address subordinate) external;
 }

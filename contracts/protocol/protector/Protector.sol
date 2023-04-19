@@ -7,7 +7,8 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Enumer
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@ndujalabs/erc721subordinate/contracts/upgradeables/ERC721DominantUpgradeable.sol";
+import "@cruna/ds-protocol/contracts/ERC721DominantUpgradeable.sol";
+import "@cruna/ds-protocol/contracts/interfaces/IERC721SubordinateUpgradeable.sol";
 
 import "../interfaces/IProtector.sol";
 import "hardhat/console.sol";
@@ -47,13 +48,13 @@ contract Protector is
     _;
   }
 
-  modifier notTheOwner(uint256 tokenId) {
-    if (ownerOf(tokenId) != _msgSender()) revert NotTheTokenOwner();
+  modifier notTheInitiator(address owner_) {
+    if (_initiators[owner_].initiator != _msgSender()) revert NotInitiator();
     _;
   }
 
-  modifier notTheInitiator(address owner_) {
-    if (_initiators[owner_].initiator != _msgSender()) revert NotInitiator();
+  modifier onlyTokenOwner(uint256 tokenId) {
+    if (ownerOf(tokenId) != _msgSender()) revert NotTheTokenOwner();
     _;
   }
 
@@ -116,10 +117,9 @@ contract Protector is
     return false;
   }
 
-  function makeApprovable(uint256 tokenId, bool status) external virtual override {
+  function makeApprovable(uint256 tokenId, bool status) external virtual override onlyTokenOwner(tokenId) {
     // Notice that making it approvable is irrelevant if a transfer initializer is set
     // Still it makes sense if/when the transfer initializer is removed
-    if (ownerOf(tokenId) != _msgSender()) revert NotTheTokenOwner();
     if (status) {
       _approvable[tokenId] = true;
     } else {
@@ -322,6 +322,17 @@ contract Protector is
 
   function addSubordinate(address subordinate) public virtual override onlyDeployer {
     super.addSubordinate(subordinate);
+  }
+
+  function batchMintProtected(uint256[] memory tokenIds, address subordinate) external override {
+    for (uint256 i = 0; i < tokenIds.length; i++) {
+      mintProtected(tokenIds[i], subordinate);
+    }
+  }
+
+  function mintProtected(uint256 tokenId, address subordinate) public override onlyTokenOwner(tokenId) {
+    if (!isSubordinate(subordinate)) revert NotASubordinate(subordinate);
+    IERC721SubordinateUpgradeable(subordinate).emitTransfer(address(0), _msgSender(), tokenId);
   }
 
   uint256[50] private __gap;
