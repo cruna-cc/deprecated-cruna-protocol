@@ -68,6 +68,11 @@ To streamline the process for projects, Cruna will develop an app designed to ma
 
 ## History
 
+**0.1.5**
+
+- Moving to @cruna/ds-protocol
+- Adding batch minting functions
+
 **0.1.4**
 
 - Optimize mappings using keccak256
