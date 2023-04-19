@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721Enumer
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@ndujalabs/erc721subordinate/contracts/upgradeables/ERC721DominantUpgradeable.sol";
+import "@cruna/ds-protocol/contracts/ERC721DominantUpgradeable.sol";
 
 import "../interfaces/IProtector.sol";
 import "hardhat/console.sol";
