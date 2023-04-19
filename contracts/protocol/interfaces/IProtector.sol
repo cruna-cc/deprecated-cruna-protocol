@@ -103,4 +103,8 @@ interface IProtector is IERC721DefaultApprovable, IERC721DefaultLockable, IProte
   ) external;
 
   function completeTransfer(uint256 tokenId) external;
+
+  function batchMintProtected(uint256[] memory tokenIds, address subordinate) external;
+
+  function mintProtected(uint256 tokenId, address subordinate) external;
 }
