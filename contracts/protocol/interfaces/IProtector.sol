@@ -3,8 +3,8 @@ pragma solidity ^0.8.17;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "@ndujalabs/erc721subordinate/contracts/interfaces/IERC721DefaultApprovable.sol";
-import "@ndujalabs/erc721subordinate/contracts/interfaces/IERC721DefaultLockable.sol";
+import "@cruna/ds-protocol/contracts/interfaces/IERC721DefaultApprovable.sol";
+import "@cruna/ds-protocol/contracts/interfaces/IERC721DefaultLockable.sol";
 import "./IProtectorBase.sol";
 
 interface IProtector is IERC721DefaultApprovable, IERC721DefaultLockable, IProtectorBase {

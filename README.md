@@ -1,10 +1,10 @@
-# Cruna Protocol
+# Cruna Core Protocol
 
-A protocol to manage application NFTs, born from the collaboration between [Everdragons2](https://everdragons2.com), [Nduja Labs](https://ndujalabs.com) and [The Round Table](https://trt.gg).
+A platform that implements the [DS-protocol](https://github.com/cruna-cc/DS-protocol) to manage NaaA (NFT-as-an-app), born from the collaboration between [Everdragons2](https://everdragons2.com), [Nduja Labs](https://ndujalabs.com) and [The Round Table](https://trt.gg).
 
 ## The protocol
 
-The Cruna Protocol establishes a unique hierarchy between two distinct NFTs – the Protector and the Protected – operating on EVM-compatible blockchains to facilitate the management of utility-driven NFTs. The Protected NFT, subordinate in nature, does not possess the capability to alter token ownership; rather, it derives its ownership from the dominant Protector NFT. Simply put, the wallet owning the Protector NFT inherently owns the corresponding Protected NFT.
+The Cruna Core Protocol establishes a unique hierarchy between two distinct NFTs – the Protector and the Protected – operating on EVM-compatible blockchains to facilitate the management of utility-driven NFTs. The Protected NFT, subordinate in nature, does not possess the capability to alter token ownership; rather, it derives its ownership from the dominant Protector NFT. Simply put, the wallet owning the Protector NFT inherently owns the corresponding Protected NFT.
 
 While the Protector NFT functions as a conventional NFT, complete with rarity distribution and other standard attributes, the Protected NFT diverges by focusing on providing tangible utility. In the Cruna MVP, the inaugural utility NFT takes the form of a Transparent Vault.
 
@@ -40,11 +40,11 @@ The simple concept of a Transparent Vault dramatically enhances the security of 
 
 - Create asset bundles and list them for sale as a single NFT on popular marketplaces like OpenSea.
 
-- Deposit vested assets into a Transparent Vault for scheduled distribution to investors, team members, etc. Note that for this to work, the asset must be capable of managing the vesting schedule. In a future version of the Cruna Protocol, a Transparent Distributor will be introduced to handle the vesting of any assets.
+- Deposit vested assets into a Transparent Vault for scheduled distribution to investors, team members, etc. Note that for this to work, the asset must be capable of managing the vesting schedule. In a future version of the Cruna Core Protocol, a Transparent Distributor will be introduced to handle the vesting of any assets.
 
 ### Contract ownership
 
-The Cruna Protocol establishes a framework that enables any NFT collection to integrate a Transparent Vault. Everdragons2 is the first project to implement this protocol.
+The Cruna Core Protocol establishes a framework that enables any NFT collection to integrate a Transparent Vault. Everdragons2 is the first project to implement this protocol.
 
 Contracts will be deployed and upgraded by the Cruna DAO, but ownership will be transferred to the Everdragons2 DAO. This arrangement allows the Everdragons2 project to receive royalties from sales, manage parameters, tokenURI, and more, while Cruna maintains the ability to upgrade contracts as needed.
 
@@ -60,13 +60,18 @@ When a new feature is ready for deployment, the Cruna DAO will open an improveme
 
 ### Costs
 
-Implementing the Cruna Protocol necessitates a sophisticated UI to manage both Protector and Protected NFTs. Cruna, in collaboration with ndujaLabs and The Round Table, will develop this UI, which will be freely accessible to all projects looking to integrate the Cruna Protocol. To offset costs, a 5% royalty fee will be applied to the initial sale of each Protector NFT.
+Implementing the Cruna Core Protocol necessitates a sophisticated UI to manage both Protector and Protected NFTs. Cruna, in collaboration with ndujaLabs and The Round Table, will develop this UI, which will be freely accessible to all projects looking to integrate the Cruna Core Protocol. To offset costs, a 5% royalty fee will be applied to the initial sale of each Protector NFT.
 
 ### Initial NFT Sales
 
 To streamline the process for projects, Cruna will develop an app designed to manage the initial sales of Protector NFTs. This white-label app will be provided to projects free of charge and will evolve over time, incorporating features requested by projects and those associated with new Protected NFTs released through the protocol.
 
 ## History
+
+**0.1.5**
+
+- Moving to @cruna/ds-protocol
+- Adding batch minting functions
 
 **0.1.4**
 
