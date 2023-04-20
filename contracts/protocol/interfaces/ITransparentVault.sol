@@ -30,6 +30,7 @@ interface ITransparentVault {
     uint256 id,
     uint256 amount
   );
+  event Withdrawal(uint256 indexed protectorId, address indexed beneficiary, address indexed asset, uint256 id, uint256 amount);
 
   error AssetAlreadyBeingTransferred();
   error AssetAlreadyBeingWithdrawn();
