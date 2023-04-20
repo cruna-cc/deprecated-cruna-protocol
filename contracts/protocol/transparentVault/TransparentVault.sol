@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.17;
+pragma experimental ABIEncoderV2;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
@@ -72,6 +73,7 @@ contract TransparentVault is
   }
 
   modifier onlyIfProtectorNotApproved(uint256 protectorId) {
+    // if the protector is approved for sale, the vault cannot be modified to avoid scams
     if (ERC721Upgradeable(dominantToken()).getApproved(protectorId) != address(0))
       revert ForbiddenWhenProtectorApprovedForSale();
     _;
@@ -86,8 +88,6 @@ contract TransparentVault is
     __ERC721Subordinate_init(string(abi.encodePacked(namePrefix, " - Cruna Transparent Vault")), "CrunaTV", protector);
     __Ownable_init();
   }
-
-  function initializeLibraries(address tokenLibAddress_) public initializer {}
 
   function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 
