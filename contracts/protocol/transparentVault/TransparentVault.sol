@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import {EnumerableSetUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
+//import {EnumerableSetUpgradeable} from "@openzeppelin/contracts-upgradeable/utils/structs/EnumerableSetUpgradeable.sol";
 
 import "@cruna/ds-protocol/contracts/ERC721SubordinateUpgradeable.sol";
 
@@ -29,7 +29,7 @@ contract TransparentVault is
   UUPSUpgradeable
 {
   using StringsUpgradeable for uint256;
-  using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
+  //  using EnumerableSetUpgradeable for EnumerableSetUpgradeable.Bytes32Set;
 
   TokenUtils private _tokenUtils;
 
@@ -58,7 +58,7 @@ contract TransparentVault is
 
   mapping(bytes32 => uint256) private _depositAmounts;
 
-  mapping(uint256 => EnumerableSetUpgradeable.Bytes32Set) private _protectedAssets;
+  //  mapping(uint256 => EnumerableSetUpgradeable.Bytes32Set) private _protectedAssets;
 
   modifier onlyProtectorOwner(uint256 protectorId) {
     if (ownerOf(protectorId) != msg.sender) {
@@ -139,19 +139,19 @@ contract TransparentVault is
     _tokenUtils = TokenUtils(tokenUtils_);
   }
 
-  function _addAssetKey(uint256 protectorId, bytes32 assetKey) internal {
-    if (!_protectedAssets[protectorId].contains(assetKey)) {
-      EnumerableSetUpgradeable.Bytes32Set storage assets = _protectedAssets[protectorId];
-      assets.add(assetKey);
-    }
-  }
-
-  function _removeAssetKey(uint256 protectorId, bytes32 assetKey) internal {
-    if (_protectedAssets[protectorId].contains(assetKey)) {
-      EnumerableSetUpgradeable.Bytes32Set storage assets = _protectedAssets[protectorId];
-      assets.remove(assetKey);
-    }
-  }
+  //  function _addAssetKey(uint256 protectorId, bytes32 assetKey) internal {
+  //    if (!_protectedAssets[protectorId].contains(assetKey)) {
+  //      EnumerableSetUpgradeable.Bytes32Set storage assets = _protectedAssets[protectorId];
+  //      assets.add(assetKey);
+  //    }
+  //  }
+  //
+  //  function _removeAssetKey(uint256 protectorId, bytes32 assetKey) internal {
+  //    if (_protectedAssets[protectorId].contains(assetKey)) {
+  //      EnumerableSetUpgradeable.Bytes32Set storage assets = _protectedAssets[protectorId];
+  //      assets.remove(assetKey);
+  //    }
+  //  }
 
   function _validateAndEmitEvent(
     uint256 protectorId,
@@ -162,7 +162,7 @@ contract TransparentVault is
     if (ownerOf(protectorId) == _msgSender() || _allowAll[protectorId] || _allowList[protectorId][_msgSender()]) {
       bytes32 assetKey = keccak256(abi.encodePacked(protectorId, asset, id));
       _depositAmounts[assetKey] += amount;
-      _addAssetKey(protectorId, assetKey);
+      //      _addAssetKey(protectorId, assetKey);
       emit Deposit(protectorId, asset, id, amount);
     } else if (_allowWithConfirmation[protectorId]) {
       _unconfirmedDeposits[keccak256(abi.encodePacked(protectorId, asset, id, amount, _msgSender()))] = block.timestamp;
@@ -265,7 +265,7 @@ contract TransparentVault is
     if (timestamp == 0 || _unconfirmedDepositExpired(timestamp)) revert UnconfirmedDepositNotFoundOrExpired();
     bytes32 assetKey = keccak256(abi.encodePacked(protectorId, asset, id));
     _depositAmounts[assetKey] += amount;
-    _addAssetKey(protectorId, assetKey);
+    //    _addAssetKey(protectorId, assetKey);
     emit Deposit(protectorId, asset, id, amount);
     delete _unconfirmedDeposits[key];
   }
@@ -312,7 +312,7 @@ contract TransparentVault is
       _depositAmounts[key] -= amount;
     } else {
       delete _depositAmounts[key];
-      _removeAssetKey(protectorId, key);
+      //      _removeAssetKey(protectorId, key);
     }
     emit DepositTransfer(recipientProtectorId, asset, id, amount, protectorId);
   }
@@ -413,7 +413,7 @@ contract TransparentVault is
       _depositAmounts[key] -= amount;
     } else {
       delete _depositAmounts[key];
-      _removeAssetKey(protectorId, key);
+      //      _removeAssetKey(protectorId, key);
     }
     emit Withdrawal(protectorId, beneficiary, asset, id, amount);
     _transferToken(address(this), beneficiary, asset, id, amount);
@@ -478,9 +478,9 @@ contract TransparentVault is
     return amounts;
   }
 
-  function getAssetCount(uint256 protectorId) public view returns (uint256) {
-    return _protectedAssets[protectorId].length();
-  }
+  //  function getAssetCount(uint256 protectorId) public view returns (uint256) {
+  //    return _protectedAssets[protectorId].length();
+  //  }
 
   //  function getAssetDepositInfo(uint256 protectorId, uint256 index) public view returns (DepositInfo memory) {
   //    bytes32 assetKey = _assetsOfNFT[protectorId].at(index);
