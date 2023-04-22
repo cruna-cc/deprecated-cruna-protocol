@@ -16,7 +16,7 @@ import "../interfaces/ITransparentVault.sol";
 import "../interfaces/IProtector.sol";
 import "../utils/ERC721Receiver.sol";
 import "../utils/TokenUtils.sol";
-import "./EnumerableStorage.sol";
+import "../storage/EnumerableStorage.sol";
 
 import "hardhat/console.sol";
 
