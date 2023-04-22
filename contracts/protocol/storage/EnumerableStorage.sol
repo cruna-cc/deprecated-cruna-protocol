@@ -5,17 +5,11 @@ pragma experimental ABIEncoderV2;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-
+import "../interfaces/IEnumerableStorage.sol";
 import "hardhat/console.sol";
 
-contract EnumerableStorage {
+contract EnumerableStorage is IEnumerableStorage {
   using SafeMathUpgradeable for uint256;
-
-  struct Asset {
-    address assetAddress;
-    uint256 id;
-    uint256 amount;
-  }
 
   mapping(uint256 => Asset[]) private _assets;
   mapping(bytes32 => uint256) private _assetIndexes;
@@ -66,11 +60,11 @@ contract EnumerableStorage {
     }
   }
 
-  function _getAmount(
+  function getAmount(
     uint256 protectorId,
     address assetAddress,
     uint256 id
-  ) internal view returns (uint256) {
+  ) public view override returns (uint256) {
     bytes32 key = _key(protectorId, assetAddress, id);
     if (_assetIndexes[key] > 0) {
       return _assets[protectorId][_assetIndexes[key] - 1].amount;
@@ -78,27 +72,27 @@ contract EnumerableStorage {
     return 0;
   }
 
-  function _getAssets(uint256 protectorId) internal view returns (Asset[] memory) {
+  function getAssets(uint256 protectorId) public view override returns (Asset[] memory) {
     return _assets[protectorId];
   }
 
-  function _countAssets(uint256 protectorId) internal view returns (uint256) {
+  function countAssets(uint256 protectorId) public view override returns (uint256) {
     return _assets[protectorId].length;
   }
 
-  function _getAsset(uint256 protectorId, uint256 index) internal view returns (Asset memory) {
+  function getAsset(uint256 protectorId, uint256 index) public view override returns (Asset memory) {
     return _assets[protectorId][index];
   }
 
-  function _getAssetKey(uint256 protectorId, uint256 index) internal view returns (bytes32) {
+  function getAssetKey(uint256 protectorId, uint256 index) public view override returns (bytes32) {
     return _key(protectorId, _assets[protectorId][index].assetAddress, _assets[protectorId][index].id);
   }
 
-  function _getAssetsAddresses(
+  function getAssetsAddresses(
     uint256 protectorId,
     uint256 offset,
     uint256 limit
-  ) internal view returns (address[] memory) {
+  ) public view override returns (address[] memory) {
     address[] memory assets = new address[](_assets[protectorId].length);
     if (limit > _assets[protectorId].length) {
       limit = _assets[protectorId].length;

@@ -269,7 +269,7 @@ contract TransparentVault is
   ) internal view returns (bytes32) {
     if (amount == 0) revert InvalidAmount();
     bytes32 key = keccak256(abi.encodePacked(protectorId, asset, id));
-    if (_getAmount(protectorId, asset, id) < amount) revert InsufficientBalance();
+    if (getAmount(protectorId, asset, id) < amount) revert InsufficientBalance();
     return key;
   }
 
@@ -438,7 +438,7 @@ contract TransparentVault is
   ) external view override returns (uint256[] memory) {
     uint256[] memory amounts = new uint256[](asset.length);
     for (uint256 i = 0; i < asset.length; i++) {
-      amounts[i] = _getAmount(protectorId, asset[i], id[i]);
+      amounts[i] = getAmount(protectorId, asset[i], id[i]);
     }
     return amounts;
   }
