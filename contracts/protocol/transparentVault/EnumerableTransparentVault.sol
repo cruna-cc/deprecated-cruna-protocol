@@ -20,6 +20,17 @@ import "../storage/EnumerableStorage.sol";
 
 import "hardhat/console.sol";
 
+// This version is enumerable, i.e., it is possible for another contract to know the balance
+// of any protectorId. Unfortunately, there is a cost needed to reach this goal, and the average
+// gas cost of a deposit is higher than the non-enumerable version.
+// Specifically, to deposit an ERC721 with the not-enumerable version you spend
+// an average of 120K gas, while with the enumerable version you spend 220K gas.
+// Despite the higher gas cost, the enumerable version is more flexible and allows
+// composability with other contracts. On cheap chains, like Polygon, it would make
+// sense to deploy the enumerable version, while on expensive chains, like Ethereum,
+// it would make sense to deploy the non-enumerable version. In any case, it is a
+// choice that the project implementing the vault can make.
+
 contract EnumerableTransparentVault is
   ITransparentVault,
   EnumerableStorage,
