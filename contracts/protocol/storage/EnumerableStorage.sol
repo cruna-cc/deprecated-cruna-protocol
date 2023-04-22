@@ -80,8 +80,12 @@ contract EnumerableStorage is IEnumerableStorage {
     return _assets[protectorId].length;
   }
 
-  function getAsset(uint256 protectorId, uint256 index) public view override returns (Asset memory) {
+  function getAssetByIndex(uint256 protectorId, uint256 index) public view override returns (Asset memory) {
     return _assets[protectorId][index];
+  }
+
+  function getAssetByKey(uint256 protectorId, bytes32 key) public view override returns (Asset memory) {
+    return _assets[protectorId][_assetIndexes[key] - 1];
   }
 
   function getAssetKey(uint256 protectorId, uint256 index) public view override returns (bytes32) {

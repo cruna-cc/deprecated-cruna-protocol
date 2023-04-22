@@ -132,7 +132,7 @@ describe("Integration", function () {
     expect(assets[0].id).equal(2);
     expect(assets[1].assetAddress).equal(stupidMonk.address);
 
-    assert.deepEqual(await everdragons2TransparentVault.getAsset(1, 0), assets[0]);
+    assert.deepEqual(await everdragons2TransparentVault.getAssetByIndex(1, 0), assets[0]);
 
     // bob transfers the protector to alice
     await expect(transferNft(everdragons2Protector, bob)(bob.address, alice.address, 1))

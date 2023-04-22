@@ -18,7 +18,9 @@ interface IEnumerableStorage {
 
   function countAssets(uint256 protectorId) external view returns (uint256);
 
-  function getAsset(uint256 protectorId, uint256 index) external view returns (Asset memory);
+  function getAssetByIndex(uint256 protectorId, uint256 index) external view returns (Asset memory);
+
+  function getAssetByKey(uint256 protectorId, bytes32 key) external view returns (Asset memory);
 
   function getAssetKey(uint256 protectorId, uint256 index) external view returns (bytes32);
 
