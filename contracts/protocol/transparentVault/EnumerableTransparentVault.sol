@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.17;
+pragma experimental ABIEncoderV2;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
@@ -15,11 +16,13 @@ import "../interfaces/ITransparentVault.sol";
 import "../interfaces/IProtector.sol";
 import "../utils/ERC721Receiver.sol";
 import "../utils/TokenUtils.sol";
+import "../storage/EnumerableStorage.sol";
 
 import "hardhat/console.sol";
 
-contract TransparentVault is
+contract EnumerableTransparentVault is
   ITransparentVault,
+  EnumerableStorage,
   ERC721Receiver,
   OwnableUpgradeable,
   ERC721SubordinateUpgradeable,
@@ -45,27 +48,12 @@ contract TransparentVault is
   // allowList and allowWithConfirmation are not mutually exclusive
   // The protector can have an allowList and confirm deposits from other senders
 
-  // asset => tokenId => protectorId
-  // solhint-disable-next-line var-name-mixedcase
-  mapping(address => mapping(uint256 => uint256)) private _ERC721Deposits;
-
-  // asset => tokenId => protectorId => amount
-  // solhint-disable-next-line var-name-mixedcase
-  mapping(address => mapping(uint256 => mapping(uint256 => uint256))) private _ERC1155Deposits;
-
-  // asset => protectorId => amount
-  // solhint-disable-next-line var-name-mixedcase
-  mapping(address => mapping(uint256 => uint256)) private _ERC20Deposits;
-
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
-  //  uint256 private _unconfirmedDepositsLength;
 
   mapping(bytes32 => InitiatorAndTimestamp) private _restrictedTransfers;
 
   mapping(bytes32 => InitiatorAndTimestamp) private _restrictedWithdrawals;
   // modifiers
-
-  mapping(bytes32 => uint256) private _depositAmounts;
 
   modifier onlyProtectorOwner(uint256 protectorId) {
     if (ownerOf(protectorId) != msg.sender) {
@@ -79,6 +67,13 @@ contract TransparentVault is
     _;
   }
 
+  modifier onlyIfProtectorNotApproved(uint256 protectorId) {
+    // if the protector is approved for sale, the vault cannot be modified to avoid scams
+    if (ERC721Upgradeable(dominantToken()).getApproved(protectorId) != address(0))
+      revert ForbiddenWhenProtectorApprovedForSale();
+    _;
+  }
+
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
@@ -88,8 +83,6 @@ contract TransparentVault is
     __ERC721Subordinate_init(string(abi.encodePacked(namePrefix, " - Cruna Transparent Vault")), "CrunaTV", protector);
     __Ownable_init();
   }
-
-  function initializeLibraries(address tokenLibAddress_) public initializer {}
 
   function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 
@@ -148,7 +141,7 @@ contract TransparentVault is
     uint256 amount
   ) internal {
     if (ownerOf(protectorId) == _msgSender() || _allowAll[protectorId] || _allowList[protectorId][_msgSender()]) {
-      _depositAmounts[keccak256(abi.encodePacked(protectorId, asset, id))] += amount;
+      _save(protectorId, asset, id, int256(amount));
       emit Deposit(protectorId, asset, id, amount);
     } else if (_allowWithConfirmation[protectorId]) {
       _unconfirmedDeposits[keccak256(abi.encodePacked(protectorId, asset, id, amount, _msgSender()))] = block.timestamp;
@@ -160,7 +153,7 @@ contract TransparentVault is
     uint256 protectorId,
     address asset,
     uint256 id
-  ) public override nonReentrant {
+  ) public override nonReentrant onlyIfProtectorNotApproved(protectorId) {
     _depositERC721(protectorId, asset, id);
   }
 
@@ -168,7 +161,7 @@ contract TransparentVault is
     uint256 protectorId,
     address asset,
     uint256 amount
-  ) public override nonReentrant {
+  ) public override nonReentrant onlyIfProtectorNotApproved(protectorId) {
     _depositERC20(protectorId, asset, amount);
   }
 
@@ -177,7 +170,7 @@ contract TransparentVault is
     address asset,
     uint256 id,
     uint256 amount
-  ) public override nonReentrant {
+  ) public override nonReentrant onlyIfProtectorNotApproved(protectorId) {
     _depositERC1155(protectorId, asset, id, amount);
   }
 
@@ -218,7 +211,7 @@ contract TransparentVault is
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts
-  ) external override nonReentrant {
+  ) external override nonReentrant onlyIfProtectorNotApproved(protectorId) {
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
       if (_tokenUtils.isERC20(assets[i])) {
@@ -245,11 +238,11 @@ contract TransparentVault is
     uint256 id,
     uint256 amount,
     address sender
-  ) external override onlyProtectorOwner(protectorId) {
+  ) external override onlyProtectorOwner(protectorId) onlyIfProtectorNotApproved(protectorId) {
     bytes32 key = keccak256(abi.encodePacked(protectorId, asset, id, amount, sender));
     uint256 timestamp = _unconfirmedDeposits[key];
     if (timestamp == 0 || _unconfirmedDepositExpired(timestamp)) revert UnconfirmedDepositNotFoundOrExpired();
-    _depositAmounts[keccak256(abi.encodePacked(protectorId, asset, id))] += amount;
+    _save(protectorId, asset, id, int256(amount));
     emit Deposit(protectorId, asset, id, amount);
     delete _unconfirmedDeposits[key];
   }
@@ -276,7 +269,7 @@ contract TransparentVault is
   ) internal view returns (bytes32) {
     if (amount == 0) revert InvalidAmount();
     bytes32 key = keccak256(abi.encodePacked(protectorId, asset, id));
-    if (_depositAmounts[key] < amount) revert InsufficientBalance();
+    if (getAmount(protectorId, asset, id) < amount) revert InsufficientBalance();
     return key;
   }
 
@@ -287,16 +280,11 @@ contract TransparentVault is
     uint256 id,
     uint256 amount
   ) internal {
-    bytes32 key = _checkIfCanTransfer(protectorId, asset, id, amount);
     if (recipientProtectorId > 0) {
       if (!_protectorExists(recipientProtectorId)) revert InvalidRecipient();
-      _depositAmounts[keccak256(abi.encodePacked(recipientProtectorId, asset, id))] += amount;
+      _save(recipientProtectorId, asset, id, int256(amount));
     } // else the tokens is trashed
-    if (_depositAmounts[key] - amount > 0) {
-      _depositAmounts[key] -= amount;
-    } else {
-      delete _depositAmounts[key];
-    }
+    _save(protectorId, asset, id, -int256(amount));
     emit DepositTransfer(recipientProtectorId, asset, id, amount, protectorId);
   }
 
@@ -311,11 +299,10 @@ contract TransparentVault is
     address asset,
     uint256 id,
     uint256 amount
-  ) external override onlyProtectorOwner(protectorId) {
+  ) external override onlyProtectorOwner(protectorId) onlyIfProtectorNotApproved(protectorId) {
     if (ownerOf(protectorId) != ownerOf(recipientProtectorId)) {
       _checkIfStartAllowed(protectorId);
     }
-    _checkIfChangeAllowed(protectorId);
     if (_tokenUtils.isERC721(asset)) {
       amount = 1;
     } else if (_tokenUtils.isERC20(asset)) {
@@ -331,7 +318,7 @@ contract TransparentVault is
     uint256 id,
     uint256 amount,
     uint32 validFor
-  ) external override onlyInitiator(protectorId) {
+  ) external override onlyInitiator(protectorId) onlyIfProtectorNotApproved(protectorId) {
     _checkIfCanTransfer(protectorId, asset, id, amount);
     bytes32 key = keccak256(abi.encodePacked(protectorId, recipientProtectorId, asset, id, amount));
     if (_restrictedTransfers[key].initiator != address(0) || _restrictedTransfers[key].expiresAt > block.timestamp)
@@ -353,8 +340,7 @@ contract TransparentVault is
     address asset,
     uint256 id,
     uint256 amount
-  ) external override onlyProtectorOwner(protectorId) {
-    _checkIfChangeAllowed(protectorId);
+  ) external override onlyProtectorOwner(protectorId) onlyIfProtectorNotApproved(protectorId) {
     // we repeat the check because the user can try starting many transfers with different amounts
     _checkIfCanTransfer(protectorId, asset, id, amount);
     bytes32 key = keccak256(abi.encodePacked(protectorId, recipientProtectorId, asset, id, amount));
@@ -393,14 +379,9 @@ contract TransparentVault is
     uint256 id,
     uint256 amount
   ) internal {
-    _checkIfChangeAllowed(protectorId);
-    bytes32 key = _checkIfCanTransfer(protectorId, asset, id, amount);
+    _save(protectorId, asset, id, -int256(amount));
+    emit Withdrawal(protectorId, beneficiary, asset, id, amount);
     _transferToken(address(this), beneficiary, asset, id, amount);
-    if (_depositAmounts[key] - amount > 0) {
-      _depositAmounts[key] -= amount;
-    } else {
-      delete _depositAmounts[key];
-    }
   }
 
   function withdrawAsset(
@@ -421,7 +402,7 @@ contract TransparentVault is
     uint256 amount,
     uint32 validFor,
     address beneficiary
-  ) external override onlyInitiator(protectorId) {
+  ) external override onlyInitiator(protectorId) onlyIfProtectorNotApproved(protectorId) {
     _checkIfCanTransfer(protectorId, asset, id, amount);
     bytes32 key = keccak256(abi.encodePacked(protectorId, beneficiary, asset, id, amount));
     if (_restrictedWithdrawals[key].initiator != address(0) && _restrictedWithdrawals[key].expiresAt > block.timestamp)
@@ -439,12 +420,12 @@ contract TransparentVault is
     uint256 id,
     uint256 amount,
     address beneficiary
-  ) external override onlyProtectorOwner(protectorId) nonReentrant {
+  ) external override onlyProtectorOwner(protectorId) nonReentrant onlyIfProtectorNotApproved(protectorId) {
     bytes32 key = keccak256(abi.encodePacked(protectorId, beneficiary, asset, id, amount));
     if (_restrictedWithdrawals[key].initiator == address(0)) revert WithdrawalNotFound();
     if (_restrictedWithdrawals[key].expiresAt < block.timestamp) revert Expired();
-    _withdrawAsset(protectorId, beneficiary, asset, id, amount);
     delete _restrictedWithdrawals[key];
+    _withdrawAsset(protectorId, beneficiary, asset, id, amount);
   }
 
   // External services who need to see what a transparent vault contains can call
@@ -457,7 +438,7 @@ contract TransparentVault is
   ) external view override returns (uint256[] memory) {
     uint256[] memory amounts = new uint256[](asset.length);
     for (uint256 i = 0; i < asset.length; i++) {
-      amounts[i] = _depositAmounts[keccak256(abi.encodePacked(protectorId, asset[i], id[i]))];
+      amounts[i] = getAmount(protectorId, asset[i], id[i]);
     }
     return amounts;
   }

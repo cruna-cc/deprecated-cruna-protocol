@@ -1,7 +1,7 @@
 const {expect, assert} = require("chai");
 const {deployContractUpgradeable, deployContract, amount, assertThrowsMessage} = require("./helpers");
 
-describe("Integration", function () {
+describe("EnumerableTransparentVault", function () {
   let everdragons2Protector, everdragons2TransparentVault;
   let tokenUtils;
   // mocks
@@ -20,7 +20,7 @@ describe("Integration", function () {
   beforeEach(async function () {
     everdragons2Protector = await deployContractUpgradeable("Everdragons2Protector", [e2Owner.address], {from: deployer});
 
-    everdragons2TransparentVault = await deployContractUpgradeable("TransparentVault", [
+    everdragons2TransparentVault = await deployContractUpgradeable("EnumerableTransparentVault", [
       everdragons2Protector.address,
       "Everdragons2",
     ]);
