@@ -16,11 +16,13 @@ import "../interfaces/ITransparentVault.sol";
 import "../interfaces/IProtector.sol";
 import "../utils/ERC721Receiver.sol";
 import "../utils/TokenUtils.sol";
+import "./EnumerableStorage.sol";
 
 import "hardhat/console.sol";
 
 contract TransparentVault is
   ITransparentVault,
+  EnumerableStorage,
   ERC721Receiver,
   OwnableUpgradeable,
   ERC721SubordinateUpgradeable,
@@ -52,8 +54,6 @@ contract TransparentVault is
 
   mapping(bytes32 => InitiatorAndTimestamp) private _restrictedWithdrawals;
   // modifiers
-
-  mapping(bytes32 => uint256) private _depositAmounts;
 
   modifier onlyProtectorOwner(uint256 protectorId) {
     if (ownerOf(protectorId) != msg.sender) {
@@ -141,9 +141,7 @@ contract TransparentVault is
     uint256 amount
   ) internal {
     if (ownerOf(protectorId) == _msgSender() || _allowAll[protectorId] || _allowList[protectorId][_msgSender()]) {
-      bytes32 assetKey = keccak256(abi.encodePacked(protectorId, asset, id));
-      _depositAmounts[assetKey] += amount;
-      //      _addAssetKey(protectorId, assetKey);
+      _save(protectorId, asset, id, int256(amount));
       emit Deposit(protectorId, asset, id, amount);
     } else if (_allowWithConfirmation[protectorId]) {
       _unconfirmedDeposits[keccak256(abi.encodePacked(protectorId, asset, id, amount, _msgSender()))] = block.timestamp;
@@ -244,8 +242,7 @@ contract TransparentVault is
     bytes32 key = keccak256(abi.encodePacked(protectorId, asset, id, amount, sender));
     uint256 timestamp = _unconfirmedDeposits[key];
     if (timestamp == 0 || _unconfirmedDepositExpired(timestamp)) revert UnconfirmedDepositNotFoundOrExpired();
-    bytes32 assetKey = keccak256(abi.encodePacked(protectorId, asset, id));
-    _depositAmounts[assetKey] += amount;
+    _save(protectorId, asset, id, int256(amount));
     emit Deposit(protectorId, asset, id, amount);
     delete _unconfirmedDeposits[key];
   }
@@ -272,7 +269,7 @@ contract TransparentVault is
   ) internal view returns (bytes32) {
     if (amount == 0) revert InvalidAmount();
     bytes32 key = keccak256(abi.encodePacked(protectorId, asset, id));
-    if (_depositAmounts[key] < amount) revert InsufficientBalance();
+    if (_getAmount(protectorId, asset, id) < amount) revert InsufficientBalance();
     return key;
   }
 
@@ -283,16 +280,11 @@ contract TransparentVault is
     uint256 id,
     uint256 amount
   ) internal {
-    bytes32 key = _checkIfCanTransfer(protectorId, asset, id, amount);
     if (recipientProtectorId > 0) {
       if (!_protectorExists(recipientProtectorId)) revert InvalidRecipient();
-      _depositAmounts[keccak256(abi.encodePacked(recipientProtectorId, asset, id))] += amount;
+      _save(recipientProtectorId, asset, id, int256(amount));
     } // else the tokens is trashed
-    if (_depositAmounts[key] - amount > 0) {
-      _depositAmounts[key] -= amount;
-    } else {
-      delete _depositAmounts[key];
-    }
+    _save(protectorId, asset, id, -int256(amount));
     emit DepositTransfer(recipientProtectorId, asset, id, amount, protectorId);
   }
 
@@ -387,12 +379,7 @@ contract TransparentVault is
     uint256 id,
     uint256 amount
   ) internal {
-    bytes32 key = _checkIfCanTransfer(protectorId, asset, id, amount);
-    if (_depositAmounts[key] - amount > 0) {
-      _depositAmounts[key] -= amount;
-    } else {
-      delete _depositAmounts[key];
-    }
+    _save(protectorId, asset, id, -int256(amount));
     emit Withdrawal(protectorId, beneficiary, asset, id, amount);
     _transferToken(address(this), beneficiary, asset, id, amount);
   }
@@ -451,7 +438,7 @@ contract TransparentVault is
   ) external view override returns (uint256[] memory) {
     uint256[] memory amounts = new uint256[](asset.length);
     for (uint256 i = 0; i < asset.length; i++) {
-      amounts[i] = _depositAmounts[keccak256(abi.encodePacked(protectorId, asset[i], id[i]))];
+      amounts[i] = _getAmount(protectorId, asset[i], id[i]);
     }
     return amounts;
   }
