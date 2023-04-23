@@ -1,7 +1,7 @@
-const {expect} = require("chai");
+const {expect, assert} = require("chai");
 const {deployContractUpgradeable, deployContract, amount, assertThrowsMessage} = require("./helpers");
 
-describe("Integration", function () {
+describe("TransparentVaultEnumerable", function () {
   let everdragons2Protector, everdragons2TransparentVault;
   let tokenUtils;
   // mocks
@@ -20,7 +20,7 @@ describe("Integration", function () {
   beforeEach(async function () {
     everdragons2Protector = await deployContractUpgradeable("Everdragons2Protector", [e2Owner.address], {from: deployer});
 
-    everdragons2TransparentVault = await deployContractUpgradeable("TransparentVault", [
+    everdragons2TransparentVault = await deployContractUpgradeable("TransparentVaultEnumerable", [
       everdragons2Protector.address,
       "Everdragons2",
     ]);
@@ -125,6 +125,14 @@ describe("Integration", function () {
     await expect(transferNft(everdragons2TransparentVault, bob)(bob.address, alice.address, 1)).revertedWith(
       "TransferNotAllowed()"
     );
+
+    const assets = await everdragons2TransparentVault.getAssets(1);
+    expect(assets.length).equal(3);
+    expect(assets[0].assetAddress).equal(particle.address);
+    expect(assets[0].id).equal(2);
+    expect(assets[1].assetAddress).equal(stupidMonk.address);
+
+    assert.deepEqual(await everdragons2TransparentVault.getAssetByIndex(1, 0), assets[0]);
 
     // bob transfers the protector to alice
     await expect(transferNft(everdragons2Protector, bob)(bob.address, alice.address, 1))
