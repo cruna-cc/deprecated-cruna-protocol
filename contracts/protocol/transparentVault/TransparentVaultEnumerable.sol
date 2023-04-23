@@ -31,7 +31,7 @@ import "hardhat/console.sol";
 // it would make sense to deploy the non-enumerable version. In any case, it is a
 // choice that the project implementing the vault can make.
 
-contract EnumerableTransparentVault is
+contract TransparentVaultEnumerable is
   ITransparentVault,
   EnumerableStorage,
   ERC721Receiver,
