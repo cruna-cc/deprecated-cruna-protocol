@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL3
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
@@ -16,7 +16,7 @@ import "../interfaces/IProtector.sol";
 import "../utils/ERC721Receiver.sol";
 import "../utils/TokenUtils.sol";
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 contract TransparentVault is
   ITransparentVault,

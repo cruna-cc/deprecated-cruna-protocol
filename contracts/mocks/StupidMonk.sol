@@ -6,9 +6,15 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract StupidMonk is ERC721, ERC721Enumerable, Ownable {
-  constructor() ERC721("StupidMonk", "SMNK") {}
+  string private _baseTokenURI;
 
-  // The following functions are overrides required by Solidity.
+  constructor(string memory baseTokenUri) ERC721("StupidMonk", "SMNK") {
+    _baseTokenURI = baseTokenUri;
+  }
+
+  function _baseURI() internal view virtual override returns (string memory) {
+    return _baseTokenURI;
+  }
 
   function _beforeTokenTransfer(
     address from,

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL3
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 pragma experimental ABIEncoderV2;
 
 // Author: Francesco Sullo <francesco@sullo.co>
@@ -18,7 +18,7 @@ import "../utils/ERC721Receiver.sol";
 import "../utils/TokenUtils.sol";
 import "../storage/EnumerableStorage.sol";
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 // This version is enumerable, i.e., it is possible for another contract to know the balance
 // of any protectorId. Unfortunately, there is a cost needed to reach this goal, and the average

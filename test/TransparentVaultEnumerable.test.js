@@ -7,18 +7,17 @@ describe("TransparentVaultEnumerable", function () {
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   // wallets
-  let defWallet, deployer, bob, alice, fred, john, jane, e2Owner, trtOwner, mark;
+  let e2Owner, bob, alice, fred, john, jane, mark;
 
   before(async function () {
-    [deployer, bob, alice, fred, john, jane, e2Owner, trtOwner, mark] = await ethers.getSigners();
+    [e2Owner, bob, alice, fred, john, jane, mark] = await ethers.getSigners();
   });
-
   function transferNft(nft, user) {
     return nft.connect(user)["safeTransferFrom(address,address,uint256)"];
   }
 
   beforeEach(async function () {
-    everdragons2Protector = await deployContractUpgradeable("Everdragons2Protector", [e2Owner.address], {from: deployer});
+    everdragons2Protector = await deployContractUpgradeable("Everdragons2ProtectorMintable");
 
     everdragons2TransparentVault = await deployContractUpgradeable("TransparentVaultEnumerable", [
       everdragons2Protector.address,
@@ -61,18 +60,18 @@ describe("TransparentVaultEnumerable", function () {
     await fatBelly.mint(fred.address, amount("30000000"));
 
     // erc721
-    particle = await deployContract("Particle");
+    particle = await deployContract("Particle", "https://api.particle.com/");
     await particle.safeMint(alice.address, 1);
     await particle.safeMint(bob.address, 2);
     await particle.safeMint(john.address, 3);
 
-    stupidMonk = await deployContract("StupidMonk");
+    stupidMonk = await deployContract("StupidMonk", "https://api.stupidmonk.com/");
     await stupidMonk.safeMint(bob.address, 1);
     await stupidMonk.safeMint(alice.address, 2);
     await stupidMonk.safeMint(john.address, 3);
 
     // erc1155
-    uselessWeapons = await deployContract("UselessWeapons");
+    uselessWeapons = await deployContract("UselessWeapons", "https://api.uselessweapons.com/");
     await uselessWeapons.mintBatch(bob.address, [1, 2], [5, 2], "0x00");
     await uselessWeapons.mintBatch(alice.address, [2], [2], "0x00");
     await uselessWeapons.mintBatch(john.address, [3, 4], [10, 1], "0x00");
@@ -83,27 +82,6 @@ describe("TransparentVaultEnumerable", function () {
     expect(await everdragons2TransparentVault.name()).equal("Everdragons2 - Cruna Transparent Vault");
     expect(await everdragons2TransparentVault.symbol()).equal("tvNFTa");
   }
-
-  it("should allow the deployer to upgrade the contract", async function () {
-    expect(await everdragons2Protector.version()).equal("1.0.0");
-    const e2V2 = await ethers.getContractFactory("Everdragons2ProtectorV2");
-    const newImplementation = await e2V2.deploy();
-    await newImplementation.deployed();
-    expect(await newImplementation.getId()).equal("0x855f1e29");
-    await everdragons2Protector.connect(deployer).upgradeTo(newImplementation.address);
-    expect(await everdragons2Protector.version()).equal("2.0.0");
-  });
-
-  it("should not allow the owner to upgrade the contract", async function () {
-    expect(await everdragons2Protector.version()).equal("1.0.0");
-    const e2V2 = await ethers.getContractFactory("Everdragons2ProtectorV2");
-    const newImplementation = await e2V2.deploy();
-    await newImplementation.deployed();
-    await assertThrowsMessage(
-      everdragons2Protector.connect(e2Owner).upgradeTo(newImplementation.address),
-      "NotTheContractDeployer()"
-    );
-  });
 
   it("should create a vault and add more assets to it", async function () {
     // bob creates a vault depositing a particle token

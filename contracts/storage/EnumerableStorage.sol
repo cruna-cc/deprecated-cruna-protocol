@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL3
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 pragma experimental ABIEncoderV2;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
 import "../interfaces/IEnumerableStorage.sol";
-import "hardhat/console.sol";
+
+//import "hardhat/console.sol";
 
 contract EnumerableStorage is IEnumerableStorage {
   using SafeMathUpgradeable for uint256;

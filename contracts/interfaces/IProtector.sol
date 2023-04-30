@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL3
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
@@ -75,8 +75,6 @@ interface IProtector is IERC721DefaultApprovable, IERC721DefaultLockable, IProte
   function exists(uint256 tokenId) external view returns (bool);
 
   function makeApprovable(uint256 tokenId, bool status) external;
-
-  function updateDeployer(address newDeployer) external;
 
   function initiatorFor(address owner_) external view returns (address);
 

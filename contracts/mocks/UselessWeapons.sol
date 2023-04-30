@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC1155/ERC1155.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract UselessWeapons is ERC1155, Ownable {
-  constructor() ERC1155("https://uselessweapons.com/list/") {}
+  constructor(string memory baseUri) ERC1155(baseUri) {}
 
   function setURI(string memory newuri_) public onlyOwner {
     _setURI(newuri_);

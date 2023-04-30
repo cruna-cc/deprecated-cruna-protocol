@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: GPL3
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
@@ -12,7 +12,8 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import "../interfaces/IProtectorBase.sol";
-import "hardhat/console.sol";
+
+//import "hardhat/console.sol";
 
 // used as a library to reduce bytecode size of other contracts
 
