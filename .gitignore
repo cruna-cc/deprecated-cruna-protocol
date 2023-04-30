@@ -54,6 +54,7 @@ contracts/README.md
 .coverage_artifacts
 .coverage_cache
 .coverage_contracts
+coverage.json
 
 # hardhat
 cache

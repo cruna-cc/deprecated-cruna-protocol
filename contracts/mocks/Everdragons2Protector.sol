@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: GPL3
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
-import "../../protocol/protector/Protector.sol";
+import "../protector/Protector.sol";
+import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract Everdragons2Protector is Protector {
+contract Everdragons2Protector is Protector, OwnableUpgradeable, UUPSUpgradeable {
   event TokenURIFrozen();
   event TokenURIUpdated(string uri);
 
@@ -12,18 +14,24 @@ contract Everdragons2Protector is Protector {
   string private _baseTokenURI;
   bool private _baseTokenURIFrozen;
 
-  function initialize(address contractOwner) public initializer {
-    __Protector_init(contractOwner, "Everdragons2 Protectors", "E2P");
+  function initialize() public initializer {
+    __Ownable_init();
+    __UUPSUpgradeable_init();
+    __Protector_init("Everdragons2 Protectors", "E2P");
     _baseTokenURI = "https://everdragons2.com/protector/";
   }
+
+  // required by UUPSUpgradeable
+  function _authorizeUpgrade(address) internal override onlyOwner {}
+
+  // required by @cruna/ds-protocol
+  function _canAddSubordinate() internal override onlyOwner {}
 
   function version() public pure virtual returns (string memory) {
     return "1.0.0";
   }
 
-  function safeMint(address to, uint256 tokenId) public onlyOwner {
-    _safeMint(to, tokenId);
-  }
+  // TODO implement minting functions
 
   function _baseURI() internal view virtual override returns (string memory) {
     return _baseTokenURI;

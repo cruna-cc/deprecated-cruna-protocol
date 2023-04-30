@@ -1,33 +1,18 @@
 // SPDX-License-Identifier: GPL3
-pragma solidity ^0.8.17;
+pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@cruna/ds-protocol/contracts/ERC721DominantUpgradeable.sol";
 import "@cruna/ds-protocol/contracts/interfaces/IERC721SubordinateUpgradeable.sol";
 
 import "../interfaces/IProtector.sol";
-import "hardhat/console.sol";
 
-contract Protector is
-  IProtector,
-  Initializable,
-  ERC721DominantUpgradeable,
-  ERC721EnumerableUpgradeable,
-  OwnableUpgradeable,
-  UUPSUpgradeable
-{
-  // For security reason, this must be the protocol deployer and
-  // it will be different from the token owner. It is necessary to
-  // let the protocol deployer to be able to upgrade the contract,
-  // while the owner can still get the royalties coming from any
-  // token's sale, execute governance functions, mint the tokens, etc.
-  address public contractDeployer;
+// import "hardhat/console.sol";
 
+abstract contract Protector is IProtector, Initializable, ERC721DominantUpgradeable, ERC721EnumerableUpgradeable {
   // tokenId => isApprovable
   mapping(uint256 => bool) private _approvable;
 
@@ -41,13 +26,6 @@ contract Protector is
   // the tokens currently being transferred when a second wallet is set
   mapping(uint256 => ControlledTransfer) private _controlledTransfers;
 
-  // a protector is owned by the project owner, but can be upgraded only
-  // by the owner of the protocol to avoid security issues, scams, fraud, etc.
-  modifier onlyDeployer() {
-    if (_msgSender() != contractDeployer) revert NotTheContractDeployer();
-    _;
-  }
-
   modifier notTheInitiator(address owner_) {
     if (_initiators[owner_].initiator != _msgSender()) revert NotInitiator();
     _;
@@ -59,29 +37,11 @@ contract Protector is
   }
 
   // solhint-disable-next-line
-  function __Protector_init(
-    address contractOwner,
-    string memory name_,
-    string memory symbol_
-  ) public initializer {
-    contractDeployer = msg.sender;
-    _transferOwnership(contractOwner);
+  function __Protector_init(string memory name_, string memory symbol_) public initializer {
     __ERC721_init(name_, symbol_);
     __ERC721Enumerable_init();
-    __UUPSUpgradeable_init();
     emit DefaultApprovable(true);
     emit DefaultLocked(false);
-  }
-
-  function updateDeployer(address newDeployer) external onlyDeployer {
-    if (address(newDeployer) == address(0)) revert InvalidAddress();
-    // after the initial deployment, the deployer can be moved to
-    // a multisig wallet, a wallet managed by a DAO, etc.
-    contractDeployer = newDeployer;
-  }
-
-  function _authorizeUpgrade(address) internal override onlyDeployer {
-    // empty but needed to be sure that only PPP deployer can upgrade the contract
   }
 
   function isProtector() external pure override returns (bool) {
@@ -119,7 +79,7 @@ contract Protector is
 
   function makeApprovable(uint256 tokenId, bool status) external virtual override onlyTokenOwner(tokenId) {
     // Notice that making it approvable is irrelevant if a transfer initializer is set
-    // Still it makes sense if/when the transfer initializer is removed
+    // But the setting will makes sense if/when the transfer initializer is removed
     if (status) {
       _approvable[tokenId] = true;
     } else {
@@ -318,10 +278,6 @@ contract Protector is
     uint256 batchSize
   ) internal virtual override(ERC721Upgradeable, ERC721DominantUpgradeable) {
     super._afterTokenTransfer(from, to, tokenId, batchSize);
-  }
-
-  function addSubordinate(address subordinate) public virtual override onlyDeployer {
-    super.addSubordinate(subordinate);
   }
 
   function batchMintProtected(uint256[] memory tokenIds, address subordinate) external override {
