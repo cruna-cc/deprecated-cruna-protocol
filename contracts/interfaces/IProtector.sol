@@ -4,10 +4,10 @@ pragma solidity ^0.8.19;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 import "@cruna/ds-protocol/contracts/interfaces/IERC721DefaultApprovable.sol";
-import "@cruna/ds-protocol/contracts/interfaces/IERC721DefaultLockable.sol";
+import "@cruna/ds-protocol/contracts/interfaces/IERC721DefaultLocked.sol";
 import "./IProtectorBase.sol";
 
-interface IProtector is IERC721DefaultApprovable, IERC721DefaultLockable, IProtectorBase {
+interface IProtector is IERC721DefaultApprovable, IERC721DefaultLocked, IProtectorBase {
   // status
   // true: transfer initializer is being set
   // false: transfer initializer is being removed

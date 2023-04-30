@@ -4,8 +4,6 @@ pragma experimental ABIEncoderV2;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
@@ -35,14 +33,11 @@ contract TransparentVaultEnumerable is
   ITransparentVault,
   EnumerableStorage,
   ERC721Receiver,
-  OwnableUpgradeable,
   ERC721SubordinateUpgradeable,
   ReentrancyGuardUpgradeable,
-  UUPSUpgradeable
+  TokenUtils
 {
   using StringsUpgradeable for uint256;
-
-  TokenUtils private _tokenUtils;
 
   // By default, only the protector's owner can deposit assets
   // If allowAll is true, anyone can deposit assets
@@ -85,17 +80,15 @@ contract TransparentVaultEnumerable is
     _;
   }
 
-  /// @custom:oz-upgrades-unsafe-allow constructor
-  constructor() {
-    _disableInitializers();
+  // solhint-disable-next-line
+  function __TransparentVaultEnumerable_init(
+    address protector,
+    string memory name,
+    string memory symbol
+  ) internal onlyInitializing {
+    __ERC721Subordinate_init(name, symbol, protector);
+    __ReentrancyGuard_init();
   }
-
-  function initialize(address protector, string memory namePrefix) public initializer {
-    __ERC721Subordinate_init(string(abi.encodePacked(namePrefix, " - Cruna Transparent Vault")), "CrunaTV", protector);
-    __Ownable_init();
-  }
-
-  function _authorizeUpgrade(address newImplementation) internal virtual override onlyOwner {}
 
   function configure(
     uint256 protectorId,
@@ -138,11 +131,6 @@ contract TransparentVaultEnumerable is
         }
       }
     }
-  }
-
-  function setTokenUtils(address tokenUtils_) external onlyOwner {
-    if (tokenUtils_ == address(0)) revert InvalidAddress();
-    _tokenUtils = TokenUtils(tokenUtils_);
   }
 
   function _validateAndEmitEvent(
@@ -225,11 +213,11 @@ contract TransparentVaultEnumerable is
   ) external override nonReentrant onlyIfProtectorNotApproved(protectorId) {
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
-      if (_tokenUtils.isERC20(assets[i])) {
+      if (isERC20(assets[i])) {
         _depositERC20(protectorId, assets[i], amounts[i]);
-      } else if (_tokenUtils.isERC721(assets[i])) {
+      } else if (isERC721(assets[i])) {
         _depositERC721(protectorId, assets[i], ids[i]);
-      } else if (_tokenUtils.isERC1155(assets[i])) {
+      } else if (isERC1155(assets[i])) {
         _depositERC1155(protectorId, assets[i], ids[i], amounts[i]);
       } else revert InvalidAsset();
     }
@@ -314,9 +302,9 @@ contract TransparentVaultEnumerable is
     if (ownerOf(protectorId) != ownerOf(recipientProtectorId)) {
       _checkIfStartAllowed(protectorId);
     }
-    if (_tokenUtils.isERC721(asset)) {
+    if (isERC721(asset)) {
       amount = 1;
-    } else if (_tokenUtils.isERC20(asset)) {
+    } else if (isERC20(asset)) {
       id = 0;
     }
     _transferAsset(protectorId, recipientProtectorId, asset, id, amount);
@@ -370,11 +358,11 @@ contract TransparentVaultEnumerable is
     uint256 id,
     uint256 amount
   ) internal {
-    if (_tokenUtils.isERC721(asset)) {
+    if (isERC721(asset)) {
       IERC721Upgradeable(asset).safeTransferFrom(from, to, id);
-    } else if (_tokenUtils.isERC1155(asset)) {
+    } else if (isERC1155(asset)) {
       IERC1155Upgradeable(asset).safeTransferFrom(from, to, id, amount, "");
-    } else if (_tokenUtils.isERC20(asset)) {
+    } else if (isERC20(asset)) {
       bool transferred = IERC20Upgradeable(asset).transfer(to, amount);
       if (!transferred) revert TransferFailed();
     } else {

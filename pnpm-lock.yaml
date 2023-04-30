@@ -1,7 +1,7 @@
 lockfileVersion: 5.4
 
 specifiers:
-  '@cruna/ds-protocol': 1.1.0
+  '@cruna/ds-protocol': 1.1.2
   '@nomiclabs/hardhat-ethers': ^2.0.3
   '@nomiclabs/hardhat-etherscan': ^2.1.8
   '@nomiclabs/hardhat-waffle': ^2.0.1
@@ -24,7 +24,7 @@ specifiers:
   typescript: ^4.7.3
 
 devDependencies:
-  '@cruna/ds-protocol': 1.1.0
+  '@cruna/ds-protocol': 1.1.2
   '@nomiclabs/hardhat-ethers': 2.0.4_metsxjxup4hfgxkchphssyuv5e
   '@nomiclabs/hardhat-etherscan': 2.1.8_hardhat@2.12.7
   '@nomiclabs/hardhat-waffle': 2.0.2_qwx25yt3ygbkd3hprmbcpvxm3i
@@ -69,8 +69,8 @@ packages:
       js-tokens: 4.0.0
     dev: true
 
-  /@cruna/ds-protocol/1.1.0:
-    resolution: {integrity: sha512-371IIAa28Z8P4vTJ+3KgY+seAzOEAZ56eBp/eFDUleQioCVZCHYCiZB+tClCowKSJExrppNXzK109zlrP9quCQ==}
+  /@cruna/ds-protocol/1.1.2:
+    resolution: {integrity: sha512-6NTP6R6l6qznAwj/X41LYLD+uZ1QCp90OhaJgZZwXTbYmjkwJZeN825PvhQg9pP54Z64I046pw/MzOJhr7Srdg==}
     dev: true
 
   /@ensdomains/ens/0.4.5:
