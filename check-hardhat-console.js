@@ -1,10 +1,14 @@
 #!/usr/bin/env node
 
-const consoleLogAlert = require("./scripts/consoleLogAlert");
+const {execSync} = require("child_process");
+const path = require("path");
 
 try {
-  consoleLogAlert();
+  const result = execSync(`grep -r 'import "hardhat' ${path.resolve(__dirname, "contracts")}`).toString();
+  if (/:import/.test(result)) {
+    console.error("At least a console.log has been left in the contracts");
+    process.exit(1);
+  }
 } catch (e) {
-  console.log(e.message);
-  process.exit(1);
+  // nothing found
 }
