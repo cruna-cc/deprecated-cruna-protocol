@@ -3,7 +3,6 @@ const {deployContractUpgradeable, deployContract, amount, assertThrowsMessage} =
 
 describe("TransparentVaultEnumerable", function () {
   let everdragons2Protector, everdragons2TransparentVault;
-  let tokenUtils;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   // wallets
@@ -19,9 +18,8 @@ describe("TransparentVaultEnumerable", function () {
   beforeEach(async function () {
     everdragons2Protector = await deployContractUpgradeable("Everdragons2ProtectorMintable");
 
-    everdragons2TransparentVault = await deployContractUpgradeable("TransparentVaultEnumerable", [
+    everdragons2TransparentVault = await deployContractUpgradeable("Everdragons2TransparentVaultEnumerable", [
       everdragons2Protector.address,
-      "Everdragons2",
     ]);
 
     await everdragons2Protector.addSubordinate(everdragons2TransparentVault.address);
@@ -41,10 +39,6 @@ describe("TransparentVaultEnumerable", function () {
     await everdragons2Protector.connect(e2Owner).safeMint(bob.address, 4);
     await everdragons2Protector.connect(e2Owner).safeMint(alice.address, 5);
     await everdragons2Protector.connect(e2Owner).safeMint(alice.address, 6);
-
-    tokenUtils = await deployContract("TokenUtils");
-
-    await everdragons2TransparentVault.setTokenUtils(tokenUtils.address);
 
     // erc20
     bulls = await deployContract("Bulls");

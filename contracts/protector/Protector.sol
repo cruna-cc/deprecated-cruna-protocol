@@ -37,10 +37,10 @@ abstract contract Protector is IProtector, Initializable, ERC721DominantUpgradea
   }
 
   // solhint-disable-next-line
-  function __Protector_init(string memory name_, string memory symbol_) public initializer {
+  function __Protector_init(string memory name_, string memory symbol_) public onlyInitializing {
     __ERC721_init(name_, symbol_);
     __ERC721Enumerable_init();
-    emit DefaultApprovable(true);
+    emit DefaultApprovable(false);
     emit DefaultLocked(false);
   }
 

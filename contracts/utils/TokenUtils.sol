@@ -7,9 +7,6 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeab
 import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 
 import "../interfaces/IProtectorBase.sol";
 
@@ -17,15 +14,8 @@ import "../interfaces/IProtectorBase.sol";
 
 // used as a library to reduce bytecode size of other contracts
 
-contract TokenUtils is Initializable, OwnableUpgradeable, UUPSUpgradeable {
+contract TokenUtils {
   error TheERC721IsAProtector();
-
-  function initialize() public initializer {
-    __Ownable_init();
-    __UUPSUpgradeable_init();
-  }
-
-  function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
   function isERC721(address asset) public view returns (bool) {
     try IERC165Upgradeable(asset).supportsInterface(type(IProtectorBase).interfaceId) returns (bool result) {
