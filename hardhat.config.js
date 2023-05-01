@@ -2,6 +2,7 @@ require("@nomiclabs/hardhat-waffle");
 require("@openzeppelin/hardhat-upgrades");
 require("solidity-coverage");
 require("hardhat-contract-sizer");
+require("solidity-coverage");
 if (process.env.GAS_REPORT) {
   require("hardhat-gas-reporter");
 }
