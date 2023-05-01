@@ -441,4 +441,6 @@ contract TransparentVaultEnumerable is
     }
     return amounts;
   }
+
+  uint256[50] private __gap;
 }
