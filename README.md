@@ -68,6 +68,10 @@ To streamline the process for projects, Cruna will develop an app designed to ma
 
 ## History
 
+**1.0.0-beta.3**
+
+- Remove post-install, creating issues when loaded as a dependency
+
 **1.0.0-beta.2**
 
 - Adding \_\_gap variables to Transparent Vault contracts to allow for future upgrades
