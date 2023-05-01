@@ -68,9 +68,13 @@ To streamline the process for projects, Cruna will develop an app designed to ma
 
 ## History
 
+**1.0.0-beta.1**
+
+- ready to publish it as an npm package
+
 **0.1.5**
 
-- Moving to @cruna/ds-protocol
+- Moving to use @cruna/ds-protocol instead of @ndujalabs/erc721subordinate
 - Adding batch minting functions
 
 **0.1.4**
