@@ -9,6 +9,7 @@
     "/contracts/**/*.sol"
   ],
   "scripts": {
+    "clean": "rimraf artifacts cache coverage coverage.json",
     "test": "NODE_ENV=test npx hardhat test",
     "test:gas": "NODE_ENV=test GAS_REPORT=true npx hardhat test",
     "compile": "NODE_ENV=test npx hardhat compile",
@@ -51,6 +52,7 @@
     "prettier": "^2.5.1",
     "prettier-plugin-solidity": "^1.0.0-beta.19",
     "pretty-quick": "^3.1.3",
+    "rimraf": "^5.0.0",
     "solhint": "^3.3.6",
     "solidity-coverage": "^0.8.2",
     "typescript": "^4.7.3"
