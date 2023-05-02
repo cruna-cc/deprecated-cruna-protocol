@@ -14,7 +14,7 @@ import "../interfaces/IProtector.sol";
 
 abstract contract Protector is IProtector, Initializable, ERC721DominantUpgradeable, ERC721EnumerableUpgradeable {
   // tokenId => isApprovable
-  mapping(uint256 => bool) private _approvable;
+  mapping(uint256 => bool) private _notApprovable;
 
   // the address of a second wallet required to start the transfer of a token
   // owner >> initiator >> approved
@@ -40,7 +40,7 @@ abstract contract Protector is IProtector, Initializable, ERC721DominantUpgradea
   function __Protector_init(string memory name_, string memory symbol_) public onlyInitializing {
     __ERC721_init(name_, symbol_);
     __ERC721Enumerable_init();
-    emit DefaultApprovable(false);
+    emit DefaultApprovable(true);
     emit DefaultLocked(false);
   }
 
@@ -71,19 +71,13 @@ abstract contract Protector is IProtector, Initializable, ERC721DominantUpgradea
     return interfaceId == type(IProtectorBase).interfaceId || super.supportsInterface(interfaceId);
   }
 
-  // manage approvals
-
-  function defaultApprovable() external view returns (bool) {
-    return false;
-  }
-
   function makeApprovable(uint256 tokenId, bool status) external virtual override onlyTokenOwner(tokenId) {
     // Notice that making it approvable is irrelevant if a transfer initializer is set
     // But the setting will makes sense if/when the transfer initializer is removed
-    if (status) {
-      _approvable[tokenId] = true;
-    } else {
-      delete _approvable[tokenId];
+    if (!status) {
+      _notApprovable[tokenId] = true;
+    } else if (_notApprovable[tokenId]) {
+      delete _notApprovable[tokenId];
     }
     emit Approvable(tokenId, status);
   }
@@ -94,7 +88,7 @@ abstract contract Protector is IProtector, Initializable, ERC721DominantUpgradea
 
   function approvable(uint256 tokenId) public view virtual override returns (bool) {
     if (!exists(tokenId)) revert TokenDoesNotExist();
-    return _approvable[tokenId] && !hasInitiator(tokenId);
+    return !_notApprovable[tokenId] && !hasInitiator(tokenId);
   }
 
   // lockable
