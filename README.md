@@ -15,7 +15,7 @@ The Protector NFT carries significant responsibility, as its ownership can imply
 **Interaction with Marketplaces:**
 
 - The NFT cannot be approved for everyone, as this is a common avenue for phishing attacks.
-- By default, the NFT is not set for approval; it must be explicitly made approvable for listing on marketplaces.
+- Before using the protected NFT (for example, before depositing in a vault), the NFT should be made not-approvable. The Cruna dashboard will push the user to do so.
 
 **Ownership Transfer:**
 
@@ -44,29 +44,19 @@ The simple concept of a Transparent Vault dramatically enhances the security of 
 
 ### Contract ownership
 
-The Cruna Core Protocol establishes a framework that enables any NFT collection to integrate a Transparent Vault. Everdragons2 is the first project to implement this protocol.
+The Cruna Core Protocol lays the foundation for any NFT collection to incorporate a Transparent Vault. Everdragons2 has the distinction of being the inaugural project to execute this protocol.
 
-Contracts will be deployed and upgraded by the Cruna DAO, but ownership will be transferred to the Everdragons2 DAO. This arrangement allows the Everdragons2 project to receive royalties from sales, manage parameters, tokenURI, and more, while Cruna maintains the ability to upgrade contracts as needed.
-
-This separation of functions between the project launching the Protector and the DAO is essential to prevent hostile projects from upgrading the Protector contract in a way that scams users.
-
-**Implementation Process**
-
-A project wishing to deploy a new Protector contract must create a proposal by opening a PR in the /projects folder of this repo. The Cruna DAO will audit the proposal, and if approved, the project and DAO will determine when to deploy the contracts for the Protector and Protected. Although it is theoretically possible to associate multiple Protected NFTs with a single Protector, initially, only one Protected NFT per Protector will be supported.
-
-**Upgrades**
-
-When a new feature is ready for deployment, the Cruna DAO will open an improvement proposal. If approved, the DAO will upgrade the Protector, Protected, or both contracts as needed – for instance, if a bug is found or a vulnerability is discovered.
+Given that any project utilizing the protocol could theoretically introduce harmful functions, the Cruna DAO will conduct audits on the associated contracts. Following this review, they will then determine whether the project should be granted access to be managed within the Cruna dashboard. Projects that have not been listed and choose to implement the protocol are required to construct their own management dashboard.
 
 ### Costs
 
-Implementing the Cruna Core Protocol necessitates a sophisticated UI to manage both Protector and Protected NFTs. Cruna, in collaboration with ndujaLabs and The Round Table, will develop this UI, which will be freely accessible to all projects looking to integrate the Cruna Core Protocol. To offset costs, a 5% royalty fee will be applied to the initial sale of each Protector NFT.
-
-### Initial NFT Sales
-
-To streamline the process for projects, Cruna will develop an app designed to manage the initial sales of Protector NFTs. This white-label app will be provided to projects free of charge and will evolve over time, incorporating features requested by projects and those associated with new Protected NFTs released through the protocol.
+Implementing the Cruna Core Protocol necessitates a sophisticated UI to manage both Protector and Protected NFTs. Cruna will develop this UI, which will be freely accessible to all projects looking to integrate the Cruna Core Protocol that will successfully pass Cruna's audit. To offset costs, a royalty fee may be applied to the initial sale of each Protector NFT. Alternatively, projects may choose to pay a one-time fee to Cruna to remove the royalty. The Cruna DAO will determine the royalty fee and one-time fee based on the project's size and scope.~~~~
 
 ## History
+
+**1.0.0-beta.4**
+
+- Make the protector approvable by default. The owner will be pushed to make it not-approvable when depositing the first asset in the Transparent Vault.
 
 **1.0.0-beta.3**
 
