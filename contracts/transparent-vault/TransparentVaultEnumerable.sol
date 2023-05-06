@@ -8,10 +8,10 @@ import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-import "@cruna/toolkit/dominant-subordinate/ERC721SubordinateUpgradeable.sol";
+import "../dominant-subordinate/ERC721SubordinateUpgradeable.sol";
 
-import "../interfaces/ITransparentVault.sol";
-import "../interfaces/IProtector.sol";
+import "./ITransparentVault.sol";
+import "../protector/IProtector.sol";
 import "../utils/ERC721Receiver.sol";
 import "../utils/TokenUtils.sol";
 import "../storage/EnumerableStorage.sol";

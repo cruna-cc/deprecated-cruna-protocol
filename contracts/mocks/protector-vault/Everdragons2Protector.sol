@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.19;
 
-import "../transparentVault/TransparentVault.sol";
+import "../../protector/Protector.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract Everdragons2TransparentVault is TransparentVault, OwnableUpgradeable, UUPSUpgradeable {
+contract Everdragons2Protector is Protector, OwnableUpgradeable, UUPSUpgradeable {
   event TokenURIFrozen();
   event TokenURIUpdated(string uri);
 
@@ -19,15 +19,22 @@ contract Everdragons2TransparentVault is TransparentVault, OwnableUpgradeable, U
     _disableInitializers();
   }
 
-  function initialize(address protector) public initializer {
+  function initialize() public initializer {
     __Ownable_init();
     __UUPSUpgradeable_init();
-    __TransparentVault_init(protector, "Everdragons2 Transparent Vault", "E2TV");
-    _baseTokenURI = "https://everdragons2.com/vault/";
+    __Protector_init("Everdragons2 Protectors", "E2P");
+    _baseTokenURI = "https://everdragons2.com/protector/";
   }
 
   // required by UUPSUpgradeable
   function _authorizeUpgrade(address) internal override onlyOwner {}
+
+  // required by @cruna/ds-protocol
+  function _canAddSubordinate() internal override onlyOwner {}
+
+  function version() public pure virtual returns (string memory) {
+    return "1.0.0";
+  }
 
   // TODO implement minting functions
 

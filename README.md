@@ -50,7 +50,17 @@ Given that any project utilizing the protocol could theoretically introduce harm
 
 ### Costs
 
-Implementing the Cruna Core Protocol necessitates a sophisticated UI to manage both Protector and Protected NFTs. Cruna will develop this UI, which will be freely accessible to all projects looking to integrate the Cruna Core Protocol that will successfully pass Cruna's audit. To offset costs, a royalty fee may be applied to the initial sale of each Protector NFT. Alternatively, projects may choose to pay a one-time fee to Cruna to remove the royalty. The Cruna DAO will determine the royalty fee and one-time fee based on the project's size and scope.~~~~
+Implementing the Cruna Core Protocol necessitates a sophisticated UI to manage both Protector and Protected NFTs. Cruna will develop this UI, which will be freely accessible to all projects looking to integrate the Cruna Core Protocol that will successfully pass Cruna's audit. To offset costs, a royalty fee may be applied to the initial sale of each Protector NFT. Alternatively, projects may choose to pay a one-time fee to Cruna to remove the royalty. The Cruna DAO will determine the royalty fee and one-time fee based on the project's size and scope.
+
+## Other packages
+
+This repo contains other contracts used as a foundation for the Cruna Core Protocol.
+
+[SOULBOUND](./SOULBOUND.md)
+
+[NFT Owned Contracts](./NFT_OWNED.md)
+
+[Dominant Subordinate protocol](./DOMINANT_SUBORDINATE.md)
 
 ## History
 

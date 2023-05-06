@@ -5,10 +5,10 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@cruna/toolkit/dominant-subordinate/ERC721DominantUpgradeable.sol";
-import "@cruna/toolkit/dominant-subordinate/IERC721Subordinate.sol";
+import "../dominant-subordinate/ERC721DominantUpgradeable.sol";
+import "../dominant-subordinate/IERC721Subordinate.sol";
 
-import "../interfaces/IProtector.sol";
+import "./IProtector.sol";
 
 // import "hardhat/console.sol";
 

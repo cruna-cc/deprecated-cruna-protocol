@@ -5,7 +5,7 @@ pragma experimental ABIEncoderV2;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 import "@openzeppelin/contracts-upgradeable/utils/math/SafeMathUpgradeable.sol";
-import "../interfaces/IEnumerableStorage.sol";
+import "./IEnumerableStorage.sol";
 
 //import "hardhat/console.sol";
 

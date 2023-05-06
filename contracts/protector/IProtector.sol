@@ -3,8 +3,8 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "@cruna/toolkit/badge/IERC6982.sol";
-import "@cruna/toolkit/badge/IERC721DefaultApprovable.sol";
+import "../soulbound/IERC6982.sol";
+import "../soulbound/IERC721DefaultApprovable.sol";
 import "./IProtectorBase.sol";
 
 interface IProtector is IERC6982, IERC721DefaultApprovable, IProtectorBase {
