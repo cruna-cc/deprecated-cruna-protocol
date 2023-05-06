@@ -1,0 +1,37 @@
+{
+  "name": "@cruna/cruna-protocol",
+  "version": "1.0.0-beta.6",
+  "description": "The Cruna protocol",
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "**/*.sol",
+    "!/mocks/**/*"
+  ],
+  "scripts": {
+    "clean": "rimraf artifacts cache coverage coverage.json",
+    "prepublishOnly": "../scripts/verify-package-json-in-sync.js && ../scripts/check-hardhat-console.js && pnpm run clean && NODE_ENV=test npx hardhat test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/cruna-cc/cruna-protocol.git"
+  },
+  "author": {
+    "name": "Francesco Sullo",
+    "email": "francesco@sullo.co"
+  },
+  "bugs": {
+    "url": "https://github.com/cruna-cc/cruna-protocol/issues"
+  },
+  "homepage": "https://github.com/cruna-cc/cruna-protocol#readme",
+  "license": "GPL3",
+  "keywords": [
+    "solidity",
+    "ethereum",
+    "smart",
+    "contracts",
+    "security",
+    "nft"
+  ]
+}

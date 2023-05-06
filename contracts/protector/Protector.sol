@@ -5,10 +5,10 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721EnumerableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@cruna/ds-protocol/contracts/ERC721DominantUpgradeable.sol";
-import "@cruna/ds-protocol/contracts/interfaces/IERC721SubordinateUpgradeable.sol";
+import "../dominant-subordinate/ERC721DominantUpgradeable.sol";
+import "../dominant-subordinate/IERC721Subordinate.sol";
 
-import "../interfaces/IProtector.sol";
+import "./IProtector.sol";
 
 // import "hardhat/console.sol";
 
@@ -282,7 +282,7 @@ abstract contract Protector is IProtector, Initializable, ERC721DominantUpgradea
 
   function mintProtected(uint256 tokenId, address subordinate) public override onlyTokenOwner(tokenId) {
     if (!isSubordinate(subordinate)) revert NotASubordinate(subordinate);
-    IERC721SubordinateUpgradeable(subordinate).emitTransfer(address(0), _msgSender(), tokenId);
+    IERC721Subordinate(subordinate).emitTransfer(address(0), _msgSender(), tokenId);
   }
 
   uint256[50] private __gap;

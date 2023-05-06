@@ -1,12 +1,11 @@
 lockfileVersion: 5.4
 
 specifiers:
-  '@cruna/ds-protocol': 1.1.2
   '@nomiclabs/hardhat-ethers': ^2.0.3
   '@nomiclabs/hardhat-etherscan': ^2.1.8
   '@nomiclabs/hardhat-waffle': ^2.0.1
-  '@openzeppelin/contracts': ^4.8.0
-  '@openzeppelin/contracts-upgradeable': ^4.8.0
+  '@openzeppelin/contracts': ^4.8.3
+  '@openzeppelin/contracts-upgradeable': ^4.8.3
   '@openzeppelin/hardhat-upgrades': ^1.22.1
   case: ^1.6.3
   chai: ^4.3.4
@@ -25,12 +24,11 @@ specifiers:
   typescript: ^4.7.3
 
 devDependencies:
-  '@cruna/ds-protocol': 1.1.2
   '@nomiclabs/hardhat-ethers': 2.0.4_metsxjxup4hfgxkchphssyuv5e
   '@nomiclabs/hardhat-etherscan': 2.1.8_hardhat@2.12.7
   '@nomiclabs/hardhat-waffle': 2.0.2_qwx25yt3ygbkd3hprmbcpvxm3i
-  '@openzeppelin/contracts': 4.8.0
-  '@openzeppelin/contracts-upgradeable': 4.8.0
+  '@openzeppelin/contracts': 4.8.3
+  '@openzeppelin/contracts-upgradeable': 4.8.3
   '@openzeppelin/hardhat-upgrades': 1.22.1_bprfotlvpgeiztbpxak2xd3t2a
   case: 1.6.3
   chai: 4.3.6
@@ -69,10 +67,6 @@ packages:
       '@babel/helper-validator-identifier': 7.16.7
       chalk: 2.4.2
       js-tokens: 4.0.0
-    dev: true
-
-  /@cruna/ds-protocol/1.1.2:
-    resolution: {integrity: sha512-6NTP6R6l6qznAwj/X41LYLD+uZ1QCp90OhaJgZZwXTbYmjkwJZeN825PvhQg9pP54Z64I046pw/MzOJhr7Srdg==}
     dev: true
 
   /@ensdomains/ens/0.4.5:
@@ -821,12 +815,12 @@ packages:
       hardhat: 2.12.7_typescript@4.7.3
     dev: true
 
-  /@openzeppelin/contracts-upgradeable/4.8.0:
-    resolution: {integrity: sha512-5GeFgqMiDlqGT8EdORadp1ntGF0qzWZLmEY7Wbp/yVhN7/B3NNzCxujuI77ktlyG81N3CUZP8cZe3ZAQ/cW10w==}
+  /@openzeppelin/contracts-upgradeable/4.8.3:
+    resolution: {integrity: sha512-SXDRl7HKpl2WDoJpn7CK/M9U4Z8gNXDHHChAKh0Iz+Wew3wu6CmFYBeie3je8V0GSXZAIYYwUktSrnW/kwVPtg==}
     dev: true
 
-  /@openzeppelin/contracts/4.8.0:
-    resolution: {integrity: sha512-AGuwhRRL+NaKx73WKRNzeCxOCOCxpaqF+kp8TJ89QzAipSwZy/NoflkWaL9bywXFRhIzXt8j38sfF7KBKCPWLw==}
+  /@openzeppelin/contracts/4.8.3:
+    resolution: {integrity: sha512-bQHV8R9Me8IaJoJ2vPG4rXcL7seB7YVuskr4f+f5RyOStSZetwzkWtoqDMl5erkBJy0lDRUnIR2WIkPiC0GJlg==}
     dev: true
 
   /@openzeppelin/hardhat-upgrades/1.22.1_bprfotlvpgeiztbpxak2xd3t2a:
