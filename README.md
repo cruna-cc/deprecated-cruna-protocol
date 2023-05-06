@@ -1,7 +1,5 @@
 # Cruna Core Protocol
 
-A platform that implements the [DS-protocol](https://github.com/cruna-cc/DS-protocol) to manage NaaA (NFT-as-an-app), born from the collaboration between [Everdragons2](https://everdragons2.com), [Nduja Labs](https://ndujalabs.com) and [The Round Table](https://trt.gg).
-
 ## The protocol
 
 The Cruna Core Protocol establishes a unique hierarchy between two distinct NFTs – the Protector and the Protected – operating on EVM-compatible blockchains to facilitate the management of utility-driven NFTs. The Protected NFT, subordinate in nature, does not possess the capability to alter token ownership; rather, it derives its ownership from the dominant Protector NFT. Simply put, the wallet owning the Protector NFT inherently owns the corresponding Protected NFT.
@@ -56,13 +54,17 @@ Implementing the Cruna Core Protocol necessitates a sophisticated UI to manage b
 
 This repo contains other contracts used as a foundation for the Cruna Core Protocol.
 
-[SOULBOUND](./SOULBOUND.md)
+[SOULBOUND](https://github.com/cruna-cc/cruna-protocol/blob/main/SOULBOUND.md)
 
-[NFT Owned Contracts](./NFT_OWNED.md)
+[NFT Owned Contracts](https://github.com/cruna-cc/cruna-protocol/blob/main/NFT_OWNED.md)
 
-[Dominant Subordinate protocol](./DOMINANT_SUBORDINATE.md)
+[Dominant Subordinate protocol](https://github.com/cruna-cc/cruna-protocol/blob/main/DOMINANT_SUBORDINATE.md)
 
 ## History
+
+**1.0.0-beta.7**
+
+- Putting in this repo, code previously in @cruna/ds-protocol.
 
 **1.0.0-beta.4**
 
@@ -106,6 +108,10 @@ This repo contains other contracts used as a foundation for the Cruna Core Proto
 **0.1.0**
 
 - first version
+
+## Contributions
+
+This project has born from the collaboration between [Everdragons2](https://everdragons2.com), [Nduja Labs](https://ndujalabs.com) and [The Round Table](https://trt.gg).
 
 ## License
 
