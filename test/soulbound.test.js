@@ -21,7 +21,7 @@ describe("soulbound", function () {
   });
 
   it("should verify the properties of the badge", async function () {
-    expect(await myBadge.getInterfacesIds()).deep.equal(["0x2281ffc3", "0xb45a3c0e"]);
+    expect(await myBadge.getInterfacesIds()).deep.equal(["0x2281ffc3", "0x6b61a747"]);
 
     expect(await myBadge.locked(1)).equal(true);
     expect(await myBadge.approvable(1)).equal(false);

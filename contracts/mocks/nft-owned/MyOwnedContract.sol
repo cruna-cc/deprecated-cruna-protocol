@@ -5,16 +5,10 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "../../nft-owned/NFTOwned.sol";
 
 contract MyOwnedContract is NFTOwned {
-  error Unauthorized();
   error NotInitiated();
 
   mapping(uint256 => uint256) public amounts;
   mapping(uint256 => bool) public initiated;
-
-  modifier onlyOwnerOf(uint256 tokenId) {
-    if (msg.sender != ownerOf(tokenId)) revert Unauthorized();
-    _;
-  }
 
   constructor(address owningToken_) NFTOwned(owningToken_) {}
 

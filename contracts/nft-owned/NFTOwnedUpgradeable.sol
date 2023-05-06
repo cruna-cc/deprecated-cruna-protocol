@@ -9,14 +9,20 @@ import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeab
 import "./INFTOwned.sol";
 
 contract NFTOwnedUpgradeable is INFTOwned, Initializable {
-  error OwningTokenNotAnNFT();
+  error Unauthorized();
 
   IERC721Upgradeable internal _owningToken;
+
+  modifier onlyOwnerOf(uint256 tokenId) {
+    if (msg.sender != ownerOf(tokenId)) revert Unauthorized();
+    _;
+  }
 
   // solhint-disable func-name-mixedcase
   function __NFTOwned_init(address owningToken_) internal onlyInitializing {
     _owningToken = IERC721Upgradeable(owningToken_);
     if (!_owningToken.supportsInterface(type(IERC721Upgradeable).interfaceId)) revert OwningTokenNotAnNFT();
+    emit OwningTokenSet(owningToken_);
   }
 
   function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {

@@ -9,13 +9,19 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "./INFTOwned.sol";
 
 contract NFTOwned is INFTOwned {
-  error OwningTokenNotAnNFT();
+  error Unauthorized();
 
   IERC721 internal immutable _owningToken;
+
+  modifier onlyOwnerOf(uint256 tokenId) {
+    if (msg.sender != ownerOf(tokenId)) revert Unauthorized();
+    _;
+  }
 
   constructor(address owningToken_) {
     _owningToken = IERC721(owningToken_);
     if (!_owningToken.supportsInterface(type(IERC721).interfaceId)) revert OwningTokenNotAnNFT();
+    emit OwningTokenSet(owningToken_);
   }
 
   function supportsInterface(bytes4 interfaceId) public view virtual returns (bool) {
