@@ -62,6 +62,10 @@ This repo contains other contracts used as a foundation for the Cruna Core Proto
 
 ## History
 
+**1.0.1**
+
+- improve publish script
+
 **1.0.0-beta.7**
 
 - Putting in this repo, code previously in @cruna/ds-protocol.
