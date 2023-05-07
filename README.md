@@ -370,13 +370,17 @@ contract MyOwnedContract is NFTOwned {
 
 ## History
 
+**1.0.3**
+
+- removes some unused variables from TransparentVault
+- modifies TransparentVault so that TransparentVaultEnumerable can extend it
+- checks at initialization time if the owning token is a ProtectedERC721 and saves it in a variable
+
 **1.0.2**
 
 - move the vault from extending ERC721Subordinate to NFTOwned
 - rename the Protector as ERC721Protected
--
-
-**1.0.1**
+- **1.0.1**
 
 - improve publish script
 
