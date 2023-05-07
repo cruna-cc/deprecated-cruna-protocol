@@ -7,8 +7,7 @@ pragma solidity ^0.8.19;
 // Whoever owns the owning token owns the owned contract.
 
 // ERC165 interface id is 0x920c8b9e
-// solhint-disable-next-line
-/* is ERC165 */ interface INFTOwned {
+interface INFTOwned {
   // Must be throw if the owning token is not an NFT
   error OwningTokenNotAnNFT();
 
