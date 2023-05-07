@@ -37,11 +37,7 @@ contract ERC721Subordinate is IERC721Subordinate, Soulbound {
    * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection
    * plus the contract of the dominant token.
    */
-  constructor(
-    string memory name_,
-    string memory symbol_,
-    address dominant_
-  ) Soulbound(name_, symbol_) {
+  constructor(string memory name_, string memory symbol_, address dominant_) Soulbound(name_, symbol_) {
     _dominant = IERC721(dominant_);
     // We do not check it is a dominant token to give the possibility to associate
     // subordinate tokens to any existing NFT. In this case, however, the token
@@ -98,11 +94,7 @@ contract ERC721Subordinate is IERC721Subordinate, Soulbound {
     _initialTransfers[tokenId] = true;
   }
 
-  function emitTransfer(
-    address from,
-    address to,
-    uint256 tokenId
-  ) external virtual override onlyDominant {
+  function emitTransfer(address from, address to, uint256 tokenId) external virtual override onlyDominant {
     if (!_initialTransfers[tokenId]) {
       from = address(0);
       _initialTransfers[tokenId] = true;

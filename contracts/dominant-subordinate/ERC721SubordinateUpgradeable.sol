@@ -34,11 +34,7 @@ contract ERC721SubordinateUpgradeable is IERC721Subordinate, SoulboundUpgradeabl
   mapping(uint256 => bool) private _initialTransfers;
 
   // solhint-disable func-name-mixedcase
-  function __ERC721Subordinate_init(
-    string memory name_,
-    string memory symbol_,
-    address dominant_
-  ) internal onlyInitializing {
+  function __ERC721Subordinate_init(string memory name_, string memory symbol_, address dominant_) internal onlyInitializing {
     __Soulbound_init(name_, symbol_);
     _dominant = IERC721Upgradeable(dominant_);
     // We do not check it is a dominant token to give the possibility to associate
@@ -94,11 +90,7 @@ contract ERC721SubordinateUpgradeable is IERC721Subordinate, SoulboundUpgradeabl
     _initialTransfers[tokenId] = true;
   }
 
-  function emitTransfer(
-    address from,
-    address to,
-    uint256 tokenId
-  ) external virtual override onlyDominant {
+  function emitTransfer(address from, address to, uint256 tokenId) external virtual override onlyDominant {
     if (!_initialTransfers[tokenId]) {
       from = address(0);
       _initialTransfers[tokenId] = true;

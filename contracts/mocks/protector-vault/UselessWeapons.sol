@@ -11,12 +11,7 @@ contract UselessWeapons is ERC1155, Ownable {
     _setURI(newuri_);
   }
 
-  function mintBatch(
-    address to,
-    uint256[] memory ids,
-    uint256[] memory amounts,
-    bytes memory data
-  ) public onlyOwner {
+  function mintBatch(address to, uint256[] memory ids, uint256[] memory amounts, bytes memory data) public onlyOwner {
     _mintBatch(to, ids, amounts, data);
   }
 }

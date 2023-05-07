@@ -14,9 +14,5 @@ interface IERC721Subordinate {
   // transfer from address 0. This function allow to fix the issue, but
   // it is not mandatory — in same cases, the deployer may want the subordinate
   // being not visible on marketplaces.
-  function emitTransfer(
-    address from,
-    address to,
-    uint256 tokenId
-  ) external;
+  function emitTransfer(address from, address to, uint256 tokenId) external;
 }
