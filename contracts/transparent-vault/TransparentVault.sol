@@ -3,10 +3,8 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "@openzeppelin/contracts-upgradeable/utils/StringsUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
 
 import "../nft-owned/NFTOwnedUpgradeable.sol";
@@ -25,8 +23,6 @@ contract TransparentVault is
   ReentrancyGuardUpgradeable,
   TokenUtils
 {
-  using StringsUpgradeable for uint256;
-
   // By default, only the owningToken's owner can deposit assets
   // If allowAll is true, anyone can deposit assets
   mapping(uint256 => bool) private _allowAll;
@@ -42,20 +38,7 @@ contract TransparentVault is
   // allowList and allowWithConfirmation are not mutually exclusive
   // The owningToken can have an allowList and confirm deposits from other senders
 
-  // asset => tokenId => owningTokenId
-  // solhint-disable-next-line var-name-mixedcase
-  mapping(address => mapping(uint256 => uint256)) private _ERC721Deposits;
-
-  // asset => tokenId => owningTokenId => amount
-  // solhint-disable-next-line var-name-mixedcase
-  mapping(address => mapping(uint256 => mapping(uint256 => uint256))) private _ERC1155Deposits;
-
-  // asset => owningTokenId => amount
-  // solhint-disable-next-line var-name-mixedcase
-  mapping(address => mapping(uint256 => uint256)) private _ERC20Deposits;
-
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
-  //  uint256 private _unconfirmedDepositsLength;
 
   mapping(bytes32 => ProtectorAndTimestamp) private _restrictedTransfers;
 
@@ -63,6 +46,8 @@ contract TransparentVault is
   // modifiers
 
   mapping(bytes32 => uint256) private _depositAmounts;
+
+  bool internal _owningTokenIsProtected;
 
   modifier onlyOwningTokenOwner(uint256 owningTokenId) {
     if (ownerOf(owningTokenId) != msg.sender) {
@@ -72,17 +57,26 @@ contract TransparentVault is
   }
 
   modifier onlyProtector(uint256 owningTokenId) {
-    if (IProtectedERC721(address(_owningToken)).protectorFor(ownerOf(owningTokenId)) != _msgSender()) revert NotTheProtector();
+    if (
+      !_owningTokenIsProtected || IProtectedERC721(address(_owningToken)).protectorFor(ownerOf(owningTokenId)) != _msgSender()
+    ) revert NotTheProtector();
+    _;
+  }
+
+  modifier onlyIfOwningTokenNotApproved(uint256 owningTokenId) {
+    // if the owningToken is approved for sale, the vault cannot be modified to avoid scams
+    if (_owningToken.getApproved(owningTokenId) != address(0)) revert ForbiddenWhenOwningTokenApprovedForSale();
     _;
   }
 
   // solhint-disable-next-line
   function __TransparentVault_init(address owningToken) internal onlyInitializing {
     __NFTOwned_init(owningToken);
+    if (_owningToken.supportsInterface(type(IProtectedERC721).interfaceId)) {
+      _owningTokenIsProtected = true;
+    }
     __ReentrancyGuard_init();
   }
-
-  function initializeLibraries(address tokenLibAddress_) public initializer {}
 
   function configure(
     uint256 owningTokenId,
@@ -127,9 +121,13 @@ contract TransparentVault is
     }
   }
 
+  function _addAmountToDeposit(uint owningTokenId, address asset, uint id, uint amount) internal virtual {
+    _depositAmounts[keccak256(abi.encodePacked(owningTokenId, asset, id))] += amount;
+  }
+
   function _validateAndEmitEvent(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal {
     if (ownerOf(owningTokenId) == _msgSender() || _allowAll[owningTokenId] || _allowList[owningTokenId][_msgSender()]) {
-      _depositAmounts[keccak256(abi.encodePacked(owningTokenId, asset, id))] += amount;
+      _addAmountToDeposit(owningTokenId, asset, id, amount);
       emit Deposit(owningTokenId, asset, id, amount);
     } else if (_allowWithConfirmation[owningTokenId]) {
       _unconfirmedDeposits[keccak256(abi.encodePacked(owningTokenId, asset, id, amount, _msgSender()))] = block.timestamp;
@@ -137,15 +135,28 @@ contract TransparentVault is
     } else revert NotAllowed();
   }
 
-  function depositERC721(uint256 owningTokenId, address asset, uint256 id) public override nonReentrant {
+  function depositERC721(
+    uint256 owningTokenId,
+    address asset,
+    uint256 id
+  ) public override nonReentrant onlyIfOwningTokenNotApproved(owningTokenId) {
     _depositERC721(owningTokenId, asset, id);
   }
 
-  function depositERC20(uint256 owningTokenId, address asset, uint256 amount) public override nonReentrant {
+  function depositERC20(
+    uint256 owningTokenId,
+    address asset,
+    uint256 amount
+  ) public override nonReentrant onlyIfOwningTokenNotApproved(owningTokenId) {
     _depositERC20(owningTokenId, asset, amount);
   }
 
-  function depositERC1155(uint256 owningTokenId, address asset, uint256 id, uint256 amount) public override nonReentrant {
+  function depositERC1155(
+    uint256 owningTokenId,
+    address asset,
+    uint256 id,
+    uint256 amount
+  ) public override nonReentrant onlyIfOwningTokenNotApproved(owningTokenId) {
     _depositERC1155(owningTokenId, asset, id, amount);
   }
 
@@ -173,7 +184,7 @@ contract TransparentVault is
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts
-  ) external override nonReentrant {
+  ) external override nonReentrant onlyIfOwningTokenNotApproved(owningTokenId) {
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
       if (isERC20(assets[i])) {
@@ -203,11 +214,11 @@ contract TransparentVault is
     uint256 id,
     uint256 amount,
     address sender
-  ) external override onlyOwningTokenOwner(owningTokenId) {
+  ) external override onlyOwningTokenOwner(owningTokenId) onlyIfOwningTokenNotApproved(owningTokenId) {
     bytes32 key = keccak256(abi.encodePacked(owningTokenId, asset, id, amount, sender));
     uint256 timestamp = _unconfirmedDeposits[key];
     if (timestamp == 0 || _unconfirmedDepositExpired(timestamp)) revert UnconfirmedDepositNotFoundOrExpired();
-    _depositAmounts[keccak256(abi.encodePacked(owningTokenId, asset, id))] += amount;
+    _addAmountToDeposit(owningTokenId, asset, id, amount);
     emit Deposit(owningTokenId, asset, id, amount);
     delete _unconfirmedDeposits[key];
   }
@@ -231,7 +242,7 @@ contract TransparentVault is
     address asset,
     uint256 id,
     uint256 amount
-  ) internal view returns (bytes32) {
+  ) internal view virtual returns (bytes32) {
     if (amount == 0) revert InvalidAmount();
     bytes32 key = keccak256(abi.encodePacked(owningTokenId, asset, id));
     if (_depositAmounts[key] < amount) revert InsufficientBalance();
@@ -244,7 +255,7 @@ contract TransparentVault is
     address asset,
     uint256 id,
     uint256 amount
-  ) internal {
+  ) internal virtual {
     bytes32 key = _checkIfCanTransfer(owningTokenId, asset, id, amount);
     if (recipientOwningTokenId > 0) {
       if (!_owningTokenExists(recipientOwningTokenId)) revert InvalidRecipient();
@@ -259,7 +270,8 @@ contract TransparentVault is
   }
 
   function _checkIfStartAllowed(uint256 owningTokenId) internal view {
-    if (IProtectedERC721(address(_owningToken)).hasProtector(ownerOf(owningTokenId))) revert NotAllowedWhenProtector();
+    if (_owningTokenIsProtected && IProtectedERC721(address(_owningToken)).hasProtector(ownerOf(owningTokenId)))
+      revert NotAllowedWhenProtector();
   }
 
   // transfer asset to another owningToken
@@ -269,7 +281,7 @@ contract TransparentVault is
     address asset,
     uint256 id,
     uint256 amount
-  ) external override onlyOwningTokenOwner(owningTokenId) {
+  ) external override onlyOwningTokenOwner(owningTokenId) onlyIfOwningTokenNotApproved(owningTokenId) {
     if (ownerOf(owningTokenId) != ownerOf(recipientOwningTokenId)) {
       _checkIfStartAllowed(owningTokenId);
     }
@@ -289,7 +301,7 @@ contract TransparentVault is
     uint256 id,
     uint256 amount,
     uint32 validFor
-  ) external override onlyProtector(owningTokenId) {
+  ) external override onlyProtector(owningTokenId) onlyIfOwningTokenNotApproved(owningTokenId) {
     _checkIfCanTransfer(owningTokenId, asset, id, amount);
     bytes32 key = keccak256(abi.encodePacked(owningTokenId, recipientOwningTokenId, asset, id, amount));
     if (_restrictedTransfers[key].protector != address(0) || _restrictedTransfers[key].expiresAt > block.timestamp)
@@ -310,8 +322,7 @@ contract TransparentVault is
     address asset,
     uint256 id,
     uint256 amount
-  ) external override onlyOwningTokenOwner(owningTokenId) {
-    _checkIfChangeAllowed(owningTokenId);
+  ) external override onlyOwningTokenOwner(owningTokenId) onlyIfOwningTokenNotApproved(owningTokenId) {
     // we repeat the check because the user can try starting many transfers with different amounts
     _checkIfCanTransfer(owningTokenId, asset, id, amount);
     bytes32 key = keccak256(abi.encodePacked(owningTokenId, recipientOwningTokenId, asset, id, amount));
@@ -337,7 +348,13 @@ contract TransparentVault is
     }
   }
 
-  function _withdrawAsset(uint256 owningTokenId, address beneficiary, address asset, uint256 id, uint256 amount) internal {
+  function _withdrawAsset(
+    uint256 owningTokenId,
+    address beneficiary,
+    address asset,
+    uint256 id,
+    uint256 amount
+  ) internal virtual {
     _checkIfChangeAllowed(owningTokenId);
     bytes32 key = _checkIfCanTransfer(owningTokenId, asset, id, amount);
     _transferToken(address(this), beneficiary, asset, id, amount);
@@ -366,7 +383,7 @@ contract TransparentVault is
     uint256 amount,
     uint32 validFor,
     address beneficiary
-  ) external override onlyProtector(owningTokenId) {
+  ) external override onlyProtector(owningTokenId) onlyIfOwningTokenNotApproved(owningTokenId) {
     _checkIfCanTransfer(owningTokenId, asset, id, amount);
     bytes32 key = keccak256(abi.encodePacked(owningTokenId, beneficiary, asset, id, amount));
     if (_restrictedWithdrawals[key].protector != address(0) && _restrictedWithdrawals[key].expiresAt > block.timestamp)
@@ -384,12 +401,12 @@ contract TransparentVault is
     uint256 id,
     uint256 amount,
     address beneficiary
-  ) external override onlyOwningTokenOwner(owningTokenId) nonReentrant {
+  ) external override onlyOwningTokenOwner(owningTokenId) nonReentrant onlyIfOwningTokenNotApproved(owningTokenId) {
     bytes32 key = keccak256(abi.encodePacked(owningTokenId, beneficiary, asset, id, amount));
     if (_restrictedWithdrawals[key].protector == address(0)) revert WithdrawalNotFound();
     if (_restrictedWithdrawals[key].expiresAt < block.timestamp) revert Expired();
-    _withdrawAsset(owningTokenId, beneficiary, asset, id, amount);
     delete _restrictedWithdrawals[key];
+    _withdrawAsset(owningTokenId, beneficiary, asset, id, amount);
   }
 
   // External services who need to see what a transparent vault contains can call
@@ -399,7 +416,7 @@ contract TransparentVault is
     uint256 owningTokenId,
     address[] memory asset,
     uint256[] memory id
-  ) external view override returns (uint256[] memory) {
+  ) external view virtual override returns (uint256[] memory) {
     uint256[] memory amounts = new uint256[](asset.length);
     for (uint256 i = 0; i < asset.length; i++) {
       amounts[i] = _depositAmounts[keccak256(abi.encodePacked(owningTokenId, asset[i], id[i]))];
