@@ -33,6 +33,10 @@ contract SoulboundUpgradeable is IERC6982, IERC721DefaultApprovable, Initializab
     return true;
   }
 
+  function defaultLocked() external view virtual returns (bool) {
+    return true;
+  }
+
   function approve(address, uint256) public virtual override {
     revert ApprovalNotAllowed();
   }
@@ -49,20 +53,11 @@ contract SoulboundUpgradeable is IERC6982, IERC721DefaultApprovable, Initializab
     return false;
   }
 
-  function transferFrom(
-    address,
-    address,
-    uint256
-  ) public virtual override {
+  function transferFrom(address, address, uint256) public virtual override {
     revert TransferNotAllowed();
   }
 
-  function safeTransferFrom(
-    address,
-    address,
-    uint256,
-    bytes memory
-  ) public virtual override {
+  function safeTransferFrom(address, address, uint256, bytes memory) public virtual override {
     revert TransferNotAllowed();
   }
 }

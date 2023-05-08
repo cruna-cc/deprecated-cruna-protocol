@@ -15,57 +15,44 @@ contract EnumerableStorage is IEnumerableStorage {
   mapping(uint256 => Asset[]) private _assets;
   mapping(bytes32 => uint256) private _assetIndexes;
 
-  function _key(
-    uint256 protectorId,
-    address assetAddress,
-    uint256 id
-  ) internal pure returns (bytes32) {
-    return keccak256(abi.encodePacked(protectorId, assetAddress, id));
+  function _key(uint256 protectedId, address assetAddress, uint256 id) internal pure returns (bytes32) {
+    return keccak256(abi.encodePacked(protectedId, assetAddress, id));
   }
 
-  function _key(uint256 protectorId, Asset memory asset) internal pure returns (bytes32) {
-    return _key(protectorId, asset.assetAddress, asset.id);
+  function _key(uint256 protectedId, Asset memory asset) internal pure returns (bytes32) {
+    return _key(protectedId, asset.assetAddress, asset.id);
   }
 
-  function _save(
-    uint256 protectorId,
-    address assetAddress,
-    uint256 id,
-    int256 amount
-  ) internal {
-    bytes32 key = _key(protectorId, assetAddress, id);
+  function _save(uint256 protectedId, address assetAddress, uint256 id, int256 amount) internal {
+    bytes32 key = _key(protectedId, assetAddress, id);
     if (_assetIndexes[key] > 0) {
       // will revert if newAmount is negative
       uint256 newAmount;
       if (amount < 0) {
-        newAmount = _assets[protectorId][_assetIndexes[key] - 1].amount.sub(uint256(-amount));
+        newAmount = _assets[protectedId][_assetIndexes[key] - 1].amount.sub(uint256(-amount));
       } else {
-        newAmount = _assets[protectorId][_assetIndexes[key] - 1].amount.add(uint256(amount));
+        newAmount = _assets[protectedId][_assetIndexes[key] - 1].amount.add(uint256(amount));
       }
       if (newAmount == 0) {
         // if the changing element is not the last one
-        if (_assets[protectorId].length > _assetIndexes[key]) {
+        if (_assets[protectedId].length > _assetIndexes[key]) {
           // move last element to the position of the element to delete
-          _assetIndexes[_key(protectorId, _assets[protectorId][_assets[protectorId].length - 1])] = _assetIndexes[key];
-          _assets[protectorId][_assetIndexes[key] - 1] = _assets[protectorId][_assets[protectorId].length - 1];
+          _assetIndexes[_key(protectedId, _assets[protectedId][_assets[protectedId].length - 1])] = _assetIndexes[key];
+          _assets[protectedId][_assetIndexes[key] - 1] = _assets[protectedId][_assets[protectedId].length - 1];
         }
-        _assets[protectorId].pop();
+        _assets[protectedId].pop();
         delete _assetIndexes[key];
       } else {
-        _assets[protectorId][_assetIndexes[key] - 1].amount = newAmount;
+        _assets[protectedId][_assetIndexes[key] - 1].amount = newAmount;
       }
     } else {
       // will revert if amount is negative
-      _assets[protectorId].push(Asset(assetAddress, id, uint256(amount)));
-      _assetIndexes[key] = _assets[protectorId].length;
+      _assets[protectedId].push(Asset(assetAddress, id, uint256(amount)));
+      _assetIndexes[key] = _assets[protectedId].length;
     }
   }
 
-  function getAmount(
-    uint256 protectorId,
-    address assetAddress,
-    uint256 id
-  ) public view override returns (uint256) {
+  function getAmount(uint256 protectorId, address assetAddress, uint256 id) public view override returns (uint256) {
     bytes32 key = _key(protectorId, assetAddress, id);
     if (_assetIndexes[key] > 0) {
       return _assets[protectorId][_assetIndexes[key] - 1].amount;

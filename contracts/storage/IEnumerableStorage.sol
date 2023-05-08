@@ -8,25 +8,17 @@ interface IEnumerableStorage {
     uint256 amount;
   }
 
-  function getAmount(
-    uint256 protectorId,
-    address assetAddress,
-    uint256 id
-  ) external view returns (uint256);
+  function getAmount(uint256 protectedId, address assetAddress, uint256 id) external view returns (uint256);
 
-  function getAssets(uint256 protectorId) external view returns (Asset[] memory);
+  function getAssets(uint256 protectedId) external view returns (Asset[] memory);
 
-  function countAssets(uint256 protectorId) external view returns (uint256);
+  function countAssets(uint256 protectedId) external view returns (uint256);
 
-  function getAssetByIndex(uint256 protectorId, uint256 index) external view returns (Asset memory);
+  function getAssetByIndex(uint256 protectedId, uint256 index) external view returns (Asset memory);
 
-  function getAssetByKey(uint256 protectorId, bytes32 key) external view returns (Asset memory);
+  function getAssetByKey(uint256 protectedId, bytes32 key) external view returns (Asset memory);
 
-  function getAssetKey(uint256 protectorId, uint256 index) external view returns (bytes32);
+  function getAssetKey(uint256 protectedId, uint256 index) external view returns (bytes32);
 
-  function getAssetsAddresses(
-    uint256 protectorId,
-    uint256 offset,
-    uint256 limit
-  ) external view returns (address[] memory);
+  function getAssetsAddresses(uint256 protectedId, uint256 offset, uint256 limit) external view returns (address[] memory);
 }

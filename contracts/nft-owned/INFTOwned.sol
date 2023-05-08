@@ -5,10 +5,17 @@ pragma solidity ^0.8.19;
 
 // An owned contract has no control on its own ownership.
 // Whoever owns the owning token owns the owned contract.
-// ERC165 interface id is 0x920c8b9e
 
-/* is ERC165 */
+// ERC165 interface id is 0x920c8b9e
 interface INFTOwned {
+  // Must be throw if the owning token is not an NFT
+  error OwningTokenNotAnNFT();
+
+  // Must be emitted a single time, at deployment.
+  // If emitted more than one time, the contract should be
+  // considered compromised and not used.
+  event OwningTokenSet(address owningToken);
+
   // Returns the address of the owning token.
   function owningToken() external view returns (address);
 

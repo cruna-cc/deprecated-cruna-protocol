@@ -15,9 +15,7 @@ contract MySubordinate is ERC721Subordinate {
   }
 
   function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
-    try IERC721(dominantToken()).ownerOf(tokenId) returns (address) {} catch (
-      bytes memory /*lowLevelData*/
-    ) {
+    try IERC721(dominantToken()).ownerOf(tokenId) returns (address) {} catch (bytes memory /*lowLevelData*/) {
       revert("ERC721Metadata: URI query for nonexistent token");
     }
     string memory baseURI = _baseURI();

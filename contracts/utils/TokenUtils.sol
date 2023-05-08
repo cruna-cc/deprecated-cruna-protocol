@@ -8,7 +8,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155Upgradeable.sol";
 
-import "../protector/IProtectorBase.sol";
+import "../protected-nft/IProtectedERC721.sol";
 
 //import "hardhat/console.sol";
 
@@ -18,7 +18,7 @@ contract TokenUtils {
   error TheERC721IsAProtector();
 
   function isERC721(address asset) public view returns (bool) {
-    try IERC165Upgradeable(asset).supportsInterface(type(IProtectorBase).interfaceId) returns (bool result) {
+    try IERC165Upgradeable(asset).supportsInterface(type(IProtectedERC721).interfaceId) returns (bool result) {
       if (result) revert TheERC721IsAProtector();
     } catch {}
     try IERC165Upgradeable(asset).supportsInterface(type(IERC721Upgradeable).interfaceId) returns (bool result) {
