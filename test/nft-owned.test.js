@@ -46,7 +46,7 @@ describe("MyOwnedContract and MyToken Integration", function () {
     expect(await myOwnedContract.amounts(tokenId1)).to.equal(amount);
   });
 
-  it.skip("Throws an error when a non-owner tries to call 'init' or 'addSomeAmount'", async function () {
+  it("Throws an error when a non-owner tries to call 'init' or 'addSomeAmount'", async function () {
     // Mint tokens to addr1 and addr2
     await myToken.connect(owner).safeMint(addr1.address, tokenId1);
     await myToken.connect(owner).safeMint(addr2.address, tokenId2);
@@ -54,6 +54,7 @@ describe("MyOwnedContract and MyToken Integration", function () {
     // Attempt to call 'init' by addr2 (not the owner)
     await expect(myOwnedContract.connect(addr2).init(tokenId1)).to.be.revertedWith("Unauthorized()");
 
+    await myOwnedContract.connect(addr1).init(tokenId1);
     // Attempt to call 'addSomeAmount' by addr2 (not the owner)
     await expect(myOwnedContract.connect(addr2).addSomeAmount(tokenId1, 50)).to.be.revertedWith("Unauthorized()");
   });
