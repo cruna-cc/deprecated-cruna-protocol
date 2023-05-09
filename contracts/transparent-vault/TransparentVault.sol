@@ -6,18 +6,20 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradeable.sol";
+import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155ReceiverUpgradeable.sol";
 
 import "../nft-owned/NFTOwnedUpgradeable.sol";
 import "./ITransparentVault.sol";
 import "../protected-nft/IProtectedERC721.sol";
-import "../utils/ERC721Receiver.sol";
 import "../utils/TokenUtils.sol";
 
 //import "hardhat/console.sol";
 
 contract TransparentVault is
   ITransparentVault,
-  ERC721Receiver,
+  IERC721ReceiverUpgradeable,
+  IERC1155ReceiverUpgradeable,
   ContextUpgradeable,
   NFTOwnedUpgradeable,
   ReentrancyGuardUpgradeable,
@@ -76,6 +78,33 @@ contract TransparentVault is
       _owningTokenIsProtected = true;
     }
     __ReentrancyGuard_init();
+  }
+
+  function supportsInterface(
+    bytes4 interfaceId
+  ) public view virtual override(IERC165Upgradeable, NFTOwnedUpgradeable) returns (bool) {
+    return
+      interfaceId == type(IERC721ReceiverUpgradeable).interfaceId ||
+      interfaceId == type(IERC1155ReceiverUpgradeable).interfaceId ||
+      super.supportsInterface(interfaceId);
+  }
+
+  function onERC721Received(address, address, uint256, bytes calldata) public pure override returns (bytes4) {
+    return this.onERC721Received.selector;
+  }
+
+  function onERC1155Received(address, address, uint256, uint256, bytes memory) public virtual returns (bytes4) {
+    return this.onERC1155Received.selector;
+  }
+
+  function onERC1155BatchReceived(
+    address,
+    address,
+    uint256[] memory,
+    uint256[] memory,
+    bytes memory
+  ) public virtual returns (bytes4) {
+    return this.onERC1155BatchReceived.selector;
   }
 
   function configure(
