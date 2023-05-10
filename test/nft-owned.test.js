@@ -54,6 +54,7 @@ describe("MyOwnedContract and MyToken Integration", function () {
     // Attempt to call 'init' by addr2 (not the owner)
     await expect(myOwnedContract.connect(addr2).init(tokenId1)).to.be.revertedWith("Unauthorized()");
 
+    await myOwnedContract.connect(addr1).init(tokenId1);
     // Attempt to call 'addSomeAmount' by addr2 (not the owner)
     await expect(myOwnedContract.connect(addr2).addSomeAmount(tokenId1, 50)).to.be.revertedWith("Unauthorized()");
   });
