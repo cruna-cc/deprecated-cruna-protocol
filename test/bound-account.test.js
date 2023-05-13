@@ -3,7 +3,7 @@
 const {expect} = require("chai");
 const DeployUtils = require("../scripts/lib/DeployUtils");
 
-describe.only("Bound-account Integration", function () {
+describe("Bound-account Integration", function () {
   let registry, proxy, implementation, wallet;
   let particle;
   const deployUtils = new DeployUtils(ethers);
