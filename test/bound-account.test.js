@@ -6,7 +6,10 @@ const DeployUtils = require("../scripts/lib/DeployUtils");
 describe.only("Bound-account Integration", function () {
   let registry, proxy, implementation, wallet;
   let particle;
-  let deployUtils = new DeployUtils(ethers);
+  const deployUtils = new DeployUtils(ethers);
+  const tokenId1 = 1;
+  const tokenId2 = 2;
+  const tokenId3 = 3;
 
   let owner, bob, alice, fred;
   let chainId;
@@ -22,45 +25,54 @@ describe.only("Bound-account Integration", function () {
     proxy = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
     particle = await deployUtils.deploy("Particle", "https://particle.xyz/meta/");
 
-    await particle.safeMint(bob.address, 1);
-    await particle.safeMint(alice.address, 2);
-    await particle.safeMint(fred.address, 3);
+    await particle.safeMint(bob.address, tokenId1);
+    await particle.safeMint(alice.address, tokenId2);
+    await particle.safeMint(fred.address, tokenId3);
   });
 
   it("Deploy bound account and ", async function () {
     const salt = 100990033007;
 
-    const predictedAccount = await registry.account(proxy.address, chainId, particle.address, 1, salt);
+    const predictedAccount = await registry.account(proxy.address, chainId, particle.address, tokenId1, salt);
 
-    await registry.createAccount(proxy.address, chainId, particle.address, 1, salt, []);
+    await registry.createAccount(proxy.address, chainId, particle.address, tokenId1, salt, []);
 
     wallet = await deployUtils.attach("ERC6551AccountUpgradeable", predictedAccount);
 
-    await expect(particle.connect(fred)["safeTransferFrom(address,address,uint256)"](fred.address, predictedAccount, 3))
+    await expect(particle.connect(fred)["safeTransferFrom(address,address,uint256)"](fred.address, predictedAccount, tokenId3))
       .to.emit(particle, "Transfer")
-      .withArgs(fred.address, predictedAccount, 3);
+      .withArgs(fred.address, wallet.address, tokenId3);
 
     [cId, tokenAddress, tokenId] = await wallet.token();
     expect(cId).to.equal(chainId);
     expect(tokenAddress).to.equal(particle.address);
-    expect(tokenId).to.equal(1);
+    expect(tokenId).to.equal(tokenId1);
 
     expect(await particle.balanceOf(wallet.address)).to.equal(1);
 
-    // IERC6551Account(payable(account4)).executeCall(
-    //     address(account3),
-    //     0,
-    //     abi.encodeWithSignature(
-    //         "executeCall(address,uint256,bytes)",
-    //         address(nft),
-    //         0,
-    //         abi.encodeWithSignature(
-    //             "safeTransferFrom(address,address,uint256)",
-    //             account3,
-    //             newTokenOwner,
-    //             200
-    //         )
-    //     )
-    // );
+    expect(await wallet.owner()).to.equal(bob.address);
+    expect(await particle.ownerOf(tokenId3)).to.equal(wallet.address);
+
+    const safeTransferFromABI = [
+      {
+        name: "safeTransferFrom",
+        type: "function",
+        inputs: [
+          {type: "address", name: "_from"},
+          {type: "address", name: "_to"},
+          {type: "uint256", name: "_tokenId"},
+        ],
+        stateMutability: "nonpayable",
+        outputs: [],
+      },
+    ];
+
+    const nftInterface = new ethers.utils.Interface(safeTransferFromABI);
+
+    const data = nftInterface.encodeFunctionData("safeTransferFrom", [wallet.address, alice.address, tokenId3]);
+
+    await expect(wallet.connect(bob).executeCall(particle.address, 0, data))
+      .to.emit(particle, "Transfer")
+      .withArgs(wallet.address, alice.address, tokenId3);
   });
 });
