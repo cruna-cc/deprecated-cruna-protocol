@@ -2,13 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/Create2.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-import "./interfaces/IERC6551Registry.sol";
+import "./IERC6551Registry.sol";
 import "./lib/ERC6551BytecodeLib.sol";
 
 import "hardhat/console.sol";
 
-contract ERC6551Registry is IERC6551Registry {
+contract ERC6551Registry is IERC6551Registry, IERC165 {
   error InitializationFailed();
 
   function createAccount(
@@ -47,5 +48,9 @@ contract ERC6551Registry is IERC6551Registry {
     bytes32 bytecodeHash = keccak256(ERC6551BytecodeLib.getCreationCode(implementation, chainId, tokenContract, tokenId, salt));
 
     return Create2.computeAddress(bytes32(salt), bytecodeHash);
+  }
+
+  function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
+    return (interfaceId == type(IERC6551Registry).interfaceId || interfaceId == type(IERC165).interfaceId);
   }
 }

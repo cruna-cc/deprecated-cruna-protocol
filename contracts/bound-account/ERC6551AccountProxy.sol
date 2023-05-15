@@ -19,4 +19,8 @@ contract ERC6551AccountProxy is Proxy, ERC1967Upgrade {
 
     return implementation;
   }
+
+  function isERC6551AccountProxy() external pure returns (bool) {
+    return true;
+  }
 }

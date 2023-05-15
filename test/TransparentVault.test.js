@@ -89,6 +89,12 @@ describe("TransparentVault", function () {
     await expect(transferNft(coolProjectProtected, bob)(bob.address, alice.address, 1))
       .emit(coolProjectProtected, "Transfer")
       .withArgs(bob.address, alice.address, 1);
+
+    // alice withdraw stupidMock #1 from the vault to fred
+
+    await expect(coolProjectTransparentVault.connect(alice).withdrawAsset(1, stupidMonk.address, 1, 1, fred.address))
+      .emit(coolProjectTransparentVault, "Withdrawal")
+      .emit(stupidMonk, "Transfer");
   });
 
   it("should allow a transfer if a transfer initializer is pending", async function () {

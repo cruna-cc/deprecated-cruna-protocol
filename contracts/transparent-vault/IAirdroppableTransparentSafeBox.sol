@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-interface ITransparentVault {
+interface IAirdroppableTransparentSafeBox {
   event AllowAllUpdated(uint256 indexed owningTokenId, bool allow);
   event AllowListUpdated(uint256 indexed owningTokenId, address indexed account, bool allow);
   event AllowWithConfirmationUpdated(uint256 indexed owningTokenId, bool allow);
@@ -64,7 +64,11 @@ interface ITransparentVault {
   error UnconfirmedDepositNotExpiredYet();
   error UnsupportedTooLargeTokenId();
   error WithdrawalNotFound();
+  error InvalidRegistry();
+  error InvalidAccountProxy();
+  error AccountAlreadyActive();
   error NoETH();
+  error NotActivated();
 
   enum TokenType {
     ERC20,
@@ -86,14 +90,6 @@ interface ITransparentVault {
     uint32 expiresAt;
   }
 
-  function configure(
-    uint256 owningTokenId,
-    bool allowAll_,
-    bool allowWithConfirmation_,
-    address[] memory allowList_,
-    bool[] memory allowListStatus_
-  ) external;
-
   function depositETH(uint256 owningTokenId) external payable;
 
   function depositERC721(uint256 owningTokenId, address asset, uint256 id) external;
@@ -108,10 +104,6 @@ interface ITransparentVault {
     uint256[] memory ids,
     uint256[] memory amounts
   ) external;
-
-  function confirmDeposit(uint256 owningTokenId, address asset, uint256 id, uint256 amount, address sender) external;
-
-  function withdrawExpiredUnconfirmedDeposit(uint256 owningTokenId, address asset, uint256 id, uint256 amount) external;
 
   // transfer asset to another owningToken
   function transferAsset(

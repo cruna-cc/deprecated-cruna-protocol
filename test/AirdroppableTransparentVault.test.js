@@ -1,8 +1,9 @@
-const {expect, assert} = require("chai");
+const {expect} = require("chai");
 const {deployContractUpgradeable, deployContract, amount, assertThrowsMessage} = require("./helpers");
 
-describe("TransparentVaultEnumerable", function () {
+describe("AirdroppableTransparentVault", function () {
   let coolProjectProtected, coolProjectTransparentVault;
+  let registry, proxy, implementation;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   // wallets
@@ -11,18 +12,23 @@ describe("TransparentVaultEnumerable", function () {
   before(async function () {
     [e2Owner, bob, alice, fred, john, jane, mark] = await ethers.getSigners();
   });
+
   function transferNft(nft, user) {
     return nft.connect(user)["safeTransferFrom(address,address,uint256)"];
   }
 
   beforeEach(async function () {
-    coolProjectProtected = await deployContractUpgradeable("CoolProjectProtected");
+    coolProjectProtected = await deployContractUpgradeable("CoolProjectProtected", []);
 
-    coolProjectTransparentVault = await deployContractUpgradeable("CoolProjectTransparentVaultEnumerable", [
+    registry = await deployContract("ERC6551Registry");
+    implementation = await deployContract("ERC6551AccountUpgradeable");
+    proxy = await deployContract("ERC6551AccountProxy", implementation.address);
+
+    coolProjectTransparentVault = await deployContractUpgradeable("CoolProjectAirdroppableTransparentVault", [
       coolProjectProtected.address,
+      registry.address,
+      proxy.address,
     ]);
-
-    expect(await coolProjectProtected.supportsInterface("0x8dca4bea")).to.be.true;
 
     await expect(coolProjectProtected.safeMint(bob.address, 1))
       .emit(coolProjectProtected, "Transfer")
@@ -66,7 +72,15 @@ describe("TransparentVaultEnumerable", function () {
     await uselessWeapons.mintBatch(john.address, [3, 4], [10, 1], "0x00");
   });
 
+  it("should revert if not activated", async function () {
+    // bob creates a vault depositing a particle token
+    await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
+    await expect(coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2)).revertedWith("NotActivated()");
+  });
+
   it("should create a vault and add more assets to it", async function () {
+    await coolProjectTransparentVault.connect(bob).activateAccount(1);
+
     // bob creates a vault depositing a particle token
     await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
     await coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2);
@@ -82,17 +96,13 @@ describe("TransparentVaultEnumerable", function () {
     await coolProjectTransparentVault.connect(bob).depositERC20(1, bulls.address, amount("5000"));
     expect((await coolProjectTransparentVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
-    const assets = await coolProjectTransparentVault.getAssets(1);
-    expect(assets.length).equal(3);
-    expect(assets[0].assetAddress).equal(particle.address);
-    expect(assets[0].id).equal(2);
-    expect(assets[1].assetAddress).equal(stupidMonk.address);
-
-    assert.deepEqual(await coolProjectTransparentVault.getAssetByIndex(1, 0), assets[0]);
-
     // bob transfers the protected to alice
     await expect(transferNft(coolProjectProtected, bob)(bob.address, alice.address, 1))
       .emit(coolProjectProtected, "Transfer")
       .withArgs(bob.address, alice.address, 1);
+
+    // await expect(coolProjectTransparentVault.connect(alice).withdrawAsset(1, stupidMonk.address, 1, 1, fred.address))
+    //   .emit(coolProjectTransparentVault, "Withdrawal")
+    //   .emit(stupidMonk, "Transfer");
   });
 });

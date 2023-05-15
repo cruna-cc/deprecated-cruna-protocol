@@ -12,8 +12,8 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
-import "../../interfaces/IERC6551Account.sol";
-import "../../lib/ERC6551AccountLib.sol";
+import "./IERC6551Account.sol";
+import "./lib/ERC6551AccountLib.sol";
 
 import "hardhat/console.sol";
 
