@@ -315,6 +315,7 @@ contract AirdroppableTransparentSafeBox is
   }
 
   function ejectAccount(uint256 owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
+    if (_ejects[owningTokenId]) revert AccountAlreadyEjected();
     _ownerNFT.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
     _ejects[owningTokenId] = true;
     emit BoundAccountEjected(owningTokenId);
