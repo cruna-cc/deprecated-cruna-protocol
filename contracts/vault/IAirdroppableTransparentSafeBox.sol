@@ -73,6 +73,7 @@ interface IAirdroppableTransparentSafeBox {
   error NoETH();
   error NotActivated();
   error AccountHasBeenEjected();
+  error NotAPreviouslyEjectedAccount();
 
   enum TokenType {
     ERC20,
