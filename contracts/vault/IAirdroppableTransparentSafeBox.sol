@@ -38,6 +38,9 @@ interface IAirdroppableTransparentSafeBox {
     uint256 amount
   );
 
+  event BoundAccountEjected(uint256 indexed owningTokenId);
+  event EjectedBoundAccountReInjected(uint256 indexed owningTokenId);
+
   error AssetAlreadyBeingTransferred();
   error AssetAlreadyBeingWithdrawn();
   error AssetNotFound();
@@ -69,6 +72,7 @@ interface IAirdroppableTransparentSafeBox {
   error AccountAlreadyActive();
   error NoETH();
   error NotActivated();
+  error AccountHasBeenEjected();
 
   enum TokenType {
     ERC20,
@@ -103,32 +107,6 @@ interface IAirdroppableTransparentSafeBox {
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts
-  ) external;
-
-  // transfer asset to another owningToken
-  function transferAsset(
-    uint256 owningTokenId,
-    uint256 recipientOwningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount
-  ) external;
-
-  function startTransferAsset(
-    uint256 owningTokenId,
-    uint256 recipientOwningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount,
-    uint32 validFor
-  ) external;
-
-  function completeTransferAsset(
-    uint256 owningTokenId,
-    uint256 recipientOwningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount
   ) external;
 
   function withdrawAsset(uint256 owningTokenId, address asset, uint256 id, uint256 amount, address beneficiary) external;

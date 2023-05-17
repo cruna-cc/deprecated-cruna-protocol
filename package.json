@@ -41,6 +41,7 @@
     "@openzeppelin/contracts": "^4.8.3",
     "@openzeppelin/contracts-upgradeable": "^4.8.3",
     "@openzeppelin/hardhat-upgrades": "^1.24.0",
+    "@openzeppelin/test-helpers": "^0.5.16",
     "case": "^1.6.3",
     "chai": "^4.3.7",
     "ethereum-waffle": "^3.4.4",

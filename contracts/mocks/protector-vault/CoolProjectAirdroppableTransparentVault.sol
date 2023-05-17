@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.19;
 
-import "../../transparent-vault/AirdroppableTransparentSafeBox.sol";
+import "../../vault/AirdroppableTransparentSafeBox.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 

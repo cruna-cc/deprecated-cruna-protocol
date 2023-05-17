@@ -11,6 +11,7 @@ describe("TransparentVaultEnumerable", function () {
   before(async function () {
     [e2Owner, bob, alice, fred, john, jane, mark] = await ethers.getSigners();
   });
+
   function transferNft(nft, user) {
     return nft.connect(user)["safeTransferFrom(address,address,uint256)"];
   }

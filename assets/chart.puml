@@ -1,7 +1,7 @@
 @startuml
 actor Bob as b
 participant "Protector (NFT)" as n
-participant "TransparentVault (NFT)" as v
+participant "TransparentSafeBox (NFT)" as v
 participant "6551 Registry" as r
 participant "Bound account" as w
 participant "Wallet" as wi

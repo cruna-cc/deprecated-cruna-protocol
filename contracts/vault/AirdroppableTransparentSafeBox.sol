@@ -35,7 +35,7 @@ contract AirdroppableTransparentSafeBox is
   mapping(bytes32 => ProtectorAndTimestamp) private _restrictedWithdrawals;
   // modifiers
 
-  mapping(bytes32 => uint256) private _depositAmounts;
+  mapping(uint => bool) private _ejects;
 
   bool internal _owningTokenIsProtected;
   IERC6551Registry internal _registry;
@@ -59,6 +59,9 @@ contract AirdroppableTransparentSafeBox is
   }
 
   modifier onlyIfActiveAndOwningTokenNotApproved(uint256 owningTokenId) {
+    if (_ejects[owningTokenId]) {
+      revert AccountHasBeenEjected();
+    }
     if (_accountAddresses[owningTokenId] == address(0)) revert NotActivated();
     // if the owningToken is approved for sale, the vault cannot be modified to avoid scams
     if (_owningToken.getApproved(owningTokenId) != address(0)) revert ForbiddenWhenOwningTokenApprovedForSale();
@@ -89,23 +92,16 @@ contract AirdroppableTransparentSafeBox is
   }
 
   function getAccountAddress(uint owningTokenId) public view returns (address) {
-    return _registry.account(address(_accountProxy), block.chainid, address(owningToken()), owningTokenId, _salt);
+    return _registry.account(address(_accountProxy), block.chainid, address(_ownerNFT), owningTokenId, _salt);
   }
 
   function activateAccount(uint owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
     address account = getAccountAddress(owningTokenId);
+    _ownerNFT.mint(address(this), owningTokenId);
     if (_accountAddresses[owningTokenId] != address(0)) revert AccountAlreadyActive();
-    //    IERC6551Account accountInstance = IERC6551Account(payable(account));
-    //    try accountInstance.token() returns (uint256, address , uint256 tokenId_) {
-    //      if (tokenId_ == owningTokenId) revert AccountAlreadyActive();
-    //    } catch {}
     _accountAddresses[owningTokenId] = account;
-    _registry.createAccount(address(_accountProxy), block.chainid, address(owningToken()), owningTokenId, _salt, "");
+    _registry.createAccount(address(_accountProxy), block.chainid, address(_ownerNFT), owningTokenId, _salt, "");
   }
-
-  //  function _addAmountToDeposit(uint owningTokenId, address asset, uint id, uint amount) internal virtual {
-  //    _depositAmounts[keccak256(abi.encodePacked(owningTokenId, asset, id))] += amount;
-  //  }
 
   function _validateAndEmitEvent(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal {
     //    _addAmountToDeposit(owningTokenId, asset, id, amount);
@@ -192,36 +188,23 @@ contract AirdroppableTransparentSafeBox is
     return false;
   }
 
-  function _checkIfCanTransfer(
-    uint256 owningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount
-  ) internal view virtual returns (bytes32) {
+  function _checkIfCanTransfer(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal {
     if (amount == 0) revert InvalidAmount();
-    bytes32 key = keccak256(abi.encodePacked(owningTokenId, asset, id));
-    if (_depositAmounts[key] < amount) revert InsufficientBalance();
-    return key;
+    uint balance = _getAccountBalance(owningTokenId, asset, id);
+    if (balance < amount) revert InsufficientBalance();
   }
 
-  function _transferAsset(
-    uint256 owningTokenId,
-    uint256 recipientOwningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount
-  ) internal virtual {
-    bytes32 key = _checkIfCanTransfer(owningTokenId, asset, id, amount);
-    if (recipientOwningTokenId > 0) {
-      if (!_owningTokenExists(recipientOwningTokenId)) revert InvalidRecipient();
-      _depositAmounts[keccak256(abi.encodePacked(recipientOwningTokenId, asset, id))] += amount;
-    } // else the tokens is trashed
-    if (_depositAmounts[key] - amount > 0) {
-      _depositAmounts[key] -= amount;
-    } else {
-      delete _depositAmounts[key];
-    }
-    emit DepositTransfer(recipientOwningTokenId, asset, id, amount, owningTokenId);
+  function _getAccountBalance(uint256 owningTokenId, address asset, uint256 id) internal view returns (uint256) {
+    address account = getAccountAddress(owningTokenId);
+    if (asset == address(0)) {
+      return account.balance;
+    } else if (isERC20(asset)) {
+      return IERC20Upgradeable(asset).balanceOf(account);
+    } else if (isERC721(asset)) {
+      return IERC721Upgradeable(asset).ownerOf(id) == account ? 1 : 0;
+    } else if (isERC1155(asset)) {
+      return IERC1155Upgradeable(asset).balanceOf(account, id);
+    } else revert InvalidAsset();
   }
 
   function _checkIfStartAllowed(uint256 owningTokenId) internal view {
@@ -229,85 +212,8 @@ contract AirdroppableTransparentSafeBox is
       revert NotAllowedWhenProtector();
   }
 
-  // transfer asset to another owningToken
-  function transferAsset(
-    uint256 owningTokenId,
-    uint256 recipientOwningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount
-  ) external override onlyOwningTokenOwner(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    if (ownerOf(owningTokenId) != ownerOf(recipientOwningTokenId)) {
-      _checkIfStartAllowed(owningTokenId);
-    }
-    _checkIfChangeAllowed(owningTokenId);
-    if (isERC721(asset)) {
-      amount = 1;
-    } else if (isERC20(asset)) {
-      id = 0;
-    }
-    _transferAsset(owningTokenId, recipientOwningTokenId, asset, id, amount);
-  }
-
-  function startTransferAsset(
-    uint256 owningTokenId,
-    uint256 recipientOwningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount,
-    uint32 validFor
-  ) external override onlyProtector(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    _checkIfCanTransfer(owningTokenId, asset, id, amount);
-    bytes32 key = keccak256(abi.encodePacked(owningTokenId, recipientOwningTokenId, asset, id, amount));
-    if (_restrictedTransfers[key].protector != address(0) || _restrictedTransfers[key].expiresAt > block.timestamp)
-      revert AssetAlreadyBeingTransferred();
-    _restrictedTransfers[
-      keccak256(abi.encodePacked(owningTokenId, recipientOwningTokenId, asset, id, amount))
-    ] = ProtectorAndTimestamp({protector: _msgSender(), expiresAt: uint32(block.timestamp) + validFor});
-    emit DepositTransferStarted(recipientOwningTokenId, asset, id, amount, owningTokenId);
-  }
-
   function _checkIfChangeAllowed(uint256 owningTokenId) internal view {
     if (_owningToken.getApproved(owningTokenId) != address(0)) revert ForbiddenWhenOwningTokenApprovedForSale();
-  }
-
-  function completeTransferAsset(
-    uint256 owningTokenId,
-    uint256 recipientOwningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount
-  ) external override onlyOwningTokenOwner(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    // we repeat the check because the user can try starting many transfers with different amounts
-    _checkIfCanTransfer(owningTokenId, asset, id, amount);
-    bytes32 key = keccak256(abi.encodePacked(owningTokenId, recipientOwningTokenId, asset, id, amount));
-    if (
-      _restrictedTransfers[key].protector != IProtectedERC721(address(_owningToken)).protectorFor(ownerOf(owningTokenId)) ||
-      _restrictedTransfers[key].expiresAt < block.timestamp
-    ) revert InvalidTransfer();
-    _transferAsset(owningTokenId, recipientOwningTokenId, asset, id, amount);
-    delete _restrictedTransfers[key];
-  }
-
-  function _sendDepositedERC721(
-    uint256 owningTokenId,
-    address asset,
-    uint256 id,
-    address to
-  ) internal returns (bytes memory _result) {
-    address account = _accountAddresses[owningTokenId];
-    IERC6551Account accountInstance = IERC6551Account(payable(account));
-    return
-      accountInstance.executeCall(
-        address(account),
-        0,
-        abi.encodeWithSignature(
-          "executeCall(address,uint256,bytes)",
-          asset,
-          0,
-          abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", address(account), to, id)
-        )
-      );
   }
 
   function _transferToken(uint owningTokenId, address to, address asset, uint256 id, uint256 amount) internal {
@@ -315,51 +221,21 @@ contract AirdroppableTransparentSafeBox is
     IERC6551Account accountInstance = IERC6551Account(payable(account));
     if (asset == address(0)) {
       // we talk of ETH
-      accountInstance.executeCall(address(account), amount, "");
+      accountInstance.executeCall(account, amount, "");
     } else if (isERC721(asset)) {
       accountInstance.executeCall(
-        address(account),
+        asset,
         0,
-        abi.encodeWithSignature(
-          "executeCall(address,uint256,bytes)",
-          asset,
-          0,
-          abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", address(account), to, id)
-        )
+        abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", account, to, id)
       );
-      //      IERC721Upgradeable(asset).safeTransferFrom(from, to, id);
     } else if (isERC1155(asset)) {
-      //      IERC1155Upgradeable(asset).safeTransferFrom(from, to, id, amount, "");
       accountInstance.executeCall(
-        address(account),
+        asset,
         0,
-        abi.encodeWithSignature(
-          "executeCall(address,uint256,bytes)",
-          asset,
-          0,
-          abi.encodeWithSignature(
-            "safeTransferFrom(address,address,uint256,uint256,bytes)",
-            address(account),
-            to,
-            id,
-            amount,
-            ""
-          )
-        )
+        abi.encodeWithSignature("safeTransferFrom(address,address,uint256,uint256,bytes)", account, to, id, amount, "")
       );
     } else if (isERC20(asset)) {
-      //      bool transferred = IERC20Upgradeable(asset).transfer(to, amount);
-      //      if (!transferred) revert TransferFailed();
-      accountInstance.executeCall(
-        address(account),
-        0,
-        abi.encodeWithSignature(
-          "executeCall(address,uint256,bytes)",
-          asset,
-          0,
-          abi.encodeWithSignature("transfer(address,uint256)", to, amount)
-        )
-      );
+      accountInstance.executeCall(asset, 0, abi.encodeWithSignature("transfer(address,uint256)", to, amount));
     } else {
       // should never happen
       revert InvalidAsset();
@@ -374,13 +250,8 @@ contract AirdroppableTransparentSafeBox is
     uint256 amount
   ) internal virtual {
     _checkIfChangeAllowed(owningTokenId);
-    bytes32 key = _checkIfCanTransfer(owningTokenId, asset, id, amount);
+    _checkIfCanTransfer(owningTokenId, asset, id, amount);
     _transferToken(owningTokenId, beneficiary, asset, id, amount);
-    if (_depositAmounts[key] - amount > 0) {
-      _depositAmounts[key] -= amount;
-    } else {
-      delete _depositAmounts[key];
-    }
     emit Withdrawal(owningTokenId, beneficiary, asset, id, amount);
   }
 
@@ -438,20 +309,22 @@ contract AirdroppableTransparentSafeBox is
   ) external view virtual override returns (uint256[] memory) {
     uint256[] memory amounts = new uint256[](asset.length);
     for (uint256 i = 0; i < asset.length; i++) {
-      if (address(asset[i]) == address(0)) {
-        amounts[i] = _accountAddresses[owningTokenId].balance;
-      } else if (isERC721(asset[i])) {
-        amounts[i] = IERC721Upgradeable(asset[i]).balanceOf(_accountAddresses[owningTokenId]);
-      } else if (isERC20(asset[i])) {
-        amounts[i] = IERC20Upgradeable(asset[i]).balanceOf(_accountAddresses[owningTokenId]);
-      } else if (isERC1155(asset[i])) {
-        amounts[i] = IERC1155Upgradeable(asset[i]).balanceOf(_accountAddresses[owningTokenId], id[i]);
-      } else {
-        // should never happen
-        revert InvalidAsset();
-      }
+      amounts[i] = _getAccountBalance(owningTokenId, asset[i], id[i]);
     }
     return amounts;
+  }
+
+  function ejectAccount(uint256 owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
+    _ownerNFT.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
+    _ejects[owningTokenId] = true;
+    emit BoundAccountEjected(owningTokenId);
+  }
+
+  function reInjectEjectedAccount(uint256 owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
+    // the contract must be approved
+    _ownerNFT.safeTransferFrom(ownerOf(owningTokenId), address(this), owningTokenId);
+    delete _ejects[owningTokenId];
+    emit EjectedBoundAccountReInjected(owningTokenId);
   }
 
   uint256[50] private __gap;

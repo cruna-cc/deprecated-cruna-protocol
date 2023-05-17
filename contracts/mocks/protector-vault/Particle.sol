@@ -21,6 +21,7 @@ contract Particle is ERC721, Ownable {
     return _baseTokenURI;
   }
 
+  // testing a delegated call to transfer the NFT
   function transferFromBoundAccount(address from, address to, uint tokenId) public {
     IERC6551Account(payable(from)).executeCall(
       address(this),

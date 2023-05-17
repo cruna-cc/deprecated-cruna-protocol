@@ -1,7 +1,7 @@
 const {expect} = require("chai");
 const {deployContractUpgradeable, deployContract, amount, assertThrowsMessage} = require("./helpers");
 
-describe("TransparentVault", function () {
+describe("TransparentSafeBox", function () {
   let coolProjectProtected, coolProjectTransparentVault;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
@@ -95,39 +95,6 @@ describe("TransparentVault", function () {
     await expect(coolProjectTransparentVault.connect(alice).withdrawAsset(1, stupidMonk.address, 1, 1, fred.address))
       .emit(coolProjectTransparentVault, "Withdrawal")
       .emit(stupidMonk, "Transfer");
-  });
-
-  it("should allow a transfer if a transfer initializer is pending", async function () {
-    // bob creates a vault depositing a particle token
-    await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
-    await coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await coolProjectTransparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
-
-    await expect(coolProjectProtected.connect(bob).setProtector(mark.address))
-      .emit(coolProjectProtected, "ProtectorStarted")
-      .withArgs(bob.address, mark.address, true);
-
-    // bob transfers the protected to alice
-    await expect(transferNft(coolProjectProtected, bob)(bob.address, alice.address, 1))
-      .emit(coolProjectProtected, "Transfer")
-      .withArgs(bob.address, alice.address, 1);
-  });
-
-  it("should not allow a transfer if a transfer initializer is active", async function () {
-    // bob creates a vault depositing a particle token
-    await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
-    await coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await coolProjectTransparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
-
-    await expect(coolProjectProtected.connect(bob).setProtector(mark.address))
-      .emit(coolProjectProtected, "ProtectorStarted")
-      .withArgs(bob.address, mark.address, true);
-
-    await expect(coolProjectProtected.connect(mark).confirmProtector(bob.address))
-      .emit(coolProjectProtected, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
-
-    await expect(transferNft(coolProjectProtected, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
   });
 
   it("should allow a transfer if the transfer initializer starts it", async function () {

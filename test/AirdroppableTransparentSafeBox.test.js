@@ -101,8 +101,12 @@ describe("AirdroppableTransparentVault", function () {
       .emit(coolProjectProtected, "Transfer")
       .withArgs(bob.address, alice.address, 1);
 
-    // await expect(coolProjectTransparentVault.connect(alice).withdrawAsset(1, stupidMonk.address, 1, 1, fred.address))
-    //   .emit(coolProjectTransparentVault, "Withdrawal")
-    //   .emit(stupidMonk, "Transfer");
+    expect(await stupidMonk.balanceOf(fred.address)).equal(0);
+
+    await expect(coolProjectTransparentVault.connect(alice).withdrawAsset(1, stupidMonk.address, 1, 1, fred.address))
+      .emit(coolProjectTransparentVault, "Withdrawal")
+      .emit(stupidMonk, "Transfer");
+
+    expect(await stupidMonk.balanceOf(fred.address)).equal(1);
   });
 });
