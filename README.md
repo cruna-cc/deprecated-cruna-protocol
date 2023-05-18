@@ -267,7 +267,7 @@ For initial history changes, look at [the history in the previous repo](https://
 
 ## Overview
 
-The NFTOwned protocol (extended by the TransparentVault) allows an NFT (owning token) to have control over a subordinate contract implementing the INFTOwned interface. The owning token is an ERC721 token, and the subordinate contract is designed to restrict certain actions to the owner of the owning token.
+The NFTOwned protocol (extended by the TransparentSafeBox) allows an NFT (owning token) to have control over a subordinate contract implementing the INFTOwned interface. The owning token is an ERC721 token, and the subordinate contract is designed to restrict certain actions to the owner of the owning token.
 
 There are many attempts to allow NFTs to own smart contracts, wallets, etc. For example, the clever [ERC6551](https://eips.ethereum.org/EIPS/eip-6551) and the minimalistic [ERC3652](https://github.com/ethereum/EIPs/pull/3652) (closed due to inactivity). Both require the deploy of a new contract for any tokenId. ERC6551 also restrict the tokenId to a single owned wallet.
 
@@ -372,8 +372,8 @@ contract MyOwnedContract is NFTOwned {
 
 **1.0.3**
 
-- removes some unused variables from TransparentVault
-- modifies TransparentVault so that TransparentVaultEnumerable can extend it
+- removes some unused variables from TransparentSafeBox
+- modifies TransparentSafeBox so that TransparentVaultEnumerable can extend it
 - checks at initialization time if the owning token is a ProtectedERC721 and saves it in a variable
 
 **1.0.2**

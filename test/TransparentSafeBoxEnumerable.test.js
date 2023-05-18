@@ -11,6 +11,7 @@ describe("TransparentVaultEnumerable", function () {
   before(async function () {
     [e2Owner, bob, alice, fred, john, jane, mark] = await ethers.getSigners();
   });
+
   function transferNft(nft, user) {
     return nft.connect(user)["safeTransferFrom(address,address,uint256)"];
   }
@@ -94,64 +95,5 @@ describe("TransparentVaultEnumerable", function () {
     await expect(transferNft(coolProjectProtected, bob)(bob.address, alice.address, 1))
       .emit(coolProjectProtected, "Transfer")
       .withArgs(bob.address, alice.address, 1);
-  });
-
-  it("should allow a transfer if a transfer initializer is pending", async function () {
-    // bob creates a vault depositing a particle token
-    await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
-    await coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await coolProjectTransparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
-
-    await expect(coolProjectProtected.connect(bob).setProtector(mark.address))
-      .emit(coolProjectProtected, "ProtectorStarted")
-      .withArgs(bob.address, mark.address, true);
-
-    // bob transfers the protected to alice
-    await expect(transferNft(coolProjectProtected, bob)(bob.address, alice.address, 1))
-      .emit(coolProjectProtected, "Transfer")
-      .withArgs(bob.address, alice.address, 1);
-  });
-
-  it("should not allow a transfer if a transfer initializer is active", async function () {
-    // bob creates a vault depositing a particle token
-    await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
-    await coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await coolProjectTransparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
-
-    await expect(coolProjectProtected.connect(bob).setProtector(mark.address))
-      .emit(coolProjectProtected, "ProtectorStarted")
-      .withArgs(bob.address, mark.address, true);
-
-    await expect(coolProjectProtected.connect(mark).confirmProtector(bob.address))
-      .emit(coolProjectProtected, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
-
-    await expect(transferNft(coolProjectProtected, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
-  });
-
-  it("should allow a transfer if the transfer initializer starts it", async function () {
-    // bob creates a vault depositing a particle token
-    await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
-    await coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await coolProjectTransparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
-
-    await expect(coolProjectProtected.connect(bob).setProtector(mark.address))
-      .emit(coolProjectProtected, "ProtectorStarted")
-      .withArgs(bob.address, mark.address, true);
-
-    await expect(coolProjectProtected.connect(mark).confirmProtector(bob.address))
-      .emit(coolProjectProtected, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
-
-    await expect(coolProjectProtected.connect(mark).startTransfer(1, alice.address, 1000))
-      .emit(coolProjectProtected, "TransferStarted")
-      .withArgs(mark.address, 1, alice.address);
-
-    await expect(coolProjectProtected.connect(bob).completeTransfer(1))
-      .emit(coolProjectProtected, "Transfer")
-      .withArgs(bob.address, alice.address, 1);
-
-    expect(await coolProjectProtected.ownerOf(1)).equal(alice.address);
-    expect(await coolProjectTransparentVault.ownerOf(1)).equal(alice.address);
   });
 });

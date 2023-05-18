@@ -202,7 +202,7 @@ abstract contract ProtectedERC721Upgradeable is IProtectedERC721, Initializable,
     return _protectors[owner_].status > Status.PENDING;
   }
 
-  // to reduce gas, we expect that the transfer is initiated by transfer initializer
+  // to reduce gas, we expect that the transfer is initiated by the protector
   // and completed by the owner, which is the only one that can actually transfer
   // the token
   function startTransfer(uint256 tokenId, address to, uint256 validFor) external virtual override {

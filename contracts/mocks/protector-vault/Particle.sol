@@ -4,6 +4,8 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+import "../../bound-account/IERC6551Account.sol";
+
 contract Particle is ERC721, Ownable {
   string private _baseTokenURI;
 
@@ -17,5 +19,14 @@ contract Particle is ERC721, Ownable {
 
   function _baseURI() internal view virtual override returns (string memory) {
     return _baseTokenURI;
+  }
+
+  // testing a delegated call to transfer the NFT
+  function transferFromBoundAccount(address from, address to, uint tokenId) public {
+    IERC6551Account(payable(from)).executeCall(
+      address(this),
+      0,
+      abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", from, to, tokenId)
+    );
   }
 }

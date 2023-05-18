@@ -10,13 +10,13 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradea
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155ReceiverUpgradeable.sol";
 
 import "../nft-owned/NFTOwnedUpgradeable.sol";
-import "./ITransparentVault.sol";
+import "./ITransparentSafeBox.sol";
 import "../protected-nft/IProtectedERC721.sol";
 import "../utils/TokenUtils.sol";
 
 //import "hardhat/console.sol";
 
-contract TransparentVault is
+contract TransparentSafeBox is
   ITransparentVault,
   IERC721ReceiverUpgradeable,
   IERC1155ReceiverUpgradeable,
@@ -162,6 +162,11 @@ contract TransparentVault is
       _unconfirmedDeposits[keccak256(abi.encodePacked(owningTokenId, asset, id, amount, _msgSender()))] = block.timestamp;
       emit UnconfirmedDeposit(owningTokenId, asset, id, amount);
     } else revert NotAllowed();
+  }
+
+  function depositETH(uint256 owningTokenId) external payable override {
+    if (msg.value == 0) revert NoETH();
+    _validateAndEmitEvent(owningTokenId, address(0), 0, msg.value);
   }
 
   function depositERC721(
@@ -392,6 +397,7 @@ contract TransparentVault is
     } else {
       delete _depositAmounts[key];
     }
+    emit Withdrawal(owningTokenId, beneficiary, asset, id, amount);
   }
 
   function withdrawAsset(

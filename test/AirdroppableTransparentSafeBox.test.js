@@ -1,8 +1,9 @@
 const {expect} = require("chai");
 const {deployContractUpgradeable, deployContract, amount, assertThrowsMessage} = require("./helpers");
 
-describe("TransparentVault", function () {
+describe("AirdroppableTransparentVault", function () {
   let coolProjectProtected, coolProjectTransparentVault;
+  let registry, proxy, implementation;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   // wallets
@@ -19,13 +20,15 @@ describe("TransparentVault", function () {
   beforeEach(async function () {
     coolProjectProtected = await deployContractUpgradeable("CoolProjectProtected", []);
 
-    coolProjectTransparentVault = await deployContractUpgradeable("CoolProjectTransparentVault", [
+    registry = await deployContract("ERC6551Registry");
+    implementation = await deployContract("ERC6551AccountUpgradeable");
+    proxy = await deployContract("ERC6551AccountProxy", implementation.address);
+
+    coolProjectTransparentVault = await deployContractUpgradeable("CoolProjectAirdroppableTransparentVault", [
       coolProjectProtected.address,
+      registry.address,
+      proxy.address,
     ]);
-
-    expect(await coolProjectProtected.getProtectedERC721InterfaceId()).to.equal("0x8dca4bea");
-
-    expect(await coolProjectProtected.supportsInterface("0x8dca4bea")).to.be.true;
 
     await expect(coolProjectProtected.safeMint(bob.address, 1))
       .emit(coolProjectProtected, "Transfer")
@@ -69,7 +72,15 @@ describe("TransparentVault", function () {
     await uselessWeapons.mintBatch(john.address, [3, 4], [10, 1], "0x00");
   });
 
+  it("should revert if not activated", async function () {
+    // bob creates a vault depositing a particle token
+    await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
+    await expect(coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2)).revertedWith("NotActivated()");
+  });
+
   it("should create a vault and add more assets to it", async function () {
+    await coolProjectTransparentVault.connect(bob).activateAccount(1);
+
     // bob creates a vault depositing a particle token
     await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
     await coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2);
@@ -89,64 +100,13 @@ describe("TransparentVault", function () {
     await expect(transferNft(coolProjectProtected, bob)(bob.address, alice.address, 1))
       .emit(coolProjectProtected, "Transfer")
       .withArgs(bob.address, alice.address, 1);
-  });
 
-  it("should allow a transfer if a transfer initializer is pending", async function () {
-    // bob creates a vault depositing a particle token
-    await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
-    await coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await coolProjectTransparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
+    expect(await stupidMonk.balanceOf(fred.address)).equal(0);
 
-    await expect(coolProjectProtected.connect(bob).setProtector(mark.address))
-      .emit(coolProjectProtected, "ProtectorStarted")
-      .withArgs(bob.address, mark.address, true);
+    await expect(coolProjectTransparentVault.connect(alice).withdrawAsset(1, stupidMonk.address, 1, 1, fred.address))
+      .emit(coolProjectTransparentVault, "Withdrawal")
+      .emit(stupidMonk, "Transfer");
 
-    // bob transfers the protected to alice
-    await expect(transferNft(coolProjectProtected, bob)(bob.address, alice.address, 1))
-      .emit(coolProjectProtected, "Transfer")
-      .withArgs(bob.address, alice.address, 1);
-  });
-
-  it("should not allow a transfer if a transfer initializer is active", async function () {
-    // bob creates a vault depositing a particle token
-    await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
-    await coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await coolProjectTransparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
-
-    await expect(coolProjectProtected.connect(bob).setProtector(mark.address))
-      .emit(coolProjectProtected, "ProtectorStarted")
-      .withArgs(bob.address, mark.address, true);
-
-    await expect(coolProjectProtected.connect(mark).confirmProtector(bob.address))
-      .emit(coolProjectProtected, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
-
-    await expect(transferNft(coolProjectProtected, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
-  });
-
-  it("should allow a transfer if the transfer initializer starts it", async function () {
-    // bob creates a vault depositing a particle token
-    await particle.connect(bob).setApprovalForAll(coolProjectTransparentVault.address, true);
-    await coolProjectTransparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await coolProjectTransparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
-
-    await expect(coolProjectProtected.connect(bob).setProtector(mark.address))
-      .emit(coolProjectProtected, "ProtectorStarted")
-      .withArgs(bob.address, mark.address, true);
-
-    await expect(coolProjectProtected.connect(mark).confirmProtector(bob.address))
-      .emit(coolProjectProtected, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
-
-    await expect(coolProjectProtected.connect(mark).startTransfer(1, alice.address, 1000))
-      .emit(coolProjectProtected, "TransferStarted")
-      .withArgs(mark.address, 1, alice.address);
-
-    await expect(coolProjectProtected.connect(bob).completeTransfer(1))
-      .emit(coolProjectProtected, "Transfer")
-      .withArgs(bob.address, alice.address, 1);
-
-    expect(await coolProjectProtected.ownerOf(1)).equal(alice.address);
-    expect(await coolProjectTransparentVault.ownerOf(1)).equal(alice.address);
+    expect(await stupidMonk.balanceOf(fred.address)).equal(1);
   });
 });

@@ -64,6 +64,7 @@ interface ITransparentVault {
   error UnconfirmedDepositNotExpiredYet();
   error UnsupportedTooLargeTokenId();
   error WithdrawalNotFound();
+  error NoETH();
 
   enum TokenType {
     ERC20,
@@ -92,6 +93,8 @@ interface ITransparentVault {
     address[] memory allowList_,
     bool[] memory allowListStatus_
   ) external;
+
+  function depositETH(uint256 owningTokenId) external payable;
 
   function depositERC721(uint256 owningTokenId, address asset, uint256 id) external;
 

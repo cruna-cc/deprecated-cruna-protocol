@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.19;
 
-import "../../transparent-vault/TransparentVault.sol";
+import "../../vault/TransparentSafeBox.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
-contract CoolProjectTransparentVault is TransparentVault, OwnableUpgradeable, UUPSUpgradeable {
+contract CoolProjectTransparentVault is TransparentSafeBox, OwnableUpgradeable, UUPSUpgradeable {
   /// @custom:oz-upgrades-unsafe-allow constructor
   constructor() {
     _disableInitializers();
