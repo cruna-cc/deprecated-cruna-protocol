@@ -104,7 +104,6 @@ contract AirdroppableTransparentSafeBox is
   }
 
   function _validateAndEmitEvent(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal {
-    //    _addAmountToDeposit(owningTokenId, asset, id, amount);
     emit Deposit(owningTokenId, asset, id, amount);
   }
 
@@ -201,6 +200,11 @@ contract AirdroppableTransparentSafeBox is
     } else if (isERC20(asset)) {
       return IERC20Upgradeable(asset).balanceOf(account);
     } else if (isERC721(asset)) {
+      //      try IERC721Upgradeable(asset).ownerOf(id) returns (address) {
+      //        return address == account ? 1 : 0;
+      //      } catch {
+      //        return 0;
+      //      }
       return IERC721Upgradeable(asset).ownerOf(id) == account ? 1 : 0;
     } else if (isERC1155(asset)) {
       return IERC1155Upgradeable(asset).balanceOf(account, id);
@@ -251,13 +255,13 @@ contract AirdroppableTransparentSafeBox is
   ) internal virtual {
     _checkIfChangeAllowed(owningTokenId);
     _checkIfCanTransfer(owningTokenId, asset, id, amount);
-    _transferToken(owningTokenId, beneficiary, asset, id, amount);
     emit Withdrawal(owningTokenId, beneficiary, asset, id, amount);
+    _transferToken(owningTokenId, beneficiary, asset, id, amount);
   }
 
   function withdrawAsset(
     uint256 owningTokenId,
-    address asset,
+    address asset, // if address(0) we want to withdraw the native token, for example Ether
     uint256 id,
     uint256 amount,
     address beneficiary
@@ -314,7 +318,9 @@ contract AirdroppableTransparentSafeBox is
     return amounts;
   }
 
-  function ejectAccount(uint256 owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
+  function ejectAccount(
+    uint256 owningTokenId
+  ) external onlyOwningTokenOwner(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (_ejects[owningTokenId]) revert AccountAlreadyEjected();
     _ownerNFT.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
     _ejects[owningTokenId] = true;
