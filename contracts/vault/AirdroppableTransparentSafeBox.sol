@@ -40,7 +40,7 @@ contract AirdroppableTransparentSafeBox is
   bool internal _owningTokenIsProtected;
   IERC6551Registry internal _registry;
   ERC6551AccountProxy internal _accountProxy;
-  OwnerNFT internal _ownerNFT;
+  OwnerNFT public ownerNFT;
   uint internal _salt;
   mapping(uint => address) internal _accountAddresses;
 
@@ -87,24 +87,20 @@ contract AirdroppableTransparentSafeBox is
     }
     _accountProxy = ERC6551AccountProxy(proxy);
     __ReentrancyGuard_init();
-    _ownerNFT = new OwnerNFT();
+    ownerNFT = new OwnerNFT();
     _salt = uint(keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken))));
   }
 
-  function getAccountAddress(uint owningTokenId) public view returns (address) {
-    return _registry.account(address(_accountProxy), block.chainid, address(_ownerNFT), owningTokenId, _salt);
+  function accountAddress(uint owningTokenId) public view returns (address) {
+    return _registry.account(address(_accountProxy), block.chainid, address(ownerNFT), owningTokenId, _salt);
   }
 
   function activateAccount(uint owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
-    address account = getAccountAddress(owningTokenId);
-    _ownerNFT.mint(address(this), owningTokenId);
+    address account = accountAddress(owningTokenId);
+    ownerNFT.mint(address(this), owningTokenId);
     if (_accountAddresses[owningTokenId] != address(0)) revert AccountAlreadyActive();
     _accountAddresses[owningTokenId] = account;
-    _registry.createAccount(address(_accountProxy), block.chainid, address(_ownerNFT), owningTokenId, _salt, "");
-  }
-
-  function _validateAndEmitEvent(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal {
-    emit Deposit(owningTokenId, asset, id, amount);
+    _registry.createAccount(address(_accountProxy), block.chainid, address(ownerNFT), owningTokenId, _salt, "");
   }
 
   function depositERC721(
@@ -142,7 +138,8 @@ contract AirdroppableTransparentSafeBox is
   function depositETH(uint256 owningTokenId) external payable override onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (msg.value == 0) revert NoETH();
     emit Deposit(owningTokenId, address(0), 0, msg.value);
-    payable(_accountAddresses[owningTokenId]).transfer(msg.value);
+    payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
+    if (payable(_accountAddresses[owningTokenId]).balance < msg.value) revert ETHDepositFailed();
   }
 
   function _depositERC20(uint256 owningTokenId, address asset, uint256 amount) internal {
@@ -161,16 +158,16 @@ contract AirdroppableTransparentSafeBox is
   function depositAssets(
     uint256 owningTokenId,
     address[] memory assets,
-    uint256[] memory ids,
-    uint256[] memory amounts
+    uint256[] memory ids, // 0 for ERC20
+    uint256[] memory amounts // 1 for ERC721
   ) external override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
-      if (isERC20(assets[i])) {
+      if (ids[i] == 0 && isERC20(assets[i])) {
         _depositERC20(owningTokenId, assets[i], amounts[i]);
-      } else if (isERC721(assets[i])) {
+      } else if (amounts[i] == 1 && isERC721(assets[i])) {
         _depositERC721(owningTokenId, assets[i], ids[i]);
-      } else if (isERC1155(assets[i])) {
+      } else if (amounts[i] > 0 && isERC1155(assets[i])) {
         _depositERC1155(owningTokenId, assets[i], ids[i], amounts[i]);
       } else revert InvalidAsset();
     }
@@ -187,14 +184,14 @@ contract AirdroppableTransparentSafeBox is
     return false;
   }
 
-  function _checkIfCanTransfer(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal {
+  function _checkIfCanTransfer(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal view {
     if (amount == 0) revert InvalidAmount();
     uint balance = _getAccountBalance(owningTokenId, asset, id);
     if (balance < amount) revert InsufficientBalance();
   }
 
   function _getAccountBalance(uint256 owningTokenId, address asset, uint256 id) internal view returns (uint256) {
-    address account = getAccountAddress(owningTokenId);
+    address account = accountAddress(owningTokenId);
     if (asset == address(0)) {
       return account.balance;
     } else if (isERC20(asset)) {
@@ -322,7 +319,7 @@ contract AirdroppableTransparentSafeBox is
     uint256 owningTokenId
   ) external onlyOwningTokenOwner(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (_ejects[owningTokenId]) revert AccountAlreadyEjected();
-    _ownerNFT.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
+    ownerNFT.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
     _ejects[owningTokenId] = true;
     emit BoundAccountEjected(owningTokenId);
   }
@@ -330,7 +327,7 @@ contract AirdroppableTransparentSafeBox is
   function reInjectEjectedAccount(uint256 owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
     if (!_ejects[owningTokenId]) revert NotAPreviouslyEjectedAccount();
     // the contract must be approved
-    _ownerNFT.safeTransferFrom(ownerOf(owningTokenId), address(this), owningTokenId);
+    ownerNFT.transferFrom(ownerOf(owningTokenId), address(this), owningTokenId);
     delete _ejects[owningTokenId];
     emit EjectedBoundAccountReInjected(owningTokenId);
   }
