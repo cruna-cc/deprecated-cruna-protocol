@@ -5,7 +5,7 @@ const DeployUtils = require("../scripts/lib/DeployUtils");
 describe("SafeBox", function () {
   const deployUtils = new DeployUtils(ethers);
 
-  let protected, safeBox;
+  let protectedNft, safeBox;
   let registry, proxy, implementation;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
@@ -22,28 +22,28 @@ describe("SafeBox", function () {
   }
 
   beforeEach(async function () {
-    protected = await deployContract("CrunaProtected");
+    protectedNft = await deployContract("CrunaProtected");
 
     registry = await deployContract("ERC6551Registry");
     implementation = await deployContract("ERC6551AccountUpgradeable");
     proxy = await deployContract("ERC6551AccountProxy", implementation.address);
 
-    safeBox = await deployContract("SafeBox", protected.address);
+    safeBox = await deployContract("SafeBox", protectedNft.address);
 
     await safeBox.init(registry.address, proxy.address);
 
     notAToken = await deployContract("NotAToken");
 
-    await expect(protected.safeMint(bob.address, 1))
-      .emit(protected, "Transfer")
+    await expect(protectedNft.safeMint(bob.address, 1))
+      .emit(protectedNft, "Transfer")
       .withArgs(ethers.constants.AddressZero, bob.address, 1);
 
-    await protected.safeMint(bob.address, 2);
+    await protectedNft.safeMint(bob.address, 2);
 
-    await protected.safeMint(bob.address, 3);
-    await protected.safeMint(bob.address, 4);
-    await protected.safeMint(alice.address, 5);
-    await protected.safeMint(alice.address, 6);
+    await protectedNft.safeMint(bob.address, 3);
+    await protectedNft.safeMint(bob.address, 4);
+    await protectedNft.safeMint(alice.address, 5);
+    await protectedNft.safeMint(alice.address, 6);
 
     // erc20
     bulls = await deployContract("Bulls");
@@ -103,8 +103,8 @@ describe("SafeBox", function () {
     expect((await safeBox.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
     // bob transfers the protected to alice
-    await expect(transferNft(protected, bob)(bob.address, alice.address, 1))
-      .emit(protected, "Transfer")
+    await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1))
+      .emit(protectedNft, "Transfer")
       .withArgs(bob.address, alice.address, 1);
 
     expect(await stupidMonk.balanceOf(fred.address)).equal(0);
@@ -206,25 +206,25 @@ describe("SafeBox", function () {
     await safeBox.connect(bob).depositERC721(1, particle.address, 2);
     expect((await safeBox.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(protected.connect(bob).proposeProtector(mark.address))
-      .emit(protected, "ProtectorProposed")
+    await expect(protectedNft.connect(bob).proposeProtector(mark.address))
+      .emit(protectedNft, "ProtectorProposed")
       .withArgs(bob.address, mark.address);
 
     // bob transfers the protected to alice
-    await expect(transferNft(protected, bob)(bob.address, alice.address, 1))
-      .emit(protected, "Transfer")
+    await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1))
+      .emit(protectedNft, "Transfer")
       .withArgs(bob.address, alice.address, 1);
 
-    await expect(transferNft(protected, alice)(alice.address, bob.address, 1))
-      .emit(protected, "Transfer")
+    await expect(transferNft(protectedNft, alice)(alice.address, bob.address, 1))
+      .emit(protectedNft, "Transfer")
       .withArgs(alice.address, bob.address, 1);
 
-    await expect(protected.connect(mark).acceptProposal(bob.address, false))
-      .emit(protected, "ProtectorUpdated")
+    await expect(protectedNft.connect(mark).acceptProposal(bob.address, false))
+      .emit(protectedNft, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, false);
 
-    await expect(transferNft(protected, bob)(bob.address, alice.address, 1))
-      .emit(protected, "Transfer")
+    await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1))
+      .emit(protectedNft, "Transfer")
       .withArgs(bob.address, alice.address, 1);
   });
 
@@ -236,14 +236,14 @@ describe("SafeBox", function () {
     await safeBox.connect(bob).depositERC721(1, particle.address, 2);
     expect((await safeBox.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(protected.connect(bob).proposeProtector(mark.address))
-      .emit(protected, "ProtectorProposed")
+    await expect(protectedNft.connect(bob).proposeProtector(mark.address))
+      .emit(protectedNft, "ProtectorProposed")
       .withArgs(bob.address, mark.address);
 
-    await expect(protected.connect(mark).acceptProposal(bob.address, true))
-      .emit(protected, "ProtectorUpdated")
+    await expect(protectedNft.connect(mark).acceptProposal(bob.address, true))
+      .emit(protectedNft, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
-    await expect(transferNft(protected, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
+    await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
   });
 });
