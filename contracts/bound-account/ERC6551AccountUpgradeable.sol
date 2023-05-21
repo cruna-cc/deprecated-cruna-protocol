@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// from https://github.com/erc6551/reference
+
 /// @author: manifold.xyz
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";

@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// from https://github.com/erc6551/reference
+
 library ERC6551BytecodeLib {
   function getCreationCode(
     address implementation_,

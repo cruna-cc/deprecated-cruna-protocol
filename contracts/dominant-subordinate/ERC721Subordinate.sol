@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL3
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 // Authors: Francesco Sullo <francesco@sullo.co>
@@ -8,14 +8,14 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
 import "./IERC721Subordinate.sol";
-import "../soulbound/Soulbound.sol";
+import "../lockable/ERC721Locked.sol";
 
 /**
  * @dev Implementation of IERC721Subordinate interface.
  * Strictly based on OpenZeppelin's implementation of https://eips.ethereum.org/EIPS/eip-721[ERC721]
  * in openzeppelin/contracts v4.8.0.
  */
-contract ERC721Subordinate is IERC721Subordinate, Soulbound {
+contract ERC721Subordinate is IERC721Subordinate, ERC721Locked {
   using Address for address;
   using Strings for uint256;
 
@@ -37,7 +37,7 @@ contract ERC721Subordinate is IERC721Subordinate, Soulbound {
    * @dev Initializes the contract by setting a `name` and a `symbol` to the token collection
    * plus the contract of the dominant token.
    */
-  constructor(string memory name_, string memory symbol_, address dominant_) Soulbound(name_, symbol_) {
+  constructor(string memory name_, string memory symbol_, address dominant_) ERC721Locked(name_, symbol_) {
     _dominant = IERC721(dominant_);
     // We do not check it is a dominant token to give the possibility to associate
     // subordinate tokens to any existing NFT. In this case, however, the token
@@ -50,7 +50,7 @@ contract ERC721Subordinate is IERC721Subordinate, Soulbound {
   /**
    * @dev See {IERC165-supportsInterface}.
    */
-  function supportsInterface(bytes4 interfaceId) public view virtual override(Soulbound) returns (bool) {
+  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721Locked) returns (bool) {
     return
       interfaceId == type(IERC721Subordinate).interfaceId ||
       interfaceId == type(IERC721).interfaceId ||

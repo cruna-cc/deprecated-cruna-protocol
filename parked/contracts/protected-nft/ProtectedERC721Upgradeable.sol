@@ -26,7 +26,7 @@ abstract contract ProtectedERC721Upgradeable is IProtectedERC721, Initializable,
   mapping(uint256 => ControlledTransfer) private _controlledTransfers;
 
   modifier notTheProtector(address owner_) {
-    if (_protectors[owner_].protector != _msgSender()) revert NotProtector();
+    if (_protectors[owner_].protector != _msgSender()) revert NotAProtector();
     _;
   }
 
@@ -148,7 +148,7 @@ abstract contract ProtectedERC721Upgradeable is IProtectedERC721, Initializable,
       else revert AssociatedToAnotherOwner();
     }
     if (_protectors[_msgSender()].status != Status.UNSET) revert ProtectorAlreadySet();
-    _protectors[_msgSender()] = Protector({protector: protector, status: Status.PENDING});
+    _protectors[_msgSender()] = Protectors({protector: protector, status: Status.PENDING});
     emit ProtectorStarted(_msgSender(), protector, true);
   }
 
@@ -191,7 +191,7 @@ abstract contract ProtectedERC721Upgradeable is IProtectedERC721, Initializable,
   }
 
   function confirmUnsetProtector(address owner_) external virtual {
-    if (_protectors[owner_].protector != _msgSender()) revert NotProtector();
+    if (_protectors[owner_].protector != _msgSender()) revert NotAProtector();
     if (_protectors[owner_].status != Status.REMOVABLE) revert UnsetNotStarted();
     emit ProtectorUpdated(owner_, _msgSender(), false);
     _removeExistingProtector(owner_);
@@ -207,7 +207,7 @@ abstract contract ProtectedERC721Upgradeable is IProtectedERC721, Initializable,
   // the token
   function startTransfer(uint256 tokenId, address to, uint256 validFor) external virtual override {
     address owner_ = _ownersByProtector[_msgSender()];
-    if (owner_ == address(0)) revert NotProtector();
+    if (owner_ == address(0)) revert NotAProtector();
     if (ownerOf(tokenId) != owner_) revert NotOwnByRelatedOwner();
     if (_controlledTransfers[tokenId].protector != address(0) && _controlledTransfers[tokenId].expiresAt > block.timestamp)
       revert TokenAlreadyBeingTransferred();
