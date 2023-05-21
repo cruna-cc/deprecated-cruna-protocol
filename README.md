@@ -65,6 +65,8 @@ In particular, it uses a slightly modified version of [EIP-6551](https://eips.et
 - Introduce an airdroppable version of the vault, using ERC6551 to handle the assets
 - Add in the lockable folder the ERC721Lockable contracts, taken from [ndujaLabs/erc721lockable](https://github.com/ndujalabs/erc721lockable) repo, for completeness
 - Make the CrunaSafebox not upgradeable for improved trust, allowing migration to V2 in the future
+- Make the Protected not upgradeable and able to have more than one protector
+- Modified the OwnerNFT to separate the roles between owner and minters
 
 **1.0.3**
 
