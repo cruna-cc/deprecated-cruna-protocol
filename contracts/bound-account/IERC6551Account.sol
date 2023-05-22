@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.0;
 
+// from https://github.com/erc6551/reference
+
 interface IERC6551AccountProxy {
   function implementation() external view returns (address);
 }

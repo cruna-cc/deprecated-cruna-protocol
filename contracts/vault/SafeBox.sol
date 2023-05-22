@@ -3,31 +3,23 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../nft-owned/NFTOwnedUpgradeable.sol";
+import "../nft-owned/NFTOwned.sol";
 import "../protected-nft/IProtectedERC721.sol";
 import "../utils/TokenUtils.sol";
 import "../bound-account/ERC6551AccountProxy.sol";
 import "../bound-account/IERC6551Registry.sol";
 import "../bound-account/IERC6551Account.sol";
-import "../utils/OwnerNFT.sol";
+import "../bound-account/OwnerNFT.sol";
 
-import "./IAirdroppableTransparentSafeBox.sol";
+import "./ISafeBox.sol";
 
 import "hardhat/console.sol";
 
-// TODO this is a work-in-progress
-
-contract AirdroppableTransparentSafeBox is
-  IAirdroppableTransparentSafeBox,
-  ContextUpgradeable,
-  NFTOwnedUpgradeable,
-  ReentrancyGuardUpgradeable,
-  TokenUtils
-{
+contract SafeBox is ISafeBox, Ownable, NFTOwned, ReentrancyGuard, TokenUtils {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
 
   mapping(bytes32 => ProtectorAndTimestamp) private _restrictedTransfers;
@@ -40,9 +32,10 @@ contract AirdroppableTransparentSafeBox is
   bool internal _owningTokenIsProtected;
   IERC6551Registry internal _registry;
   ERC6551AccountProxy internal _accountProxy;
-  OwnerNFT internal _ownerNFT;
+  OwnerNFT public ownerNFT;
   uint internal _salt;
   mapping(uint => address) internal _accountAddresses;
+  bool private _initiated;
 
   modifier onlyOwningTokenOwner(uint256 owningTokenId) {
     if (ownerOf(owningTokenId) != msg.sender) {
@@ -53,7 +46,7 @@ contract AirdroppableTransparentSafeBox is
 
   modifier onlyProtector(uint256 owningTokenId) {
     if (
-      !_owningTokenIsProtected || IProtectedERC721(address(_owningToken)).protectorFor(ownerOf(owningTokenId)) != _msgSender()
+      !_owningTokenIsProtected || !IProtectedERC721(address(_owningToken)).isProtectorFor(ownerOf(owningTokenId), _msgSender())
     ) revert NotTheProtector();
     _;
   }
@@ -69,16 +62,16 @@ contract AirdroppableTransparentSafeBox is
   }
 
   // solhint-disable-next-line
-  function __AirdroppableTransparentSafeBox_init(
-    address owningToken,
-    address registry,
-    address payable proxy
-  ) internal onlyInitializing {
-    __NFTOwned_init(owningToken);
-    if (IERC165Upgradeable(_owningToken).supportsInterface(type(IProtectedERC721).interfaceId)) {
+  constructor(address owningToken) NFTOwned(owningToken) {
+    if (IERC165(_owningToken).supportsInterface(type(IProtectedERC721).interfaceId)) {
       _owningTokenIsProtected = true;
     }
-    if (!IERC165Upgradeable(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
+    _salt = uint(keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken))));
+  }
+
+  function init(address registry, address payable proxy) external override onlyOwner {
+    if (_initiated) revert AlreadyInitiated();
+    if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
     _registry = IERC6551Registry(registry);
     try ERC6551AccountProxy(proxy).isERC6551AccountProxy() returns (bool isProxy) {
       if (!isProxy) revert InvalidAccountProxy();
@@ -86,25 +79,26 @@ contract AirdroppableTransparentSafeBox is
       revert InvalidAccountProxy();
     }
     _accountProxy = ERC6551AccountProxy(proxy);
-    __ReentrancyGuard_init();
-    _ownerNFT = new OwnerNFT();
-    _salt = uint(keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken))));
+    ownerNFT = new OwnerNFT();
+    ownerNFT.setMinter(address(this), true);
+    ownerNFT.transferOwnership(_msgSender());
+    _initiated = true;
   }
 
-  function getAccountAddress(uint owningTokenId) public view returns (address) {
-    return _registry.account(address(_accountProxy), block.chainid, address(_ownerNFT), owningTokenId, _salt);
+  function isSafeBox() external pure override returns (bytes4) {
+    return this.isSafeBox.selector;
+  }
+
+  function accountAddress(uint owningTokenId) public view returns (address) {
+    return _registry.account(address(_accountProxy), block.chainid, address(ownerNFT), owningTokenId, _salt);
   }
 
   function activateAccount(uint owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
-    address account = getAccountAddress(owningTokenId);
-    _ownerNFT.mint(address(this), owningTokenId);
+    address account = accountAddress(owningTokenId);
+    ownerNFT.mint(address(this), owningTokenId);
     if (_accountAddresses[owningTokenId] != address(0)) revert AccountAlreadyActive();
     _accountAddresses[owningTokenId] = account;
-    _registry.createAccount(address(_accountProxy), block.chainid, address(_ownerNFT), owningTokenId, _salt, "");
-  }
-
-  function _validateAndEmitEvent(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal {
-    emit Deposit(owningTokenId, asset, id, amount);
+    _registry.createAccount(address(_accountProxy), block.chainid, address(ownerNFT), owningTokenId, _salt, "");
   }
 
   function depositERC721(
@@ -134,43 +128,43 @@ contract AirdroppableTransparentSafeBox is
 
   function _depositERC721(uint256 owningTokenId, address asset, uint256 id) internal {
     emit Deposit(owningTokenId, asset, id, 1);
-
     // the following reverts if not an ERC721. We do not pre-check to save gas.
-    IERC721Upgradeable(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id);
+    IERC721(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id);
   }
 
   function depositETH(uint256 owningTokenId) external payable override onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (msg.value == 0) revert NoETH();
     emit Deposit(owningTokenId, address(0), 0, msg.value);
-    payable(_accountAddresses[owningTokenId]).transfer(msg.value);
+    (bool success, ) = payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
+    if (!success) revert ETHDepositFailed();
   }
 
   function _depositERC20(uint256 owningTokenId, address asset, uint256 amount) internal {
     emit Deposit(owningTokenId, asset, 0, amount);
     // the following reverts if not an ERC20
-    bool transferred = IERC20Upgradeable(asset).transferFrom(_msgSender(), _accountAddresses[owningTokenId], amount);
+    bool transferred = IERC20(asset).transferFrom(_msgSender(), _accountAddresses[owningTokenId], amount);
     if (!transferred) revert TransferFailed();
   }
 
   function _depositERC1155(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal {
     emit Deposit(owningTokenId, asset, id, amount);
     // the following reverts if not an ERC1155
-    IERC1155Upgradeable(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id, amount, "");
+    IERC1155(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id, amount, "");
   }
 
   function depositAssets(
     uint256 owningTokenId,
     address[] memory assets,
-    uint256[] memory ids,
-    uint256[] memory amounts
+    uint256[] memory ids, // 0 for ERC20
+    uint256[] memory amounts // 1 for ERC721
   ) external override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
-      if (isERC20(assets[i])) {
+      if (ids[i] == 0 && isERC20(assets[i])) {
         _depositERC20(owningTokenId, assets[i], amounts[i]);
-      } else if (isERC721(assets[i])) {
+      } else if (amounts[i] == 1 && isERC721(assets[i])) {
         _depositERC721(owningTokenId, assets[i], ids[i]);
-      } else if (isERC1155(assets[i])) {
+      } else if (amounts[i] > 0 && isERC1155(assets[i])) {
         _depositERC1155(owningTokenId, assets[i], ids[i], amounts[i]);
       } else revert InvalidAsset();
     }
@@ -187,32 +181,27 @@ contract AirdroppableTransparentSafeBox is
     return false;
   }
 
-  function _checkIfCanTransfer(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal {
+  function _checkIfCanTransfer(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal view {
     if (amount == 0) revert InvalidAmount();
     uint balance = _getAccountBalance(owningTokenId, asset, id);
     if (balance < amount) revert InsufficientBalance();
   }
 
   function _getAccountBalance(uint256 owningTokenId, address asset, uint256 id) internal view returns (uint256) {
-    address account = getAccountAddress(owningTokenId);
+    address account = accountAddress(owningTokenId);
     if (asset == address(0)) {
       return account.balance;
     } else if (isERC20(asset)) {
-      return IERC20Upgradeable(asset).balanceOf(account);
+      return IERC20(asset).balanceOf(account);
     } else if (isERC721(asset)) {
-      //      try IERC721Upgradeable(asset).ownerOf(id) returns (address) {
-      //        return address == account ? 1 : 0;
-      //      } catch {
-      //        return 0;
-      //      }
-      return IERC721Upgradeable(asset).ownerOf(id) == account ? 1 : 0;
+      return IERC721(asset).ownerOf(id) == account ? 1 : 0;
     } else if (isERC1155(asset)) {
-      return IERC1155Upgradeable(asset).balanceOf(account, id);
+      return IERC1155(asset).balanceOf(account, id);
     } else revert InvalidAsset();
   }
 
   function _checkIfStartAllowed(uint256 owningTokenId) internal view {
-    if (_owningTokenIsProtected && IProtectedERC721(address(_owningToken)).hasProtector(ownerOf(owningTokenId)))
+    if (_owningTokenIsProtected && IProtectedERC721(address(_owningToken)).protectorsFor(ownerOf(owningTokenId)).length > 0)
       revert NotAllowedWhenProtector();
   }
 
@@ -322,7 +311,7 @@ contract AirdroppableTransparentSafeBox is
     uint256 owningTokenId
   ) external onlyOwningTokenOwner(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (_ejects[owningTokenId]) revert AccountAlreadyEjected();
-    _ownerNFT.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
+    ownerNFT.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
     _ejects[owningTokenId] = true;
     emit BoundAccountEjected(owningTokenId);
   }
@@ -330,7 +319,7 @@ contract AirdroppableTransparentSafeBox is
   function reInjectEjectedAccount(uint256 owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
     if (!_ejects[owningTokenId]) revert NotAPreviouslyEjectedAccount();
     // the contract must be approved
-    _ownerNFT.safeTransferFrom(ownerOf(owningTokenId), address(this), owningTokenId);
+    ownerNFT.transferFrom(ownerOf(owningTokenId), address(this), owningTokenId);
     delete _ejects[owningTokenId];
     emit EjectedBoundAccountReInjected(owningTokenId);
   }

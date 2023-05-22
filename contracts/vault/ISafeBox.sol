@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-interface IAirdroppableTransparentSafeBox {
+interface ISafeBox {
   event AllowAllUpdated(uint256 indexed owningTokenId, bool allow);
   event AllowListUpdated(uint256 indexed owningTokenId, address indexed account, bool allow);
   event AllowWithConfirmationUpdated(uint256 indexed owningTokenId, bool allow);
@@ -75,6 +75,8 @@ interface IAirdroppableTransparentSafeBox {
   error AccountHasBeenEjected();
   error NotAPreviouslyEjectedAccount();
   error AccountAlreadyEjected();
+  error ETHDepositFailed();
+  error AlreadyInitiated();
 
   enum TokenType {
     ERC20,
@@ -95,6 +97,11 @@ interface IAirdroppableTransparentSafeBox {
     address protector;
     uint32 expiresAt;
   }
+
+  function init(address registry, address payable proxy) external;
+
+  // must return `this.isSafeBox.selector;`
+  function isSafeBox() external pure returns (bytes4);
 
   function depositETH(uint256 owningTokenId) external payable;
 

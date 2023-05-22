@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL3
+// SPDX-License-Identifier: MIT
 
 pragma solidity ^0.8.19;
 
@@ -7,7 +7,7 @@ import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "./IERC721Subordinate.sol";
-import "../soulbound/SoulboundUpgradeable.sol";
+import "../lockable/ERC721LockedUpgradeable.sol";
 
 /**
  * @dev Implementation of IERC721Subordinate interface based on the
@@ -15,7 +15,7 @@ import "../soulbound/SoulboundUpgradeable.sol";
  * the Metadata extension, but not including the Enumerable extension, which is available separately as
  * {ERC721Enumerable}. The reference implementation can be found in OpenZeppelin Contracts upgradeable v4.8.0.
  */
-contract ERC721SubordinateUpgradeable is IERC721Subordinate, SoulboundUpgradeable {
+contract ERC721SubordinateUpgradeable is IERC721Subordinate, ERC721LockedUpgradeable {
   using AddressUpgradeable for address;
   using StringsUpgradeable for uint256;
 
@@ -35,7 +35,7 @@ contract ERC721SubordinateUpgradeable is IERC721Subordinate, SoulboundUpgradeabl
 
   // solhint-disable func-name-mixedcase
   function __ERC721Subordinate_init(string memory name_, string memory symbol_, address dominant_) internal onlyInitializing {
-    __Soulbound_init(name_, symbol_);
+    __ERC721Locked_init(name_, symbol_);
     _dominant = IERC721Upgradeable(dominant_);
     // We do not check it is a dominant token to give the possibility to associate
     // subordinate tokens to any existing NFT. In this case, however, the token
@@ -48,7 +48,7 @@ contract ERC721SubordinateUpgradeable is IERC721Subordinate, SoulboundUpgradeabl
   /**
    * @dev See {IERC165-supportsInterface}.
    */
-  function supportsInterface(bytes4 interfaceId) public view virtual override(SoulboundUpgradeable) returns (bool) {
+  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721LockedUpgradeable) returns (bool) {
     return
       interfaceId == type(IERC721Subordinate).interfaceId ||
       interfaceId == type(IERC721Upgradeable).interfaceId ||

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL3
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -6,7 +6,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "./IERC721DefaultApprovable.sol";
 import "./IERC6982.sol";
 
-contract Soulbound is IERC6982, IERC721DefaultApprovable, ERC721 {
+contract ERC721Locked is IERC6982, IERC721DefaultApprovable, ERC721 {
   error ApprovalNotAllowed();
   error TransferNotAllowed();
 

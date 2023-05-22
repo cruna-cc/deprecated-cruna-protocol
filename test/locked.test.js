@@ -1,7 +1,7 @@
 const {expect} = require("chai");
 const {deployContractUpgradeable, deployContract, number} = require("./helpers");
 
-describe("soulbound", function () {
+describe("locked", function () {
   let myBadge;
 
   let owner, holder1, holder2, holder3, marketplace;

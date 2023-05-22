@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL3
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts-upgradeable/token/ERC721/ERC721Upgradeable.sol";
@@ -7,12 +7,12 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "./IERC721DefaultApprovable.sol";
 import "./IERC6982.sol";
 
-contract SoulboundUpgradeable is IERC6982, IERC721DefaultApprovable, Initializable, ERC721Upgradeable {
+contract ERC721LockedUpgradeable is IERC6982, IERC721DefaultApprovable, Initializable, ERC721Upgradeable {
   error ApprovalNotAllowed();
   error TransferNotAllowed();
 
   // solhint-disable-next-line func-name-mixedcase
-  function __Soulbound_init(string memory name_, string memory symbol_) internal onlyInitializing {
+  function __ERC721Locked_init(string memory name_, string memory symbol_) internal onlyInitializing {
     __ERC721_init(name_, symbol_);
     emit DefaultApprovable(false);
     emit DefaultLocked(true);

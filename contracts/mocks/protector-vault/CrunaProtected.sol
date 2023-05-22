@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "../../protected-nft/ProtectedERC721Upgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "../../protected-nft/ProtectedERC721.sol";
 
-contract CoolProjectProtected is ProtectedERC721Upgradeable, OwnableUpgradeable, UUPSUpgradeable {
+contract CrunaProtected is ProtectedERC721, Ownable {
   event TokenURIFrozen();
   event TokenURIUpdated(string uri);
 
@@ -16,20 +15,9 @@ contract CoolProjectProtected is ProtectedERC721Upgradeable, OwnableUpgradeable,
 
   uint256 private _nextTokenId;
 
-  /// @custom:oz-upgrades-unsafe-allow constructor
-  constructor() {
-    _disableInitializers();
+  constructor() ProtectedERC721("Cruna Protected", "CRUNA") {
+    _baseTokenURI = "https://meta.cruna.cc/protected/";
   }
-
-  function initialize() public initializer {
-    __Ownable_init();
-    __UUPSUpgradeable_init();
-    __ProtectedERC721_init("CoolProject Protectors", "E2P");
-    _baseTokenURI = "https://coolProject.com/protector/";
-  }
-
-  // required by UUPSUpgradeable
-  function _authorizeUpgrade(address) internal override onlyOwner {}
 
   function version() public pure virtual returns (string memory) {
     return "1.0.0";

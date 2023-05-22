@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.19;
 
-import "../../soulbound/Soulbound.sol";
+import "../../lockable/ERC721Locked.sol";
 
-contract MyBadge is Soulbound {
-  constructor() Soulbound("MY Soulbound", "mBDG") {}
+contract MyBadge is ERC721Locked {
+  constructor() ERC721Locked("MY ERC721Locked", "mBDG") {}
 
   function safeMint(address to, uint256 tokenId) public {
     _safeMint(to, tokenId);
