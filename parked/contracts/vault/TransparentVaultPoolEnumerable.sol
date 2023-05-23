@@ -4,7 +4,7 @@ pragma experimental ABIEncoderV2;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "./TransparentSafeBox.sol";
+import "./TransparentVaultPool.sol";
 import "../protected-nft/IProtectedERC721.sol";
 import "../storage/EnumerableStorage.sol";
 
@@ -21,7 +21,7 @@ import "../storage/EnumerableStorage.sol";
 // it would make sense to deploy the non-enumerable version. In any case, it is a
 // choice that the project implementing the vault can make.
 
-contract TransparentVaultEnumerable is TransparentSafeBox, EnumerableStorage {
+contract TransparentVaultEnumerable is TransparentVaultPool, EnumerableStorage {
   // solhint-disable-next-line
   function __TransparentVaultEnumerable_init(address owningToken) internal onlyInitializing {
     __NFTOwned_init(owningToken);

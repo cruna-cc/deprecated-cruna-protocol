@@ -15,11 +15,11 @@ import "../bound-account/IERC6551Registry.sol";
 import "../bound-account/IERC6551Account.sol";
 import "../bound-account/OwnerNFT.sol";
 
-import "./ISafeBox.sol";
+import "./ITransparentVault.sol";
 
 import "hardhat/console.sol";
 
-contract SafeBox is ISafeBox, Ownable, NFTOwned, ReentrancyGuard, TokenUtils {
+contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGuard, TokenUtils {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
 
   mapping(bytes32 => ProtectorAndTimestamp) private _restrictedTransfers;
@@ -56,7 +56,7 @@ contract SafeBox is ISafeBox, Ownable, NFTOwned, ReentrancyGuard, TokenUtils {
       revert AccountHasBeenEjected();
     }
     if (_accountAddresses[owningTokenId] == address(0)) revert NotActivated();
-    // if the owningToken is approved for sale, the vault cannot be modified to avoid scams
+    // if the owningToken is approved for sale, the vaults cannot be modified to avoid scams
     if (_owningToken.getApproved(owningTokenId) != address(0)) revert ForbiddenWhenOwningTokenApprovedForSale();
     _;
   }
@@ -85,8 +85,8 @@ contract SafeBox is ISafeBox, Ownable, NFTOwned, ReentrancyGuard, TokenUtils {
     _initiated = true;
   }
 
-  function isSafeBox() external pure override returns (bytes4) {
-    return this.isSafeBox.selector;
+  function isTransparentVault() external pure override returns (bytes4) {
+    return this.isTransparentVault.selector;
   }
 
   function accountAddress(uint owningTokenId) public view returns (address) {
@@ -292,7 +292,7 @@ contract SafeBox is ISafeBox, Ownable, NFTOwned, ReentrancyGuard, TokenUtils {
     _withdrawAsset(owningTokenId, beneficiary, asset, id, amount);
   }
 
-  // External services who need to see what a transparent vault contains can call
+  // External services who need to see what a transparent vaults contains can call
   // the Cruna Web API to get the list of assets owned by a owningToken. Then, they can call
   // this view to validate the results.
   function amountOf(

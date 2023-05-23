@@ -10,13 +10,13 @@ import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradea
 import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155ReceiverUpgradeable.sol";
 
 import "../nft-owned/NFTOwnedUpgradeable.sol";
-import "./ITransparentSafeBox.sol";
+import "./ITransparentVaultPool.sol";
 import "../protected-nft/IProtectedERC721.sol";
 import "../utils/TokenUtils.sol";
 
 //import "hardhat/console.sol";
 
-contract TransparentSafeBox is
+contract TransparentVaultPool is
   ITransparentVault,
   IERC721ReceiverUpgradeable,
   IERC1155ReceiverUpgradeable,
