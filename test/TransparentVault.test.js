@@ -6,7 +6,7 @@ describe("TransparentVault", function () {
   const deployUtils = new DeployUtils(ethers);
 
   let protectedNft, transparentVault;
-  let registry, wallet, implementation;
+  let registry, wallet;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   let notAToken;
@@ -25,7 +25,6 @@ describe("TransparentVault", function () {
     protectedNft = await deployContract("CrunaProtected");
 
     registry = await deployContract("ERC6551Registry");
-    // implementation = await deployContract("ERC6551AccountUpgradeable");
     wallet = await deployContract("ERC6551Account");
 
     transparentVault = await deployContract("CrunaVault", protectedNft.address);
