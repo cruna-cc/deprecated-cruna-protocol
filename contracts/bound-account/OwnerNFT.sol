@@ -5,15 +5,15 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../vault/ISafeBox.sol";
+import "../vaults/ITransparentVault.sol";
 
 // @dev The NFTs owning the bound account are all minted from this contract.
-// The minter must be an active SafeBox
-// The NFT can be ejected from the SafeBox and transferred to the owner
+// The minter must be an active TransparentVault
+// The NFT can be ejected from the TransparentVault and transferred to the owner
 contract OwnerNFT is ERC721, Ownable {
   event MinterSet(address indexed minter, bool active);
   error NotAMinter();
-  error MinterNotASafeBox();
+  error MinterNotATransparentVault();
 
   mapping(address => bool) private _minters;
 
@@ -27,8 +27,8 @@ contract OwnerNFT is ERC721, Ownable {
   // the minter must be an
   function setMinter(address minter, bool active) public onlyOwner {
     if (active) {
-      try ISafeBox(minter).isSafeBox() returns (bytes4 result) {
-        if (result != ISafeBox.isSafeBox.selector) revert MinterNotASafeBox();
+      try ITransparentVault(minter).isTransparentVault() returns (bytes4 result) {
+        if (result != ITransparentVault.isTransparentVault.selector) revert MinterNotATransparentVault();
       } catch {}
       _minters[minter] = true;
     } else if (_minters[minter]) delete _minters[minter];

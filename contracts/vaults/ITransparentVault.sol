@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-interface ISafeBox {
+interface ITransparentVault {
   event AllowAllUpdated(uint256 indexed owningTokenId, bool allow);
   event AllowListUpdated(uint256 indexed owningTokenId, address indexed account, bool allow);
   event AllowWithConfirmationUpdated(uint256 indexed owningTokenId, bool allow);
@@ -100,8 +100,8 @@ interface ISafeBox {
 
   function init(address registry, address payable proxy) external;
 
-  // must return `this.isSafeBox.selector;`
-  function isSafeBox() external pure returns (bytes4);
+  // must return `this.isTransparentVault.selector;`
+  function isTransparentVault() external pure returns (bytes4);
 
   function depositETH(uint256 owningTokenId) external payable;
 

@@ -2,7 +2,7 @@ const {expect, assert} = require("chai");
 const {deployContractUpgradeable, deployContract, amount, assertThrowsMessage} = require("../../test/helpers");
 
 describe("TransparentVaultEnumerable", function () {
-  let coolProjectProtected, safeBox;
+  let coolProjectProtected, tVault;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   // wallets
@@ -19,7 +19,7 @@ describe("TransparentVaultEnumerable", function () {
   beforeEach(async function () {
     coolProjectProtected = await deployContractUpgradeable("CrunaProtected");
 
-    safeBox = await deployContractUpgradeable("CoolProjectTransparentVaultEnumerable", [coolProjectProtected.address]);
+    tVault = await deployContractUpgradeable("CoolProjectTransparentVaultEnumerable", [coolProjectProtected.address]);
 
     expect(await coolProjectProtected.supportsInterface("0x8dca4bea")).to.be.true;
 
@@ -67,27 +67,27 @@ describe("TransparentVaultEnumerable", function () {
 
   it("should create a vault and add more assets to it", async function () {
     // bob creates a vault depositing a particle token
-    await particle.connect(bob).setApprovalForAll(safeBox.address, true);
-    await safeBox.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await safeBox.amountOf(1, [particle.address], [2]))[0]).equal(1);
+    await particle.connect(bob).setApprovalForAll(tVault.address, true);
+    await tVault.connect(bob).depositERC721(1, particle.address, 2);
+    expect((await tVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
     // bob adds a stupidMonk token to his vault
-    await stupidMonk.connect(bob).setApprovalForAll(safeBox.address, true);
-    await safeBox.connect(bob).depositERC721(1, stupidMonk.address, 1);
-    expect((await safeBox.amountOf(1, [stupidMonk.address], [1]))[0]).equal(1);
+    await stupidMonk.connect(bob).setApprovalForAll(tVault.address, true);
+    await tVault.connect(bob).depositERC721(1, stupidMonk.address, 1);
+    expect((await tVault.amountOf(1, [stupidMonk.address], [1]))[0]).equal(1);
 
     // bob adds some bulls tokens to his vault
-    await bulls.connect(bob).approve(safeBox.address, amount("10000"));
-    await safeBox.connect(bob).depositERC20(1, bulls.address, amount("5000"));
-    expect((await safeBox.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
+    await bulls.connect(bob).approve(tVault.address, amount("10000"));
+    await tVault.connect(bob).depositERC20(1, bulls.address, amount("5000"));
+    expect((await tVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
-    const assets = await safeBox.getAssets(1);
+    const assets = await tVault.getAssets(1);
     expect(assets.length).equal(3);
     expect(assets[0].assetAddress).equal(particle.address);
     expect(assets[0].id).equal(2);
     expect(assets[1].assetAddress).equal(stupidMonk.address);
 
-    assert.deepEqual(await safeBox.getAssetByIndex(1, 0), assets[0]);
+    assert.deepEqual(await tVault.getAssetByIndex(1, 0), assets[0]);
 
     // bob transfers the protected to alice
     await expect(transferNft(coolProjectProtected, bob)(bob.address, alice.address, 1))
