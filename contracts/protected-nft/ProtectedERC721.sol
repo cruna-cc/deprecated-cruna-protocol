@@ -8,7 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "../nft-owned/NFTOwned.sol";
 import "./IProtectedERC721Extended.sol";
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
   // tokenId => isApprovable

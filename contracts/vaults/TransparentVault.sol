@@ -17,7 +17,7 @@ import "../bound-account/OwnerNFT.sol";
 
 import "./ITransparentVault.sol";
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 abstract contract TransparentVault is ITransparentVault, Context, NFTOwned, ReentrancyGuard, TokenUtils {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
