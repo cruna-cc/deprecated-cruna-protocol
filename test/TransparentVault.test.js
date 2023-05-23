@@ -28,7 +28,7 @@ describe("TransparentVault", function () {
     implementation = await deployContract("ERC6551AccountUpgradeable");
     proxy = await deployContract("ERC6551AccountProxy", implementation.address);
 
-    transparentVault = await deployContract("TransparentVault", protectedNft.address);
+    transparentVault = await deployContract("CrunaVault", protectedNft.address);
 
     await transparentVault.init(registry.address, proxy.address);
 
