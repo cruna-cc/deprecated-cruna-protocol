@@ -50,9 +50,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     _;
   }
 
-  constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {
-    emit DefaultLocked(false);
-  }
+  constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {}
 
   function _countActiveProtectors(address tokensOwner_) internal view returns (uint) {
     uint activeProtectorCount = 0;
@@ -169,6 +167,9 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     (uint i, Status status) = _findProtector(_msgSender(), protector_);
     if (status == Status.REMOVABLE) {
       _removeProtector(_msgSender(), i);
+      if (_countActiveProtectors(_msgSender()) == 0) {
+        //        emit Locked(_msgSender());
+      }
     } else {
       revert ResignationNotSubmitted();
     }
@@ -250,7 +251,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     uint256 batchSize
   ) internal virtual override(ERC721) {
     // Skips the minting
-    if (from != address(0) && locked(tokenId)) revert TransferNotPermitted();
+    if (!isTransferable(tokenId, from, to)) revert TransferNotPermitted();
     // if an controlled transfer was set, it will be deleted
     delete _controlledTransfers[tokenId];
     super._beforeTokenTransfer(from, to, tokenId, batchSize);
@@ -260,14 +261,18 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     return interfaceId == type(IProtectedERC721).interfaceId || super.supportsInterface(interfaceId);
   }
 
-  // IERC6982
+  // IERC6454
 
-  function locked(uint256 tokenId) public view virtual override returns (bool) {
-    return _countActiveProtectors(ownerOf(tokenId)) > 0 && !_controlledTransfers[tokenId].approved;
-  }
-
-  function defaultLocked() public view virtual override returns (bool) {
-    return false;
+  function isTransferable(uint256 tokenId, address from, address to) public view override returns (bool) {
+    // In general it is not transferable and burning is not allowed
+    // so we can just verify the to
+    if (to == address(0)) return false;
+    // if from zero, it is minting
+    else if (from == address(0)) return true;
+    else {
+      _requireMinted(tokenId);
+      return _countActiveProtectors(ownerOf(tokenId)) == 0 || _controlledTransfers[tokenId].approved;
+    }
   }
 
   function _safeMint(address to, uint256 tokenId, bytes memory data) internal virtual override {

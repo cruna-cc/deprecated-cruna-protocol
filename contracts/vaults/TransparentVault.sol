@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/Context.sol";
 import "../nft-owned/NFTOwned.sol";
 import "../protected-nft/IProtectedERC721.sol";
 import "../utils/TokenUtils.sol";
-import "../bound-account/ERC6551AccountProxy.sol";
+import "../bound-account/ERC6551Account.sol";
 import "../bound-account/IERC6551Registry.sol";
 import "../bound-account/IERC6551Account.sol";
 import "../bound-account/OwnerNFT.sol";
@@ -31,7 +31,7 @@ abstract contract TransparentVault is ITransparentVault, Context, NFTOwned, Reen
 
   bool internal _owningTokenIsProtected;
   IERC6551Registry internal _registry;
-  ERC6551AccountProxy internal _accountProxy;
+  ERC6551Account internal _account;
   OwnerNFT public ownerNFT;
   uint internal _salt;
   mapping(uint => address) internal _accountAddresses;
@@ -79,17 +79,17 @@ abstract contract TransparentVault is ITransparentVault, Context, NFTOwned, Reen
     @param registry The address of the registry
     @param proxy The address of the account proxy
   */
-  function init(address registry, address payable proxy) external override {
+  function init(address registry, address payable account) external override {
     _canInit();
     if (_initiated) revert AlreadyInitiated();
     if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
     _registry = IERC6551Registry(registry);
-    try ERC6551AccountProxy(proxy).isERC6551AccountProxy() returns (bool isProxy) {
-      if (!isProxy) revert InvalidAccountProxy();
+    try ERC6551Account(account).isERC6551Account() returns (bool isAccount) {
+      if (!isAccount) revert InvalidAccount();
     } catch {
-      revert InvalidAccountProxy();
+      revert InvalidAccount();
     }
-    _accountProxy = ERC6551AccountProxy(proxy);
+    _account = ERC6551Account(account);
     ownerNFT = new OwnerNFT();
     ownerNFT.setMinter(address(this), true);
     ownerNFT.transferOwnership(_msgSender());
@@ -101,7 +101,7 @@ abstract contract TransparentVault is ITransparentVault, Context, NFTOwned, Reen
   }
 
   function accountAddress(uint owningTokenId) public view returns (address) {
-    return _registry.account(address(_accountProxy), block.chainid, address(ownerNFT), owningTokenId, _salt);
+    return _registry.account(address(_account), block.chainid, address(ownerNFT), owningTokenId, _salt);
   }
 
   function activateAccount(uint owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
@@ -109,7 +109,7 @@ abstract contract TransparentVault is ITransparentVault, Context, NFTOwned, Reen
     ownerNFT.mint(address(this), owningTokenId);
     if (_accountAddresses[owningTokenId] != address(0)) revert AccountAlreadyActive();
     _accountAddresses[owningTokenId] = account;
-    _registry.createAccount(address(_accountProxy), block.chainid, address(ownerNFT), owningTokenId, _salt, "");
+    _registry.createAccount(address(_account), block.chainid, address(ownerNFT), owningTokenId, _salt, "");
   }
 
   function depositERC721(

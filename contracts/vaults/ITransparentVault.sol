@@ -68,7 +68,7 @@ interface ITransparentVault {
   error UnsupportedTooLargeTokenId();
   error WithdrawalNotFound();
   error InvalidRegistry();
-  error InvalidAccountProxy();
+  error InvalidAccount();
   error AccountAlreadyActive();
   error NoETH();
   error NotActivated();

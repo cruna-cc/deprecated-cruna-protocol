@@ -3,9 +3,6 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "../lockable/IERC6982.sol";
-import "../lockable/IERC721DefaultApprovable.sol";
-
 // erc165 interfaceId 0x8dca4bea
 interface IProtectedERC721 {
   // @dev Emitted when a protector is proposed for an tokensOwner
