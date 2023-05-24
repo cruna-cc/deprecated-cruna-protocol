@@ -7,7 +7,7 @@
 
 pragma solidity ^0.8.16;
 
-/* is IERC165 */ interface IERC6454 {
+interface IERC6454 {
   /**
    * @notice Used to check whether the given token is transferable or not.
    * @dev If this function returns `false`, the transfer of the token MUST revert execution.

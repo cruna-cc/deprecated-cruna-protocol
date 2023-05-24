@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "../lockable/IERC6454.sol";
+import "./IERC6454.sol";
 import "./IProtectedERC721.sol";
 
 // erc165 interfaceId 0x8dca4bea
