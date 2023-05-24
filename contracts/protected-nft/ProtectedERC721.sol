@@ -263,10 +263,15 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
 
   // IERC6454
 
-  function isTransferable(uint256 tokenId, address from, address) public view override returns (bool) {
-    return (from == address(0) || // is minting
-      _countActiveProtectors(ownerOf(tokenId)) == 0 || // there are no active protectors
-      _controlledTransfers[tokenId].approved); // there are protectors but the transfer was approved
+  function isTransferable(uint256 tokenId, address from, address to) public view override returns (bool) {
+    // burning not allowed
+    if (to == address(0x0)) {
+      return false;
+    } else {
+      return (from == address(0) || // is minting
+        _countActiveProtectors(ownerOf(tokenId)) == 0 || // there are no active protectors
+        _controlledTransfers[tokenId].approved); // there are protectors but the transfer was approved
+    }
   }
 
   function _safeMint(address to, uint256 tokenId, bytes memory data) internal virtual override {
