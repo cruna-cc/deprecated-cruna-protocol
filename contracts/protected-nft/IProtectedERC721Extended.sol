@@ -48,16 +48,19 @@ interface IProtectedERC721Extended is IProtectedERC721, IERC6454 {
   error ProtectorsUnlockAlreadyStarted();
   error ProtectorsUnlockNotStarted();
   error ProtectorsNotLocked();
+  error TimestampInvalidOrExpired();
+  error WrongDataOrNotSignedByProtector();
+  error SignatureAlreadyUsed();
 
-  struct ControlledTransfer {
-    address protector;
-    uint32 expiresAt;
-    // ^ 24 bytes
-    address to;
-    bool approved;
-    // ^ 21 bytes
-  }
-
+  //  struct ControlledTransfer {
+  //    address protector;
+  //    uint32 expiresAt;
+  //    // ^ 24 bytes
+  //    address to;
+  //    bool approved;
+  //    // ^ 21 bytes
+  //  }
+  //
   enum Status {
     UNSET,
     PENDING,
