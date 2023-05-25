@@ -49,7 +49,6 @@ interface ITransparentVault {
   error ForbiddenWhenOwningTokenApprovedForSale();
   error InconsistentLengths();
   error InsufficientBalance();
-  error InvalidAddress();
   error InvalidAmount();
   error InvalidAsset();
   error InvalidId();

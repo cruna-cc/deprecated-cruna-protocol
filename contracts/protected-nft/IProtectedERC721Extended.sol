@@ -41,8 +41,6 @@ interface IProtectedERC721Extended is IProtectedERC721, IERC6454 {
   error ResignationNotSubmitted();
   error TooManyProtectors();
   error InvalidDuration();
-  error TransferAlreadyInitiated();
-  error TransferNotInitiated();
   error NoActiveProtectors();
   error ProtectorsAlreadyLocked();
   error ProtectorsUnlockAlreadyStarted();
