@@ -1,5 +1,5 @@
 const {expect} = require("chai");
-const {deployContractUpgradeable, deployContract, amount, assertThrowsMessage} = require("./helpers");
+const {deployContract, amount, getTimestamp, signPackedData} = require("./helpers");
 const DeployUtils = require("../scripts/lib/DeployUtils");
 
 describe("TransparentVault", function () {
@@ -246,5 +246,45 @@ describe("TransparentVault", function () {
       .withArgs(bob.address, mark.address, true);
 
     await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
+  });
+
+  it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
+    await transparentVault.connect(bob).activateAccount(1);
+
+    await expect(protectedNft.connect(bob).proposeProtector(john.address))
+      .emit(protectedNft, "ProtectorProposed")
+      .withArgs(bob.address, john.address);
+
+    await expect(protectedNft.connect(john).acceptProposal(bob.address, true))
+      .emit(protectedNft, "ProtectorUpdated")
+      .withArgs(bob.address, john.address, true);
+
+    await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
+
+    const timestamp = (await getTimestamp()) - 100;
+    const randomNonce = Math.floor(Math.random() * 1000000);
+    const hash = await protectedNft.hashTransferRequest(1, alice.address, timestamp, randomNonce);
+
+    // this helper function uses by default hardhat account [4], which is john, the protector
+    const signature = await signPackedData(hash);
+
+    await expect(protectedNft.protectedTransfer(1, alice.address, timestamp, randomNonce, signature)).revertedWith(
+      "NotTheTokenOwner()"
+    );
+
+    await expect(protectedNft.connect(bob).protectedTransfer(1, fred.address, timestamp, randomNonce, signature)).revertedWith(
+      "WrongDataOrNotSignedByProtector()"
+    );
+
+    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, randomNonce, signature))
+      .emit(protectedNft, "Transfer")
+      .withArgs(bob.address, alice.address, 1);
+
+    // transfer it back
+    transferNft(protectedNft, alice)(alice.address, bob.address, 1);
+
+    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, randomNonce, signature)).revertedWith(
+      "SignatureAlreadyUsed()"
+    );
   });
 });

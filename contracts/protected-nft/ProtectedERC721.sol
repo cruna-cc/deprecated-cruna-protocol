@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "../nft-owned/NFTOwned.sol";
 import "./IProtectedERC721Extended.sol";
@@ -11,6 +12,7 @@ import "./IProtectedERC721Extended.sol";
 //import "hardhat/console.sol";
 
 abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
+  using ECDSA for bytes32;
   // tokenId => isApprovable
   mapping(uint256 => bool) private _notApprovable;
 
@@ -25,7 +27,9 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
   mapping(address => Status) private _lockedProtectorsFor;
 
   // the tokens currently being transferred when a second wallet is set
-  mapping(uint256 => ControlledTransfer) private _controlledTransfers;
+  //  mapping(uint256 => ControlledTransfer) private _controlledTransfers;
+  mapping(uint256 => bool) private _approvedTransfers;
+  mapping(bytes32 => bool) private _usedSignatures;
 
   modifier onlyProtectorFor(address owner_) {
     (uint i, Status status) = _findProtector(owner_, _msgSender());
@@ -175,43 +179,37 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     }
   }
 
-  function initiateTransfer(uint256 tokenId, address to, uint256 validFor) external {
+  function signedByProtector(uint tokenId, bytes32 hash, bytes memory signature) public view override returns (bool) {
+    address signer = hash.recover(signature);
     address owner_ = ownerOf(tokenId);
-    (, Status status) = _findProtector(owner_, _msgSender());
-    if (status < Status.ACTIVE) revert NotAProtector();
-    if (to == address(0) || to == owner_) revert InvalidAddress();
-    if (validFor == 0) revert InvalidDuration();
-    if (_controlledTransfers[tokenId].protector != address(0)) revert TransferAlreadyInitiated();
-    uint expiresAt = block.timestamp + validFor;
-    _controlledTransfers[tokenId] = ControlledTransfer({
-      protector: _msgSender(),
-      to: to,
-      expiresAt: uint32(expiresAt),
-      approved: false
-    });
-    emit TransferStartedBy(_msgSender(), tokenId, to, expiresAt);
+    (, Status status) = _findProtector(owner_, signer);
+    return status > Status.UNSET;
   }
 
-  function approveTransfer(uint256 tokenId, bool approved_) public onlyTokenOwner(tokenId) returns (bool) {
-    ControlledTransfer storage transfer_ = _controlledTransfers[tokenId];
-    if (transfer_.protector == address(0)) revert TransferNotInitiated();
-    if (transfer_.expiresAt < block.timestamp) {
-      delete _controlledTransfers[tokenId];
-      return false;
-    }
-    if (approved_) {
-      _controlledTransfers[tokenId].approved = true;
-      emit TransferApproved(tokenId, _controlledTransfers[tokenId].to, approved_);
-      return true;
-    }
-    delete _controlledTransfers[tokenId];
-    return false;
+  function hashTransferRequest(
+    uint256 tokenId,
+    address to,
+    uint256 timestamp,
+    uint256 randomNonce
+  ) public view override returns (bytes32) {
+    return keccak256(abi.encodePacked("\x19\x01", block.chainid, tokenId, to, timestamp, randomNonce));
   }
 
-  function approveAndExecuteTransfer(uint256 tokenId, bool approved_) external onlyTokenOwner(tokenId) {
-    if (approveTransfer(tokenId, approved_)) {
-      _transfer(_msgSender(), _controlledTransfers[tokenId].to, tokenId);
-    }
+  function protectedTransfer(
+    uint tokenId,
+    address to,
+    uint256 timestamp,
+    uint randomNonce,
+    bytes calldata signature
+  ) external override onlyTokenOwner(tokenId) {
+    if (timestamp > block.timestamp || timestamp < block.timestamp - 1 days) revert TimestampInvalidOrExpired();
+    bytes32 hash = hashTransferRequest(tokenId, to, timestamp, randomNonce);
+    if (!signedByProtector(tokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
+    if (_usedSignatures[keccak256(signature)]) revert SignatureAlreadyUsed();
+    _usedSignatures[keccak256(signature)] = true;
+    _approvedTransfers[tokenId] = true;
+    _transfer(_msgSender(), to, tokenId);
+    delete _approvedTransfers[tokenId];
   }
 
   function lockProtectors() external onlyTokensOwner {
@@ -243,17 +241,13 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     }
   }
 
-  // The following functions are overrides required by Solidity.
   function _beforeTokenTransfer(
     address from,
     address to,
     uint256 tokenId,
     uint256 batchSize
   ) internal virtual override(ERC721) {
-    // Skips the minting
     if (!isTransferable(tokenId, from, to)) revert TransferNotPermitted();
-    // if an controlled transfer was set, it will be deleted
-    delete _controlledTransfers[tokenId];
     super._beforeTokenTransfer(from, to, tokenId, batchSize);
   }
 
@@ -271,18 +265,9 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     else if (from == address(0)) return true;
     else {
       _requireMinted(tokenId);
-      return _countActiveProtectors(ownerOf(tokenId)) == 0 || _controlledTransfers[tokenId].approved;
+      return _countActiveProtectors(ownerOf(tokenId)) == 0 || _approvedTransfers[tokenId];
     }
   }
-
-  function _safeMint(address to, uint256 tokenId, bytes memory data) internal virtual override {
-    // to optimize gas management inside the protected, we encode
-    // the tokenId on 24 bits. Max tokenID: 16777215
-    if (tokenId > type(uint24).max) revert TokenIdTooBig();
-    super._safeMint(to, tokenId, data);
-  }
-
-  //
 
   uint256[50] private __gap;
 }
