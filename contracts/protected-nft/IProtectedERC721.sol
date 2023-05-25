@@ -21,16 +21,6 @@ interface IProtectedERC721 {
   event ProtectorUpdated(address indexed tokensOwner, address indexed protector, bool status);
 
   /*
-    @dev Emitted when a transfer is started by a protector
-  */
-  event TransferStartedBy(address indexed protector, uint256 indexed tokenId, address indexed to, uint expiresAt);
-
-  /*
-    @dev Emitted when a transfer is approved or canceled by the tokensOwner
-  */
-  event TransferApproved(uint256 tokenId, address indexed to, bool approved);
-
-  /*
     @dev Emitted when the number of protectors is locked or unlocked
   */
   event ProtectorsLocked(address indexed tokensOwner, bool locked);
@@ -42,13 +32,13 @@ interface IProtectedERC721 {
 
   /*
     @dev Return the protectors set for the tokensOwner
-   @notice It is not the specific tokenId that is protected, is all the tokens owned by
-    tokensOwner_ that are protected. So, protectors are set for the tokensOwner, not for the specific token.
-    It is this way to reduce gas consumption.
-   @param tokensOwner_ The tokensOwner address
-   @return The addresses of active protectors set for the tokensOwner
-    The contract can implement intermediate statuses, like "pending" and "removable", but the interface
-    only requires a list of the "active" protectors
+    @notice It is not the specific tokenId that is protected, is all the tokens owned by
+     tokensOwner_ that are protected. So, protectors are set for the tokensOwner, not for the specific token.
+     It is this way to reduce gas consumption.
+    @param tokensOwner_ The tokensOwner address
+    @return The addresses of active protectors set for the tokensOwner
+     The contract can implement intermediate statuses, like "pending" and "removable", but the interface
+     only requires a list of the "active" protectors
   */
   function protectorsFor(address tokensOwner_) external view returns (address[] memory);
 
