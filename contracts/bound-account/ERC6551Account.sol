@@ -137,8 +137,4 @@ contract ERC6551Account is IERC165, IERC721Receiver, IERC1155Receiver, IERC6551A
 
     return "";
   }
-
-  function isERC6551Account() external pure returns (bool) {
-    return true;
-  }
 }

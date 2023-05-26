@@ -22,9 +22,6 @@ import "./ITransparentVault.sol";
 contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGuard, TokenUtils {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
 
-  mapping(bytes32 => ProtectorAndTimestamp) private _restrictedTransfers;
-
-  mapping(bytes32 => ProtectorAndTimestamp) private _restrictedWithdrawals;
   // modifiers
 
   mapping(uint => bool) private _ejects;
@@ -36,10 +33,18 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
   uint internal _salt;
   mapping(uint => address) internal _accountAddresses;
   bool private _initiated;
+  IProtectedERC721 internal _protectedOwningToken;
 
   modifier onlyOwningTokenOwner(uint256 owningTokenId) {
     if (ownerOf(owningTokenId) != msg.sender) {
       revert NotTheOwningTokenOwner();
+    }
+    _;
+  }
+
+  modifier onlyOwningTokenOwnerOrOperator(uint256 owningTokenId) {
+    if (!_protectedOwningToken.isOwnerOrOperator(owningTokenId, _msgSender())) {
+      revert NotTheOwningTokenOwnerOrOperatorFor();
     }
     _;
   }
@@ -63,6 +68,7 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
 
   // solhint-disable-next-line
   constructor(address owningToken) NFTOwned(owningToken) {
+    _protectedOwningToken = IProtectedERC721(owningToken);
     if (IERC165(_owningToken).supportsInterface(type(IProtectedERC721).interfaceId)) {
       _owningTokenIsProtected = true;
     }
@@ -78,11 +84,7 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
     if (_initiated) revert AlreadyInitiated();
     if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
     _registry = IERC6551Registry(registry);
-    try ERC6551Account(account).isERC6551Account() returns (bool isAccount) {
-      if (!isAccount) revert InvalidAccount();
-    } catch {
-      revert InvalidAccount();
-    }
+    if (!IERC165(account).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
     _account = ERC6551Account(account);
     ownerNFT = new OwnerNFT();
     ownerNFT.setMinter(address(this), true);
@@ -259,42 +261,74 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
     uint256 id,
     uint256 amount,
     address beneficiary
-  ) external override onlyOwningTokenOwner(owningTokenId) nonReentrant {
+  ) public override onlyOwningTokenOwnerOrOperator(owningTokenId) nonReentrant {
     _checkIfStartAllowed(owningTokenId);
     _withdrawAsset(owningTokenId, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
   }
 
-  function startWithdrawal(
-    uint256 owningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount,
-    uint32 validFor,
-    address beneficiary
-  ) external override onlyProtector(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    _checkIfCanTransfer(owningTokenId, asset, id, amount);
-    bytes32 key = keccak256(abi.encodePacked(owningTokenId, beneficiary, asset, id, amount));
-    if (_restrictedWithdrawals[key].protector != address(0) && _restrictedWithdrawals[key].expiresAt > block.timestamp)
-      revert AssetAlreadyBeingWithdrawn();
-    _restrictedWithdrawals[key] = ProtectorAndTimestamp({
-      protector: _msgSender(),
-      expiresAt: uint32(block.timestamp) + validFor
-    });
-    emit WithdrawalStarted(owningTokenId, beneficiary, asset, id, amount);
+  function withdrawAsset(uint256 owningTokenId, address asset, uint256 id, uint256 amount, uint recipientTokenId) external {
+    withdrawAsset(owningTokenId, asset, id, amount, accountAddress(recipientTokenId));
   }
 
-  function completeWithdrawal(
+  function protectedWithdrawAsset(
     uint256 owningTokenId,
     address asset,
     uint256 id,
     uint256 amount,
-    address beneficiary
-  ) external override onlyOwningTokenOwner(owningTokenId) nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    bytes32 key = keccak256(abi.encodePacked(owningTokenId, beneficiary, asset, id, amount));
-    if (_restrictedWithdrawals[key].protector == address(0)) revert WithdrawalNotFound();
-    if (_restrictedWithdrawals[key].expiresAt < block.timestamp) revert Expired();
-    delete _restrictedWithdrawals[key];
-    _withdrawAsset(owningTokenId, beneficiary, asset, id, amount);
+    address beneficiary,
+    uint256 timestamp,
+    uint randomSalt,
+    bytes calldata signature,
+    bool invalidateSignatureAfterUse
+  ) public override onlyOwningTokenOwnerOrOperator(owningTokenId) nonReentrant {
+    if (timestamp > block.timestamp || timestamp < block.timestamp - 1 days) revert TimestampInvalidOrExpired();
+    bytes32 hash = hashWithdrawRequest(owningTokenId, asset, id, amount, beneficiary, timestamp, randomSalt);
+    if (!_protectedOwningToken.signedByProtector(owningTokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
+    if (_protectedOwningToken.isSignatureUsed(keccak256(signature))) revert SignatureAlreadyUsed();
+    if (invalidateSignatureAfterUse) {
+      _protectedOwningToken.setSignatureAsUsed(keccak256(signature));
+    }
+    _checkIfStartAllowed(owningTokenId);
+    _withdrawAsset(owningTokenId, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
+  }
+
+  function protectedWithdrawAsset(
+    uint256 owningTokenId,
+    address asset, // if address(0) we want to withdraw the native token, for example Ether
+    uint256 id,
+    uint256 amount,
+    uint recipientTokenId,
+    uint256 timestamp,
+    uint randomSalt,
+    bytes calldata signature,
+    bool invalidateSignatureAfterUse
+  ) external {
+    protectedWithdrawAsset(
+      owningTokenId,
+      asset,
+      id,
+      amount,
+      accountAddress(recipientTokenId),
+      timestamp,
+      randomSalt,
+      signature,
+      invalidateSignatureAfterUse
+    );
+  }
+
+  function hashWithdrawRequest(
+    uint256 owningTokenId,
+    address asset,
+    uint256 id,
+    uint256 amount,
+    address beneficiary,
+    uint256 timestamp,
+    uint randomSalt
+  ) public view override returns (bytes32) {
+    return
+      keccak256(
+        abi.encodePacked("\x19\x01", block.chainid, owningTokenId, asset, id, amount, beneficiary, timestamp, randomSalt)
+      );
   }
 
   // External services who need to see what a transparent vaults contains can call

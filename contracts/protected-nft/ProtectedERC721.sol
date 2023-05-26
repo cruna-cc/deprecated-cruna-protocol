@@ -196,29 +196,37 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     uint256 tokenId,
     address to,
     uint256 timestamp,
-    uint256 randomNonce
+    uint256 randomSalt
   ) public view override returns (bytes32) {
-    return keccak256(abi.encodePacked("\x19\x01", block.chainid, tokenId, to, timestamp, randomNonce));
+    return keccak256(abi.encodePacked("\x19\x01", block.chainid, tokenId, to, timestamp, randomSalt));
   }
 
   function protectedTransfer(
     uint tokenId,
     address to,
     uint256 timestamp,
-    uint randomNonce,
+    uint randomSalt,
     bytes calldata signature,
     bool invalidateSignatureAfterUse
   ) external override onlyTokenOwner(tokenId) {
     if (timestamp > block.timestamp || timestamp < block.timestamp - 1 days) revert TimestampInvalidOrExpired();
-    bytes32 hash = hashTransferRequest(tokenId, to, timestamp, randomNonce);
+    bytes32 hash = hashTransferRequest(tokenId, to, timestamp, randomSalt);
     if (!signedByProtector(tokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
     if (_usedSignatures[keccak256(signature)]) revert SignatureAlreadyUsed();
     if (invalidateSignatureAfterUse) {
-      _usedSignatures[keccak256(signature)] = true;
+      setSignatureAsUsed(keccak256(signature));
     }
     _approvedTransfers[tokenId] = true;
     _transfer(_msgSender(), to, tokenId);
     delete _approvedTransfers[tokenId];
+  }
+
+  function isSignatureUsed(bytes32 hashedSignature) external view override returns (bool) {
+    return _usedSignatures[hashedSignature];
+  }
+
+  function setSignatureAsUsed(bytes32 hashedSignature) public override {
+    _usedSignatures[hashedSignature] = true;
   }
 
   function lockProtectors() external onlyTokensOwner {
