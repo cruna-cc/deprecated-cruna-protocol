@@ -27,7 +27,7 @@ describe("TransparentVault", function () {
     registry = await deployContract("ERC6551Registry");
     wallet = await deployContract("ERC6551Account");
 
-    transparentVault = await deployContract("DependentVault", protectedNft.address);
+    transparentVault = await deployContract("TransparentVault", protectedNft.address);
 
     await transparentVault.init(registry.address, wallet.address);
 

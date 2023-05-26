@@ -5,7 +5,7 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/utils/Context.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../nft-owned/NFTOwned.sol";
 import "../protected-nft/IProtectedERC721.sol";
@@ -19,7 +19,7 @@ import "./ITransparentVault.sol";
 
 //import "hardhat/console.sol";
 
-abstract contract TransparentVault is ITransparentVault, Context, NFTOwned, ReentrancyGuard, TokenUtils {
+contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGuard, TokenUtils {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
 
   mapping(bytes32 => ProtectorAndTimestamp) private _restrictedTransfers;
@@ -70,17 +70,11 @@ abstract contract TransparentVault is ITransparentVault, Context, NFTOwned, Reen
   }
 
   /*
-    @dev Internal function tha must be overriden to allow the init only to the contract owner
-  */
-  function _canInit() internal virtual;
-
-  /*
     @dev It allows to set the registry and the account proxy
     @param registry The address of the registry
     @param proxy The address of the account proxy
   */
-  function init(address registry, address payable account) external override {
-    _canInit();
+  function init(address registry, address payable account) external override onlyOwner {
     if (_initiated) revert AlreadyInitiated();
     if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
     _registry = IERC6551Registry(registry);
