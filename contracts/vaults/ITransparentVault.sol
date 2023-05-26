@@ -76,25 +76,15 @@ interface ITransparentVault {
   error AccountAlreadyEjected();
   error ETHDepositFailed();
   error AlreadyInitiated();
+  error NotTheOwningTokenOwnerOrOperatorFor();
+  error TimestampInvalidOrExpired();
+  error WrongDataOrNotSignedByProtector();
+  error SignatureAlreadyUsed();
 
   enum TokenType {
     ERC20,
     ERC721,
-    ERC1155,
-    // some extra slots for future extensions
-    ERCx0,
-    ERCx1,
-    ERCx2
-  }
-
-  struct TypeAndTimestamp {
-    TokenType tokenType;
-    uint32 timestamp;
-  }
-
-  struct ProtectorAndTimestamp {
-    address protector;
-    uint32 expiresAt;
+    ERC1155
   }
 
   function init(address registry, address payable proxy) external;
@@ -119,16 +109,41 @@ interface ITransparentVault {
 
   function withdrawAsset(uint256 owningTokenId, address asset, uint256 id, uint256 amount, address beneficiary) external;
 
-  function startWithdrawal(
+  function protectedWithdrawAsset(
+    uint256 owningTokenId,
+    address asset, // if address(0) we want to withdraw the native token, for example Ether
+    uint256 id,
+    uint256 amount,
+    address beneficiary,
+    uint256 timestamp,
+    uint randomSalt,
+    bytes calldata signature,
+    bool invalidateSignatureAfterUse
+  ) external;
+
+  function withdrawAsset(uint256 owningTokenId, address asset, uint256 id, uint256 amount, uint recipientTokenId) external;
+
+  function protectedWithdrawAsset(
+    uint256 owningTokenId,
+    address asset, // if address(0) we want to withdraw the native token, for example Ether
+    uint256 id,
+    uint256 amount,
+    uint recipientTokenId,
+    uint256 timestamp,
+    uint randomSalt,
+    bytes calldata signature,
+    bool invalidateSignatureAfterUse
+  ) external;
+
+  function hashWithdrawRequest(
     uint256 owningTokenId,
     address asset,
     uint256 id,
     uint256 amount,
-    uint32 validFor,
-    address beneficiary
-  ) external;
-
-  function completeWithdrawal(uint256 owningTokenId, address asset, uint256 id, uint256 amount, address beneficiary) external;
+    address beneficiary,
+    uint256 timestamp,
+    uint randomSalt
+  ) external view returns (bytes32);
 
   function amountOf(
     uint256 owningTokenId,
