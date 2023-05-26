@@ -31,6 +31,11 @@ interface IProtectedERC721 {
   event ProtectorsUnlockInitiated(address indexed tokensOwner);
 
   /*
+    @dev Emitted when an operator is set/unset for a tokenId
+  */
+  event OperatorUpdated(uint indexed tokenId, address indexed operator, bool status);
+
+  /*
     @dev Return the protectors set for the tokensOwner
     @notice It is not the specific tokenId that is protected, is all the tokens owned by
      tokensOwner_ that are protected. So, protectors are set for the tokensOwner, not for the specific token.
@@ -138,6 +143,51 @@ interface IProtectedERC721 {
     @param timestamp The timestamp of the transfer request
     @param randomNonce A random nonce
     @param signature The signature of the transfer request, signed by an active protector
+    @param invalidateSignatureAfterUse If true, the signature cannot be used anymore
   */
-  function protectedTransfer(uint tokenId, address to, uint256 timestamp, uint randomNonce, bytes calldata signature) external;
+  function protectedTransfer(
+    uint tokenId,
+    address to,
+    uint256 timestamp,
+    uint randomNonce,
+    bytes calldata signature,
+    bool invalidateSignatureAfterUse
+  ) external;
+
+  // operators
+
+  /*
+    @dev Checks if an operator is active for a token
+     returning also its index in the array
+    @param tokenId The token id
+    @param operator The address of the operator
+    @return (true, index) if the operator is active for the token
+     or (false, 0) if the operator is not active for the token
+  */
+  function getOperatorForIndexIfExists(uint tokenId, address operator) external view returns (bool, uint);
+
+  /*
+    @dev Check if an address is an operator for a token
+    @param tokenId The token id
+    @param operator The address of the operator
+    @return true if the operator is active for the token, false otherwise
+  */
+  function isOperatorFor(uint tokenId, address operator) external view returns (bool);
+
+  /*
+    @dev Sets/unsets an operator for a token
+    @notice The function MUST be executed by the owner
+    @param tokenId The token id
+    @param operator The address of the operator
+    @param active True if the operator is active for the token, false otherwise
+  */
+  function setOperatorFor(uint tokenId, address operator, bool active) external;
+
+  /*
+    @dev Checks if an address is an owner or operator for a token
+    @param tokenId The token id
+    @param ownerOrOperator The address of the owner or operator
+    @return true if the address is an owner or operator for the token, false otherwise
+  */
+  function isOwnerOrOperator(uint tokenId, address ownerOrOperator) external view returns (bool);
 }

@@ -16,7 +16,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
   // tokenId => isApprovable
   mapping(uint256 => bool) private _notApprovable;
 
-  // the address of a second wallet required to start the transfer of a token
+  // the address of a second wallet required to validate the transfer of a token
   // the user can set up to 2 protectors
   // owner >> protector >> approved
   mapping(address => Protector[]) private _protectors;
@@ -25,6 +25,12 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
   mapping(address => address) private _ownersByProtector;
 
   mapping(address => Status) private _lockedProtectorsFor;
+
+  // The operators that can manage a specific tokenId.
+  // Operators are not restricted to follow an owner, as protectors do.
+  // The idea is that for any tokenId there can be just a few operators
+  // so we do not risk to go out of gas when checking them.
+  mapping(uint => address[]) private _operators;
 
   // the tokens currently being transferred when a second wallet is set
   //  mapping(uint256 => ControlledTransfer) private _controlledTransfers;
@@ -200,13 +206,16 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     address to,
     uint256 timestamp,
     uint randomNonce,
-    bytes calldata signature
+    bytes calldata signature,
+    bool invalidateSignatureAfterUse
   ) external override onlyTokenOwner(tokenId) {
     if (timestamp > block.timestamp || timestamp < block.timestamp - 1 days) revert TimestampInvalidOrExpired();
     bytes32 hash = hashTransferRequest(tokenId, to, timestamp, randomNonce);
     if (!signedByProtector(tokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
     if (_usedSignatures[keccak256(signature)]) revert SignatureAlreadyUsed();
-    _usedSignatures[keccak256(signature)] = true;
+    if (invalidateSignatureAfterUse) {
+      _usedSignatures[keccak256(signature)] = true;
+    }
     _approvedTransfers[tokenId] = true;
     _transfer(_msgSender(), to, tokenId);
     delete _approvedTransfers[tokenId];
@@ -241,6 +250,41 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     }
   }
 
+  // operators
+
+  function getOperatorForIndexIfExists(uint tokenId, address operator) public view override returns (bool, uint) {
+    for (uint i = 0; i < _operators[tokenId].length; i++) {
+      if (_operators[tokenId][i] == operator) return (true, i);
+    }
+    return (false, 0);
+  }
+
+  function isOperatorFor(uint tokenId, address operator) public view override returns (bool) {
+    for (uint i = 0; i < _operators[tokenId].length; i++) {
+      if (_operators[tokenId][i] == operator) return true;
+    }
+    return false;
+  }
+
+  function setOperatorFor(uint tokenId, address operator, bool active) external onlyTokenOwner(tokenId) {
+    (bool exists, uint i) = getOperatorForIndexIfExists(tokenId, operator);
+    if (active) {
+      if (exists) revert OperatorAlreadyActive();
+      else _operators[tokenId].push(operator);
+    } else {
+      if (!exists) revert OperatorNotActive();
+      else if (i != _operators[tokenId].length - 1) {
+        _operators[tokenId][i] = _operators[tokenId][_operators[tokenId].length - 1];
+      }
+      _operators[tokenId].pop();
+    }
+    emit OperatorUpdated(tokenId, operator, active);
+  }
+
+  function isOwnerOrOperator(uint tokenId, address ownerOrOperator) external view override returns (bool) {
+    return ownerOf(tokenId) == ownerOrOperator || isOperatorFor(tokenId, ownerOrOperator);
+  }
+
   function _beforeTokenTransfer(
     address from,
     address to,
@@ -248,6 +292,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     uint256 batchSize
   ) internal virtual override(ERC721) {
     if (!isTransferable(tokenId, from, to)) revert TransferNotPermitted();
+    delete _operators[tokenId];
     super._beforeTokenTransfer(from, to, tokenId, batchSize);
   }
 

@@ -268,23 +268,23 @@ describe("TransparentVault", function () {
     // this helper function uses by default hardhat account [4], which is john, the protector
     const signature = await signPackedData(hash);
 
-    await expect(protectedNft.protectedTransfer(1, alice.address, timestamp, randomNonce, signature)).revertedWith(
+    await expect(protectedNft.protectedTransfer(1, alice.address, timestamp, randomNonce, signature, true)).revertedWith(
       "NotTheTokenOwner()"
     );
 
-    await expect(protectedNft.connect(bob).protectedTransfer(1, fred.address, timestamp, randomNonce, signature)).revertedWith(
-      "WrongDataOrNotSignedByProtector()"
-    );
+    await expect(
+      protectedNft.connect(bob).protectedTransfer(1, fred.address, timestamp, randomNonce, signature, true)
+    ).revertedWith("WrongDataOrNotSignedByProtector()");
 
-    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, randomNonce, signature))
+    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, randomNonce, signature, true))
       .emit(protectedNft, "Transfer")
       .withArgs(bob.address, alice.address, 1);
 
     // transfer it back
     transferNft(protectedNft, alice)(alice.address, bob.address, 1);
 
-    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, randomNonce, signature)).revertedWith(
-      "SignatureAlreadyUsed()"
-    );
+    await expect(
+      protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, randomNonce, signature, true)
+    ).revertedWith("SignatureAlreadyUsed()");
   });
 });
