@@ -49,6 +49,8 @@ interface IProtectedERC721Extended is IProtectedERC721, IERC6454 {
   error TimestampInvalidOrExpired();
   error WrongDataOrNotSignedByProtector();
   error SignatureAlreadyUsed();
+  error OperatorAlreadyActive();
+  error OperatorNotActive();
 
   enum Status {
     UNSET,
