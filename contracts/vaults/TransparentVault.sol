@@ -134,27 +134,23 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
   }
 
   function _depositERC721(uint256 owningTokenId, address asset, uint256 id) internal {
-    emit Deposit(owningTokenId, asset, id, 1);
     // the following reverts if not an ERC721. We do not pre-check to save gas.
     IERC721(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id);
   }
 
   function depositETH(uint256 owningTokenId) external payable override onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (msg.value == 0) revert NoETH();
-    emit Deposit(owningTokenId, address(0), 0, msg.value);
     (bool success, ) = payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
     if (!success) revert ETHDepositFailed();
   }
 
   function _depositERC20(uint256 owningTokenId, address asset, uint256 amount) internal {
-    emit Deposit(owningTokenId, asset, 0, amount);
     // the following reverts if not an ERC20
     bool transferred = IERC20(asset).transferFrom(_msgSender(), _accountAddresses[owningTokenId], amount);
     if (!transferred) revert TransferFailed();
   }
 
   function _depositERC1155(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal {
-    emit Deposit(owningTokenId, asset, id, amount);
     // the following reverts if not an ERC1155
     IERC1155(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id, amount, "");
   }
@@ -251,7 +247,6 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
   ) internal virtual {
     _checkIfChangeAllowed(owningTokenId);
     _checkIfCanTransfer(owningTokenId, asset, id, amount);
-    emit Withdrawal(owningTokenId, beneficiary, asset, id, amount);
     _transferToken(owningTokenId, beneficiary, asset, id, amount);
   }
 

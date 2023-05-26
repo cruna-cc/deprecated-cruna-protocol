@@ -4,68 +4,18 @@ pragma solidity ^0.8.19;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 interface ITransparentVault {
-  event AllowAllUpdated(uint256 indexed owningTokenId, bool allow);
-  event AllowListUpdated(uint256 indexed owningTokenId, address indexed account, bool allow);
-  event AllowWithConfirmationUpdated(uint256 indexed owningTokenId, bool allow);
-  event Deposit(uint256 indexed owningTokenId, address indexed asset, uint256 indexed id, uint256 amount);
-  event DepositTransfer(
-    uint256 indexed owningTokenId,
-    address indexed asset,
-    uint256 id,
-    uint256 amount,
-    uint256 indexed senderOwningTokenId
-  );
-  event DepositTransferStarted(
-    uint256 indexed owningTokenId,
-    address indexed asset,
-    uint256 id,
-    uint256 amount,
-    uint256 indexed senderOwningTokenId
-  );
-  event UnconfirmedDeposit(uint256 indexed owningTokenId, address indexed asset, uint256 indexed id, uint256 amount);
-  event WithdrawalStarted(
-    uint256 indexed owningTokenId,
-    address indexed beneficiary,
-    address indexed asset,
-    uint256 id,
-    uint256 amount
-  );
-  event Withdrawal(
-    uint256 indexed owningTokenId,
-    address indexed beneficiary,
-    address indexed asset,
-    uint256 id,
-    uint256 amount
-  );
-
   event BoundAccountEjected(uint256 indexed owningTokenId);
   event EjectedBoundAccountReInjected(uint256 indexed owningTokenId);
 
-  error AssetAlreadyBeingTransferred();
-  error AssetAlreadyBeingWithdrawn();
-  error AssetNotFound();
-  error AssetNotDeposited();
-  error Expired();
   error ForbiddenWhenOwningTokenApprovedForSale();
   error InconsistentLengths();
   error InsufficientBalance();
   error InvalidAmount();
   error InvalidAsset();
-  error InvalidId();
-  error InvalidRecipient();
-  error InvalidTransfer();
-  error InvalidWithdrawal();
-  error NotAllowed();
   error NotAllowedWhenProtector();
-  error NotTheDepositor();
-  error NotTheDepositorOrInsufficientBalance();
   error NotTheProtector();
   error NotTheOwningTokenOwner();
   error TransferFailed();
-  error UnconfirmedDepositNotFoundOrExpired();
-  error UnconfirmedDepositNotExpiredYet();
-  error UnsupportedTooLargeTokenId();
-  error WithdrawalNotFound();
   error InvalidRegistry();
   error InvalidAccount();
   error AccountAlreadyActive();
