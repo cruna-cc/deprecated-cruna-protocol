@@ -22,12 +22,12 @@ describe("TransparentVault", function () {
   }
 
   beforeEach(async function () {
-    protectedNft = await deployContract("CrunaProtected");
+    protectedNft = await deployContract("CrunaVault");
 
     registry = await deployContract("ERC6551Registry");
     wallet = await deployContract("ERC6551Account");
 
-    transparentVault = await deployContract("CrunaVault", protectedNft.address);
+    transparentVault = await deployContract("DependentVault", protectedNft.address);
 
     await transparentVault.init(registry.address, wallet.address);
 
