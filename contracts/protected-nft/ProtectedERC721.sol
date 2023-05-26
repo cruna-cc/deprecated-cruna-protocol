@@ -275,6 +275,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
   }
 
   function setOperatorFor(uint tokenId, address operator, bool active) external onlyTokenOwner(tokenId) {
+    if (operator == address(0)) revert InvalidAddress();
     (bool exists, uint i) = getOperatorForIndexIfExists(tokenId, operator);
     if (active) {
       if (exists) revert OperatorAlreadyActive();
