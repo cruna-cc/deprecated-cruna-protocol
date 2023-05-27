@@ -54,10 +54,8 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
   }
 
   modifier onlyIfActiveAndOwningTokenNotApproved(uint256 owningTokenId) {
-    if (_ejects[owningTokenId]) {
-      revert AccountHasBeenEjected();
-    }
     if (_accountAddresses[owningTokenId] == address(0)) revert NotActivated();
+    if (_ejects[owningTokenId]) revert AccountHasBeenEjected();
     // if the owningToken is approved for sale, the vaults cannot be modified to avoid scams
     if (_owningToken.getApproved(owningTokenId) != address(0)) revert ForbiddenWhenOwningTokenApprovedForSale();
     _;
