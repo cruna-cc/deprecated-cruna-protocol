@@ -266,29 +266,26 @@ describe("TransparentVault", function () {
     await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
 
     const timestamp = (await getTimestamp()) - 100;
-    const randomSalt = Math.floor(Math.random() * 1000000);
-    const hash = await protectedNft.hashTransferRequest(1, alice.address, timestamp, randomSalt);
+    const hash = await protectedNft.hashTransferRequest(1, alice.address, timestamp);
 
     // this helper function uses by default hardhat account [4], which is john, the protector
     const signature = await signPackedData(hash);
 
-    await expect(protectedNft.protectedTransfer(1, alice.address, timestamp, randomSalt, signature, true)).revertedWith(
-      "NotTheTokenOwner()"
+    await expect(protectedNft.protectedTransfer(1, alice.address, timestamp, signature)).revertedWith("NotTheTokenOwner()");
+
+    await expect(protectedNft.connect(bob).protectedTransfer(1, fred.address, timestamp, signature)).revertedWith(
+      "WrongDataOrNotSignedByProtector()"
     );
 
-    await expect(
-      protectedNft.connect(bob).protectedTransfer(1, fred.address, timestamp, randomSalt, signature, true)
-    ).revertedWith("WrongDataOrNotSignedByProtector()");
-
-    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, randomSalt, signature, true))
+    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, signature))
       .emit(protectedNft, "Transfer")
       .withArgs(bob.address, alice.address, 1);
 
     // transfer it back
     transferNft(protectedNft, alice)(alice.address, bob.address, 1);
 
-    await expect(
-      protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, randomSalt, signature, true)
-    ).revertedWith("SignatureAlreadyUsed()");
+    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, signature)).revertedWith(
+      "SignatureAlreadyUsed()"
+    );
   });
 });

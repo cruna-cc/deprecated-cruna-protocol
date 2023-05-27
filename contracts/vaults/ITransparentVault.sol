@@ -30,6 +30,7 @@ interface ITransparentVault {
   error TimestampInvalidOrExpired();
   error WrongDataOrNotSignedByProtector();
   error SignatureAlreadyUsed();
+  error OwningTokenNotProtected();
 
   enum TokenType {
     ERC20,
@@ -66,23 +67,7 @@ interface ITransparentVault {
     uint256 amount,
     address beneficiary,
     uint256 timestamp,
-    uint randomSalt,
-    bytes calldata signature,
-    bool invalidateSignatureAfterUse
-  ) external;
-
-  function withdrawAsset(uint256 owningTokenId, address asset, uint256 id, uint256 amount, uint recipientTokenId) external;
-
-  function protectedWithdrawAsset(
-    uint256 owningTokenId,
-    address asset, // if address(0) we want to withdraw the native token, for example Ether
-    uint256 id,
-    uint256 amount,
-    uint recipientTokenId,
-    uint256 timestamp,
-    uint randomSalt,
-    bytes calldata signature,
-    bool invalidateSignatureAfterUse
+    bytes calldata signature
   ) external;
 
   function hashWithdrawRequest(
@@ -91,8 +76,34 @@ interface ITransparentVault {
     uint256 id,
     uint256 amount,
     address beneficiary,
+    uint256 timestamp
+  ) external view returns (bytes32);
+
+  function withdrawAssets(
+    uint owningTokenId,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory beneficiaries
+  ) external;
+
+  function protectedWithdrawAssets(
+    uint256 owningTokenId,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory beneficiaries,
     uint256 timestamp,
-    uint randomSalt
+    bytes calldata signature
+  ) external;
+
+  function hashWithdrawsRequest(
+    uint256 owningTokenId,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory beneficiaries,
+    uint256 timestamp
   ) external view returns (bytes32);
 
   function amountOf(

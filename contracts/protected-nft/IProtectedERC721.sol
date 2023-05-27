@@ -125,15 +125,9 @@ interface IProtectedERC721 {
     @param tokenId The token id
     @param to The address of the recipient
     @param timestamp The timestamp of the transfer request
-    @param randomSalt A random nonce
     @return The hash of the transfer request
   */
-  function hashTransferRequest(
-    uint256 tokenId,
-    address to,
-    uint256 timestamp,
-    uint256 randomSalt
-  ) external view returns (bytes32);
+  function hashTransferRequest(uint256 tokenId, address to, uint256 timestamp) external view returns (bytes32);
 
   /*
     @dev Transfers a token to a recipient usign a valid signed transferRequest
@@ -141,18 +135,10 @@ interface IProtectedERC721 {
     @param tokenId The token id
     @param to The address of the recipient
     @param timestamp The timestamp of the transfer request
-    @param randomSalt A random nonce
     @param signature The signature of the transfer request, signed by an active protector
     @param invalidateSignatureAfterUse If true, the signature cannot be used anymore
   */
-  function protectedTransfer(
-    uint tokenId,
-    address to,
-    uint256 timestamp,
-    uint randomSalt,
-    bytes calldata signature,
-    bool invalidateSignatureAfterUse
-  ) external;
+  function protectedTransfer(uint tokenId, address to, uint256 timestamp, bytes calldata signature) external;
 
   /*
     @dev Checks if a signature has been used

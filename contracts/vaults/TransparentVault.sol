@@ -26,7 +26,6 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
 
   mapping(uint => bool) private _ejects;
 
-  bool internal _owningTokenIsProtected;
   IERC6551Registry internal _registry;
   ERC6551Account internal _account;
   OwnerNFT public ownerNFT;
@@ -50,9 +49,7 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
   }
 
   modifier onlyProtector(uint256 owningTokenId) {
-    if (
-      !_owningTokenIsProtected || !IProtectedERC721(address(_owningToken)).isProtectorFor(ownerOf(owningTokenId), _msgSender())
-    ) revert NotTheProtector();
+    if (!_protectedOwningToken.isProtectorFor(ownerOf(owningTokenId), _msgSender())) revert NotTheProtector();
     _;
   }
 
@@ -69,9 +66,7 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
   // solhint-disable-next-line
   constructor(address owningToken) NFTOwned(owningToken) {
     _protectedOwningToken = IProtectedERC721(owningToken);
-    if (IERC165(_owningToken).supportsInterface(type(IProtectedERC721).interfaceId)) {
-      _owningTokenIsProtected = true;
-    }
+    if (!IERC165(_owningToken).supportsInterface(type(IProtectedERC721).interfaceId)) revert OwningTokenNotProtected();
     _salt = uint(keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken))));
   }
 
@@ -203,9 +198,8 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
     } else revert InvalidAsset();
   }
 
-  function _checkIfStartAllowed(uint256 owningTokenId) internal view {
-    if (_owningTokenIsProtected && IProtectedERC721(address(_owningToken)).protectorsFor(ownerOf(owningTokenId)).length > 0)
-      revert NotAllowedWhenProtector();
+  function _checkIfTransferAllowed(uint256 owningTokenId) internal view {
+    if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
   }
 
   function _checkIfChangeAllowed(uint256 owningTokenId) internal view {
@@ -240,10 +234,10 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
 
   function _withdrawAsset(
     uint256 owningTokenId,
-    address beneficiary,
     address asset,
     uint256 id,
-    uint256 amount
+    uint256 amount,
+    address beneficiary
   ) internal virtual {
     _checkIfChangeAllowed(owningTokenId);
     _checkIfCanTransfer(owningTokenId, asset, id, amount);
@@ -255,14 +249,30 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
     address asset, // if address(0) we want to withdraw the native token, for example Ether
     uint256 id,
     uint256 amount,
-    address beneficiary
+    address beneficiary // if address(0) we send to the owner of the owningTokenId
   ) public override onlyOwningTokenOwnerOrOperator(owningTokenId) nonReentrant {
-    _checkIfStartAllowed(owningTokenId);
-    _withdrawAsset(owningTokenId, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
+    if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
+    _withdrawAsset(owningTokenId, asset, id, amount, beneficiary != address(0) ? beneficiary : _msgSender());
   }
 
-  function withdrawAsset(uint256 owningTokenId, address asset, uint256 id, uint256 amount, uint recipientTokenId) external {
-    withdrawAsset(owningTokenId, asset, id, amount, accountAddress(recipientTokenId));
+  function withdrawAssets(
+    uint owningTokenId,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory beneficiaries
+  ) external override onlyOwningTokenOwnerOrOperator(owningTokenId) nonReentrant {
+    if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
+    if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
+    for (uint256 i = 0; i < assets.length; i++) {
+      withdrawAsset(
+        owningTokenId,
+        assets[i],
+        ids[i],
+        amounts[i],
+        beneficiaries[i] != address(0) ? beneficiaries[i] : _msgSender()
+      );
+    }
   }
 
   function protectedWithdrawAsset(
@@ -272,43 +282,15 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
     uint256 amount,
     address beneficiary,
     uint256 timestamp,
-    uint randomSalt,
-    bytes calldata signature,
-    bool invalidateSignatureAfterUse
+    bytes calldata signature
   ) public override onlyOwningTokenOwnerOrOperator(owningTokenId) nonReentrant {
     if (timestamp > block.timestamp || timestamp < block.timestamp - 1 days) revert TimestampInvalidOrExpired();
-    bytes32 hash = hashWithdrawRequest(owningTokenId, asset, id, amount, beneficiary, timestamp, randomSalt);
+    bytes32 hash = hashWithdrawRequest(owningTokenId, asset, id, amount, beneficiary, timestamp);
     if (!_protectedOwningToken.signedByProtector(owningTokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
     if (_protectedOwningToken.isSignatureUsed(keccak256(signature))) revert SignatureAlreadyUsed();
-    if (invalidateSignatureAfterUse) {
-      _protectedOwningToken.setSignatureAsUsed(keccak256(signature));
-    }
-    _checkIfStartAllowed(owningTokenId);
-    _withdrawAsset(owningTokenId, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
-  }
-
-  function protectedWithdrawAsset(
-    uint256 owningTokenId,
-    address asset, // if address(0) we want to withdraw the native token, for example Ether
-    uint256 id,
-    uint256 amount,
-    uint recipientTokenId,
-    uint256 timestamp,
-    uint randomSalt,
-    bytes calldata signature,
-    bool invalidateSignatureAfterUse
-  ) external {
-    protectedWithdrawAsset(
-      owningTokenId,
-      asset,
-      id,
-      amount,
-      accountAddress(recipientTokenId),
-      timestamp,
-      randomSalt,
-      signature,
-      invalidateSignatureAfterUse
-    );
+    _protectedOwningToken.setSignatureAsUsed(keccak256(signature));
+    _checkIfTransferAllowed(owningTokenId);
+    _withdrawAsset(owningTokenId, asset, id, amount, beneficiary != address(0) ? beneficiary : _msgSender());
   }
 
   function hashWithdrawRequest(
@@ -317,13 +299,49 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
     uint256 id,
     uint256 amount,
     address beneficiary,
+    uint256 timestamp
+  ) public view override returns (bytes32) {
+    return keccak256(abi.encodePacked("\x19\x01", block.chainid, owningTokenId, asset, id, amount, beneficiary, timestamp));
+  }
+
+  function protectedWithdrawAssets(
+    uint256 owningTokenId,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory beneficiaries,
     uint256 timestamp,
-    uint randomSalt
+    bytes calldata signature
+  ) external override onlyOwningTokenOwnerOrOperator(owningTokenId) nonReentrant {
+    if (assets.length != ids.length || assets.length != amounts.length || assets.length != beneficiaries.length)
+      revert InconsistentLengths();
+    if (timestamp > block.timestamp || timestamp < block.timestamp - 1 days) revert TimestampInvalidOrExpired();
+    bytes32 hash = hashWithdrawsRequest(owningTokenId, assets, ids, amounts, beneficiaries, timestamp);
+    if (!_protectedOwningToken.signedByProtector(owningTokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
+    if (_protectedOwningToken.isSignatureUsed(keccak256(signature))) revert SignatureAlreadyUsed();
+    _protectedOwningToken.setSignatureAsUsed(keccak256(signature));
+    for (uint256 i = 0; i < assets.length; i++) {
+      _checkIfTransferAllowed(owningTokenId);
+      _withdrawAsset(
+        owningTokenId,
+        assets[i],
+        ids[i],
+        amounts[i],
+        beneficiaries[i] != address(0) ? beneficiaries[i] : _msgSender()
+      );
+    }
+  }
+
+  function hashWithdrawsRequest(
+    uint256 owningTokenId,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory beneficiaries,
+    uint256 timestamp
   ) public view override returns (bytes32) {
     return
-      keccak256(
-        abi.encodePacked("\x19\x01", block.chainid, owningTokenId, asset, id, amount, beneficiary, timestamp, randomSalt)
-      );
+      keccak256(abi.encodePacked("\x19\x01", block.chainid, owningTokenId, assets, ids, amounts, beneficiaries, timestamp));
   }
 
   // External services who need to see what a transparent vaults contains can call
