@@ -250,7 +250,13 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
     uint256 id,
     uint256 amount,
     address beneficiary // if address(0) we send to the owner of the owningTokenId
-  ) public override onlyOwningTokenOwnerOrOperator(owningTokenId) nonReentrant {
+  )
+    public
+    override
+    onlyOwningTokenOwnerOrOperator(owningTokenId)
+    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
+    nonReentrant
+  {
     if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
     _withdrawAsset(owningTokenId, asset, id, amount, beneficiary != address(0) ? beneficiary : _msgSender());
   }
@@ -261,7 +267,13 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
     uint256[] memory ids,
     uint256[] memory amounts,
     address[] memory beneficiaries
-  ) external override onlyOwningTokenOwnerOrOperator(owningTokenId) nonReentrant {
+  )
+    external
+    override
+    onlyOwningTokenOwnerOrOperator(owningTokenId)
+    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
+    nonReentrant
+  {
     if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
@@ -283,7 +295,13 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
     address beneficiary,
     uint256 timestamp,
     bytes calldata signature
-  ) public override onlyOwningTokenOwnerOrOperator(owningTokenId) nonReentrant {
+  )
+    public
+    override
+    onlyOwningTokenOwnerOrOperator(owningTokenId)
+    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
+    nonReentrant
+  {
     if (timestamp > block.timestamp || timestamp < block.timestamp - 1 days) revert TimestampInvalidOrExpired();
     bytes32 hash = hashWithdrawRequest(owningTokenId, asset, id, amount, beneficiary, timestamp);
     if (!_protectedOwningToken.signedByProtector(owningTokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
@@ -312,7 +330,13 @@ contract TransparentVault is ITransparentVault, Ownable, NFTOwned, ReentrancyGua
     address[] memory beneficiaries,
     uint256 timestamp,
     bytes calldata signature
-  ) external override onlyOwningTokenOwnerOrOperator(owningTokenId) nonReentrant {
+  )
+    external
+    override
+    onlyOwningTokenOwnerOrOperator(owningTokenId)
+    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
+    nonReentrant
+  {
     if (assets.length != ids.length || assets.length != amounts.length || assets.length != beneficiaries.length)
       revert InconsistentLengths();
     if (timestamp > block.timestamp || timestamp < block.timestamp - 1 days) revert TimestampInvalidOrExpired();
