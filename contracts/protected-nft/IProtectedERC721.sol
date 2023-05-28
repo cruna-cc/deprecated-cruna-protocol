@@ -144,13 +144,13 @@ interface IProtectedERC721 {
     @param hashedSignature The hash of the signature
     @return True if the signature has been used
   */
-  function isSignatureUsed(bytes32 hashedSignature) external view returns (bool);
+  function isSignatureUsed(uint tokenId, bytes calldata signature) external view returns (bool);
 
   /*
     @dev Sets a signature as used
     @param hashedSignature The hash of the signature
   */
-  function setSignatureAsUsed(bytes32 hashedSignature) external;
+  function setSignatureAsUsed(uint tokenId, bytes calldata signature) external;
 
   /*
     @dev Validates a timestamp and signature

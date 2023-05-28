@@ -33,6 +33,8 @@ interface ITransparentVaultExtended is ITransparentVault {
   error WrongDataOrNotSignedByProtector();
   error SignatureAlreadyUsed();
   error OwningTokenNotProtected();
+  error VaultHasBeenUpgraded();
+  error InvalidTokenUtils();
 
   enum TokenType {
     ERC20,

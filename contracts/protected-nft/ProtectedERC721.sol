@@ -5,15 +5,16 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../nft-owned/NFTOwned.sol";
 import "./IProtectedERC721Extended.sol";
-import "../utils/IVersionable.sol";
+import "../utils/IVersioned.sol";
 import "../vaults/ITransparentVault.sol";
 
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
 
-abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersionable, ERC721 {
+abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC721, Ownable {
   using ECDSA for bytes32;
   // tokenId => isApprovable
   mapping(uint256 => bool) private _notApprovable;
@@ -66,11 +67,11 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersionable, ERC
 
   constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {}
 
-  // must be implemented to check if sender is the owner
-  function _canSet() internal virtual;
+  function version() external pure override returns (string memory) {
+    return "1.0.0";
+  }
 
-  function addVault(address vault) external {
-    _canSet();
+  function addVault(address vault) external onlyOwner {
     try ITransparentVault(vault).isTransparentVault() returns (bytes4 result) {
       if (result != ITransparentVault.isTransparentVault.selector) revert NotATransparentVault();
     } catch {
@@ -123,7 +124,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersionable, ERC
   }
 
   function proposeProtector(address protector_) external onlyTokensOwner {
-    if (protector_ == address(0)) revert InvalidAddress();
+    if (protector_ == address(0)) revert NoZeroAddress();
     // in this contract we limit to max 2 protectors
     if (_protectors[_msgSender()].length == 2) revert TooManyProtectors();
     if (_ownersByProtector[protector_] != address(0)) {
@@ -182,10 +183,10 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersionable, ERC
     (uint i, Status status) = _findProtector(tokensOwner_, _msgSender());
     if (status == Status.UNSET) {
       revert NotAProtector();
-    } else if (status == Status.REMOVABLE) {
+    } else if (status == Status.RESIGNED) {
       revert ResignationAlreadySubmitted();
     } else if (status == Status.ACTIVE) {
-      _protectors[_msgSender()][i].status = Status.REMOVABLE;
+      _protectors[_msgSender()][i].status = Status.RESIGNED;
       emit ProtectorResigned(_msgSender(), _msgSender());
     } else {
       // it obtains similar results like not accepting a proposal
@@ -195,7 +196,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersionable, ERC
 
   function acceptResignation(address protector_) external onlyTokensOwner {
     (uint i, Status status) = _findProtector(_msgSender(), protector_);
-    if (status == Status.REMOVABLE) {
+    if (status == Status.RESIGNED) {
       _removeProtector(_msgSender(), i);
       if (_countActiveProtectors(_msgSender()) == 0) {
         //        emit Locked(_msgSender());
@@ -240,37 +241,37 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersionable, ERC
     delete _approvedTransfers[tokenId];
   }
 
-  function isSignatureUsed(bytes32 hashedSignature) public view override returns (bool) {
-    return _usedSignatures[hashedSignature];
+  function isSignatureUsed(uint tokenId, bytes calldata signature) public view override returns (bool) {
+    return _usedSignatures[keccak256(abi.encodePacked(tokenId, signature))];
   }
 
-  function setSignatureAsUsed(bytes32 hashedSignature) public override {
+  function setSignatureAsUsed(uint tokenId, bytes calldata signature) public override {
     for (uint i = 0; i < _vaults.length; i++) {
       if (_vaults[i] == _msgSender()) {
         revert NotATransparentVault();
       }
     }
-    _usedSignatures[hashedSignature] = true;
+    _usedSignatures[keccak256(abi.encodePacked(tokenId, signature))] = true;
   }
 
   function validateTimestampAndSignature(
-    uint256 owningTokenId,
+    uint256 tokenId,
     uint256 timestamp,
     uint validFor,
     bytes32 hash,
     bytes calldata signature
   ) public override {
     if (timestamp > block.timestamp || timestamp < block.timestamp - validFor) revert TimestampInvalidOrExpired();
-    if (!signedByProtector(owningTokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
-    if (isSignatureUsed(keccak256(signature))) revert SignatureAlreadyUsed();
-    setSignatureAsUsed(keccak256(signature));
+    if (!signedByProtector(tokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
+    if (isSignatureUsed(tokenId, signature)) revert SignatureAlreadyUsed();
+    setSignatureAsUsed(tokenId, signature);
   }
 
   function invalidateSignatureFor(uint tokenId, bytes32 hash, bytes calldata signature) external override {
     (, Status status) = _findProtector(ownerOf(tokenId), _msgSender());
     if (status < Status.ACTIVE) revert NotAProtector();
     if (!signedByProtector(tokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
-    setSignatureAsUsed(keccak256(signature));
+    setSignatureAsUsed(tokenId, signature);
   }
 
   function lockProtectors() external onlyTokensOwner {
@@ -286,13 +287,13 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersionable, ERC
 
   function unlockProtectorsFor(address tokensOwner_) external onlyProtectorFor(tokensOwner_) {
     if (_lockedProtectorsFor[tokensOwner_] == Status.UNSET) revert ProtectorsNotLocked();
-    if (_lockedProtectorsFor[tokensOwner_] != Status.REMOVABLE) revert ProtectorsUnlockAlreadyStarted();
+    if (_lockedProtectorsFor[tokensOwner_] != Status.RESIGNED) revert ProtectorsUnlockAlreadyStarted();
     // else is Status.ACTIVE
-    _lockedProtectorsFor[tokensOwner_] = Status.REMOVABLE;
+    _lockedProtectorsFor[tokensOwner_] = Status.RESIGNED;
   }
 
   function approveUnlockProtectors(bool approved) external onlyTokensOwner {
-    if (_lockedProtectorsFor[_msgSender()] != Status.REMOVABLE) revert ProtectorsUnlockNotStarted();
+    if (_lockedProtectorsFor[_msgSender()] != Status.RESIGNED) revert ProtectorsUnlockNotStarted();
     if (approved) {
       delete _lockedProtectorsFor[_msgSender()];
       emit ProtectorsLocked(_msgSender(), false);
@@ -319,7 +320,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersionable, ERC
   }
 
   function setOperatorFor(uint tokenId, address operator, bool active) external onlyTokenOwner(tokenId) {
-    if (operator == address(0)) revert InvalidAddress();
+    if (operator == address(0)) revert NoZeroAddress();
     (bool exists, uint i) = getOperatorForIndexIfExists(tokenId, operator);
     if (active) {
       if (exists) revert OperatorAlreadyActive();

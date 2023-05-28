@@ -36,16 +36,6 @@ interface ITransparentVault {
     bytes calldata signature
   ) external;
 
-  function hashWithdrawRequest(
-    uint256 owningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount,
-    address beneficiary,
-    uint256 timestamp,
-    uint validFor
-  ) external view returns (bytes32);
-
   function withdrawAssets(
     uint owningTokenId,
     address[] memory assets,
@@ -64,16 +54,6 @@ interface ITransparentVault {
     uint validFor,
     bytes calldata signature
   ) external;
-
-  function hashWithdrawsRequest(
-    uint256 owningTokenId,
-    address[] memory assets,
-    uint256[] memory ids,
-    uint256[] memory amounts,
-    address[] memory beneficiaries,
-    uint256 timestamp,
-    uint validFor
-  ) external view returns (bytes32);
 
   function amountOf(
     uint256 owningTokenId,
