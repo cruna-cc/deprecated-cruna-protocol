@@ -59,6 +59,17 @@ In particular, it uses a slightly modified version of [EIP-6551](https://eips.et
 
 ## History
 
+**1.2.4**
+
+- Add `validFor` field in signature
+- Allow the protector to invalidate signatures
+
+**1.2.3**
+
+- Move from double transaction when there are active protectors to single transaction with validation signature
+- Add batch functions for deposits and withdrawals/transfers
+- Force the owner of the vault to be a ProtectedERC721
+
 **1.2.0**
 
 - Park the Transparent Vault contracts, as they are not used in the current version of the protocol

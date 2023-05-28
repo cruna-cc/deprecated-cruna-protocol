@@ -4,43 +4,9 @@ pragma solidity ^0.8.19;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 interface ITransparentVault {
-  event BoundAccountEjected(uint256 indexed owningTokenId);
-  event EjectedBoundAccountReInjected(uint256 indexed owningTokenId);
-
-  error ForbiddenWhenOwningTokenApprovedForSale();
-  error InconsistentLengths();
-  error InsufficientBalance();
-  error InvalidAmount();
-  error InvalidAsset();
-  error NotAllowedWhenProtector();
-  error NotTheProtector();
-  error NotTheOwningTokenOwner();
-  error TransferFailed();
-  error InvalidRegistry();
-  error InvalidAccount();
-  error AccountAlreadyActive();
-  error NoETH();
-  error NotActivated();
-  error AccountHasBeenEjected();
-  error NotAPreviouslyEjectedAccount();
-  error AccountAlreadyEjected();
-  error ETHDepositFailed();
-  error AlreadyInitiated();
-  error NotTheOwningTokenOwnerOrOperatorFor();
-  error TimestampInvalidOrExpired();
-  error WrongDataOrNotSignedByProtector();
-  error SignatureAlreadyUsed();
-
-  enum TokenType {
-    ERC20,
-    ERC721,
-    ERC1155
-  }
+  function isTransparentVault() external pure returns (bytes4);
 
   function init(address registry, address payable proxy) external;
-
-  // must return `this.isTransparentVault.selector;`
-  function isTransparentVault() external pure returns (bytes4);
 
   function depositETH(uint256 owningTokenId) external payable;
 
@@ -66,23 +32,8 @@ interface ITransparentVault {
     uint256 amount,
     address beneficiary,
     uint256 timestamp,
-    uint randomSalt,
-    bytes calldata signature,
-    bool invalidateSignatureAfterUse
-  ) external;
-
-  function withdrawAsset(uint256 owningTokenId, address asset, uint256 id, uint256 amount, uint recipientTokenId) external;
-
-  function protectedWithdrawAsset(
-    uint256 owningTokenId,
-    address asset, // if address(0) we want to withdraw the native token, for example Ether
-    uint256 id,
-    uint256 amount,
-    uint recipientTokenId,
-    uint256 timestamp,
-    uint randomSalt,
-    bytes calldata signature,
-    bool invalidateSignatureAfterUse
+    uint validFor,
+    bytes calldata signature
   ) external;
 
   function hashWithdrawRequest(
@@ -92,7 +43,36 @@ interface ITransparentVault {
     uint256 amount,
     address beneficiary,
     uint256 timestamp,
-    uint randomSalt
+    uint validFor
+  ) external view returns (bytes32);
+
+  function withdrawAssets(
+    uint owningTokenId,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory beneficiaries
+  ) external;
+
+  function protectedWithdrawAssets(
+    uint256 owningTokenId,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory beneficiaries,
+    uint256 timestamp,
+    uint validFor,
+    bytes calldata signature
+  ) external;
+
+  function hashWithdrawsRequest(
+    uint256 owningTokenId,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory beneficiaries,
+    uint256 timestamp,
+    uint validFor
   ) external view returns (bytes32);
 
   function amountOf(

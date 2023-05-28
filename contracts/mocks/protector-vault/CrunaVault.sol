@@ -19,9 +19,11 @@ contract CrunaVault is ProtectedERC721, Ownable {
     _baseTokenURI = "https://meta.cruna.cc/protected/";
   }
 
-  function version() public pure virtual returns (string memory) {
+  function version() public pure virtual override returns (string memory) {
     return "1.0.0";
   }
+
+  function _canSet() internal override onlyOwner {}
 
   // this is used for testing
   function safeMint(address to, uint256 tokenId) public onlyOwner {
