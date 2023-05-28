@@ -29,6 +29,7 @@ describe("TransparentVault", function () {
 
     transparentVault = await deployContract("TransparentVault", protectedNft.address);
 
+    await protectedNft.addVault(transparentVault.address);
     await transparentVault.init(registry.address, wallet.address);
 
     notAToken = await deployContract("NotAToken");
@@ -266,25 +267,28 @@ describe("TransparentVault", function () {
     await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
 
     const timestamp = (await getTimestamp()) - 100;
-    const hash = await protectedNft.hashTransferRequest(1, alice.address, timestamp);
+    const validFor = 3600;
+    const hash = await protectedNft.hashTransferRequest(1, alice.address, timestamp, validFor);
 
     // this helper function uses by default hardhat account [4], which is john, the protector
     const signature = await signPackedData(hash);
 
-    await expect(protectedNft.protectedTransfer(1, alice.address, timestamp, signature)).revertedWith("NotTheTokenOwner()");
+    await expect(protectedNft.protectedTransfer(1, alice.address, timestamp, validFor, signature)).revertedWith(
+      "NotTheTokenOwner()"
+    );
 
-    await expect(protectedNft.connect(bob).protectedTransfer(1, fred.address, timestamp, signature)).revertedWith(
+    await expect(protectedNft.connect(bob).protectedTransfer(1, fred.address, timestamp, validFor, signature)).revertedWith(
       "WrongDataOrNotSignedByProtector()"
     );
 
-    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, signature))
+    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, validFor, signature))
       .emit(protectedNft, "Transfer")
       .withArgs(bob.address, alice.address, 1);
 
     // transfer it back
     transferNft(protectedNft, alice)(alice.address, bob.address, 1);
 
-    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, signature)).revertedWith(
+    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, validFor, signature)).revertedWith(
       "SignatureAlreadyUsed()"
     );
   });

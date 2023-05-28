@@ -59,6 +59,11 @@ In particular, it uses a slightly modified version of [EIP-6551](https://eips.et
 
 ## History
 
+**1.2.4**
+
+- Add valid for field in signature
+- Allow the protector to invalidate signatures
+
 **1.2.3**
 
 - Move from double transaction when there are active protectors to single transaction with validation signature

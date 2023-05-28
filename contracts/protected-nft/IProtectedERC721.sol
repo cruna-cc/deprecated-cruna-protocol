@@ -127,7 +127,7 @@ interface IProtectedERC721 {
     @param timestamp The timestamp of the transfer request
     @return The hash of the transfer request
   */
-  function hashTransferRequest(uint256 tokenId, address to, uint256 timestamp) external view returns (bytes32);
+  function hashTransferRequest(uint256 tokenId, address to, uint256 timestamp, uint validFor) external view returns (bytes32);
 
   /*
     @dev Transfers a token to a recipient usign a valid signed transferRequest
@@ -138,7 +138,7 @@ interface IProtectedERC721 {
     @param signature The signature of the transfer request, signed by an active protector
     @param invalidateSignatureAfterUse If true, the signature cannot be used anymore
   */
-  function protectedTransfer(uint tokenId, address to, uint256 timestamp, bytes calldata signature) external;
+  function protectedTransfer(uint tokenId, address to, uint256 timestamp, uint validFor, bytes calldata signature) external;
 
   /*
     @dev Checks if a signature has been used
@@ -152,6 +152,30 @@ interface IProtectedERC721 {
     @param hashedSignature The hash of the signature
   */
   function setSignatureAsUsed(bytes32 hashedSignature) external;
+
+  /*
+    @dev Validates a timestamp and signature
+    @param owningTokenId The token id
+    @param timestamp The timestamp of the transfer request
+    @param validFor The number of seconds the signature is valid for
+    @param hash The signed hash
+    @param signature The signature of the transfer request
+  */
+  function validateTimestampAndSignature(
+    uint256 owningTokenId,
+    uint256 timestamp,
+    uint validFor,
+    bytes32 hash,
+    bytes calldata signature
+  ) external;
+
+  /*
+    @dev Invalidates a signature
+    @param tokenId The token id
+    @param hash The signed hash
+    @param signature The signature of the transfer request
+  */
+  function invalidateSignatureFor(uint tokenId, bytes32 hash, bytes calldata signature) external;
 
   // operators
 

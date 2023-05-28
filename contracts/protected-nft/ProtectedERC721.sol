@@ -8,10 +8,12 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 import "../nft-owned/NFTOwned.sol";
 import "./IProtectedERC721Extended.sol";
+import "../utils/IVersionable.sol";
+import "../vaults/ITransparentVault.sol";
 
 //import "hardhat/console.sol";
 
-abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
+abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersionable, ERC721 {
   using ECDSA for bytes32;
   // tokenId => isApprovable
   mapping(uint256 => bool) private _notApprovable;
@@ -37,6 +39,8 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
   mapping(uint256 => bool) private _approvedTransfers;
   mapping(bytes32 => bool) private _usedSignatures;
 
+  address[] private _vaults;
+
   modifier onlyProtectorFor(address owner_) {
     (uint i, Status status) = _findProtector(owner_, _msgSender());
     if (status < Status.ACTIVE) revert NotAProtector();
@@ -61,6 +65,22 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
   }
 
   constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {}
+
+  // must be implemented to check if sender is the owner
+  function _canSet() internal virtual;
+
+  function addVault(address vault) external {
+    _canSet();
+    try ITransparentVault(vault).isTransparentVault() returns (bytes4 result) {
+      if (result != ITransparentVault.isTransparentVault.selector) revert NotATransparentVault();
+    } catch {
+      revert NotATransparentVault();
+    }
+    for (uint i = 0; i < _vaults.length; i++) {
+      if (_vaults[i] == vault) revert VaultAlreadyAdded();
+    }
+    _vaults.push(vault);
+  }
 
   function _countActiveProtectors(address tokensOwner_) internal view returns (uint) {
     uint activeProtectorCount = 0;
@@ -192,32 +212,65 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
     return status > Status.UNSET;
   }
 
-  function hashTransferRequest(uint256 tokenId, address to, uint256 timestamp) public view override returns (bytes32) {
-    return keccak256(abi.encodePacked("\x19\x01", block.chainid, tokenId, to, timestamp));
+  function hashTransferRequest(
+    uint256 tokenId,
+    address to,
+    uint256 timestamp,
+    uint validFor
+  ) public view override returns (bytes32) {
+    return keccak256(abi.encodePacked("\x19\x01", block.chainid, tokenId, to, timestamp, validFor));
   }
 
   function protectedTransfer(
     uint tokenId,
     address to,
     uint256 timestamp,
+    uint validFor,
     bytes calldata signature
   ) external override onlyTokenOwner(tokenId) {
-    if (timestamp > block.timestamp || timestamp < block.timestamp - 1 days) revert TimestampInvalidOrExpired();
-    bytes32 hash = hashTransferRequest(tokenId, to, timestamp);
-    if (!signedByProtector(tokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
-    if (_usedSignatures[keccak256(signature)]) revert SignatureAlreadyUsed();
-    setSignatureAsUsed(keccak256(signature));
+    validateTimestampAndSignature(
+      tokenId,
+      timestamp,
+      validFor,
+      hashTransferRequest(tokenId, to, timestamp, validFor),
+      signature
+    );
     _approvedTransfers[tokenId] = true;
     _transfer(_msgSender(), to, tokenId);
     delete _approvedTransfers[tokenId];
   }
 
-  function isSignatureUsed(bytes32 hashedSignature) external view override returns (bool) {
+  function isSignatureUsed(bytes32 hashedSignature) public view override returns (bool) {
     return _usedSignatures[hashedSignature];
   }
 
   function setSignatureAsUsed(bytes32 hashedSignature) public override {
+    for (uint i = 0; i < _vaults.length; i++) {
+      if (_vaults[i] == _msgSender()) {
+        revert NotATransparentVault();
+      }
+    }
     _usedSignatures[hashedSignature] = true;
+  }
+
+  function validateTimestampAndSignature(
+    uint256 owningTokenId,
+    uint256 timestamp,
+    uint validFor,
+    bytes32 hash,
+    bytes calldata signature
+  ) public override {
+    if (timestamp > block.timestamp || timestamp < block.timestamp - validFor) revert TimestampInvalidOrExpired();
+    if (!signedByProtector(owningTokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
+    if (isSignatureUsed(keccak256(signature))) revert SignatureAlreadyUsed();
+    setSignatureAsUsed(keccak256(signature));
+  }
+
+  function invalidateSignatureFor(uint tokenId, bytes32 hash, bytes calldata signature) external override {
+    (, Status status) = _findProtector(ownerOf(tokenId), _msgSender());
+    if (status < Status.ACTIVE) revert NotAProtector();
+    if (!signedByProtector(tokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
+    setSignatureAsUsed(keccak256(signature));
   }
 
   function lockProtectors() external onlyTokensOwner {
@@ -313,6 +366,4 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, ERC721 {
       return _countActiveProtectors(ownerOf(tokenId)) == 0 || _approvedTransfers[tokenId];
     }
   }
-
-  uint256[50] private __gap;
 }

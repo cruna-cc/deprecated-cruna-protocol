@@ -51,6 +51,8 @@ interface IProtectedERC721Extended is IProtectedERC721, IERC6454 {
   error SignatureAlreadyUsed();
   error OperatorAlreadyActive();
   error OperatorNotActive();
+  error NotATransparentVault();
+  error VaultAlreadyAdded();
 
   enum Status {
     UNSET,

@@ -4,44 +4,9 @@ pragma solidity ^0.8.19;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 interface ITransparentVault {
-  event BoundAccountEjected(uint256 indexed owningTokenId);
-  event EjectedBoundAccountReInjected(uint256 indexed owningTokenId);
-
-  error ForbiddenWhenOwningTokenApprovedForSale();
-  error InconsistentLengths();
-  error InsufficientBalance();
-  error InvalidAmount();
-  error InvalidAsset();
-  error NotAllowedWhenProtector();
-  error NotTheProtector();
-  error NotTheOwningTokenOwner();
-  error TransferFailed();
-  error InvalidRegistry();
-  error InvalidAccount();
-  error AccountAlreadyActive();
-  error NoETH();
-  error NotActivated();
-  error AccountHasBeenEjected();
-  error NotAPreviouslyEjectedAccount();
-  error AccountAlreadyEjected();
-  error ETHDepositFailed();
-  error AlreadyInitiated();
-  error NotTheOwningTokenOwnerOrOperatorFor();
-  error TimestampInvalidOrExpired();
-  error WrongDataOrNotSignedByProtector();
-  error SignatureAlreadyUsed();
-  error OwningTokenNotProtected();
-
-  enum TokenType {
-    ERC20,
-    ERC721,
-    ERC1155
-  }
+  function isTransparentVault() external pure returns (bytes4);
 
   function init(address registry, address payable proxy) external;
-
-  // must return `this.isTransparentVault.selector;`
-  function isTransparentVault() external pure returns (bytes4);
 
   function depositETH(uint256 owningTokenId) external payable;
 
@@ -67,6 +32,7 @@ interface ITransparentVault {
     uint256 amount,
     address beneficiary,
     uint256 timestamp,
+    uint validFor,
     bytes calldata signature
   ) external;
 
@@ -76,7 +42,8 @@ interface ITransparentVault {
     uint256 id,
     uint256 amount,
     address beneficiary,
-    uint256 timestamp
+    uint256 timestamp,
+    uint validFor
   ) external view returns (bytes32);
 
   function withdrawAssets(
@@ -94,6 +61,7 @@ interface ITransparentVault {
     uint256[] memory amounts,
     address[] memory beneficiaries,
     uint256 timestamp,
+    uint validFor,
     bytes calldata signature
   ) external;
 
@@ -103,7 +71,8 @@ interface ITransparentVault {
     uint256[] memory ids,
     uint256[] memory amounts,
     address[] memory beneficiaries,
-    uint256 timestamp
+    uint256 timestamp,
+    uint validFor
   ) external view returns (bytes32);
 
   function amountOf(

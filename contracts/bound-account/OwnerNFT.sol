@@ -5,7 +5,7 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../vaults/ITransparentVault.sol";
+import "../vaults/ITransparentVaultExtended.sol";
 
 // @dev The NFTs owning the bound account are all minted from this contract.
 // The minter must be an active TransparentVault
@@ -29,7 +29,9 @@ contract OwnerNFT is ERC721, Ownable {
     if (active) {
       try ITransparentVault(minter).isTransparentVault() returns (bytes4 result) {
         if (result != ITransparentVault.isTransparentVault.selector) revert MinterNotATransparentVault();
-      } catch {}
+      } catch {
+        revert MinterNotATransparentVault();
+      }
       _minters[minter] = true;
     } else if (_minters[minter]) delete _minters[minter];
     emit MinterSet(minter, active);
