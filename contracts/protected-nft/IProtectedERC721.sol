@@ -136,7 +136,6 @@ interface IProtectedERC721 {
     @param to The address of the recipient
     @param timestamp The timestamp of the transfer request
     @param signature The signature of the transfer request, signed by an active protector
-    @param invalidateSignatureAfterUse If true, the signature cannot be used anymore
   */
   function protectedTransfer(uint tokenId, address to, uint256 timestamp, uint validFor, bytes calldata signature) external;
 

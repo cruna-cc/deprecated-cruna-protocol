@@ -61,7 +61,7 @@ In particular, it uses a slightly modified version of [EIP-6551](https://eips.et
 
 **1.2.4**
 
-- Add valid for field in signature
+- Add `validFor` field in signature
 - Allow the protector to invalidate signatures
 
 **1.2.3**
