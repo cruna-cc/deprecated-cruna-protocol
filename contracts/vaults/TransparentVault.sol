@@ -345,18 +345,23 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     emit BoundAccountEjected(owningTokenId);
   }
 
-  function ejectAccount(uint256 owningTokenId) external {
+  function ejectAccount(uint256 owningTokenId) external override {
     _isChangeAllowed(owningTokenId);
     _ejectAccount(owningTokenId);
   }
 
-  function protectedEjectAccount(uint256 owningTokenId, uint256 timestamp, uint validFor, bytes calldata signature) external {
+  function protectedEjectAccount(
+    uint256 owningTokenId,
+    uint256 timestamp,
+    uint validFor,
+    bytes calldata signature
+  ) external override {
     bytes32 hash = _tokenUtils.hashEjectRequest(owningTokenId, timestamp, validFor);
     _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
     _ejectAccount(owningTokenId);
   }
 
-  function reInjectEjectedAccount(uint256 owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
+  function reInjectEjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
     if (!_ejects[owningTokenId]) revert NotAPreviouslyEjectedAccount();
     // the contract must be approved
     ownerNFT.transferFrom(ownerOf(owningTokenId), address(this), owningTokenId);

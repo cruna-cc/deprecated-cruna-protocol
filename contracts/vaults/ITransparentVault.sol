@@ -60,4 +60,10 @@ interface ITransparentVault {
     address[] memory asset,
     uint256[] memory id
   ) external view returns (uint256[] memory);
+
+  function ejectAccount(uint256 owningTokenId) external;
+
+  function protectedEjectAccount(uint256 owningTokenId, uint256 timestamp, uint validFor, bytes calldata signature) external;
+
+  function reInjectEjectedAccount(uint256 owningTokenId) external;
 }
