@@ -59,6 +59,16 @@ In particular, it uses a slightly modified version of [EIP-6551](https://eips.et
 
 ## History
 
+**1.2.5**
+
+- Add clusters to the CrunaVault reference implementation, right now inside mocks
+- Add missing protectedEjectAccount function, when protectors exist
+- Add eject/inject functions to interface also missed in previous PR
+- Optimize the size of TransparentVault moving some functions to TokenUtils that now works as an external contract, instead of being extended
+- Change isSignatureUsed adding explicitly tokenId as a parameter
+- Make little change to tests to let them pass after the changes
+- Rename Status.REMOVABLE to Status.RESIGNED to align it with the changed names of the functions
+
 **1.2.4**
 
 - Add `validFor` field in signature
