@@ -4,22 +4,25 @@ pragma solidity ^0.8.19;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../nft-owned/NFTOwned.sol";
 import "../protected-nft/IProtectedERC721.sol";
-import "../utils/TokenUtils.sol";
+import "../utils/ITokenUtils.sol";
 import "../bound-account/ERC6551Account.sol";
 import "../bound-account/IERC6551Registry.sol";
 import "../bound-account/IERC6551Account.sol";
 import "../bound-account/OwnerNFT.sol";
-import "../utils/IVersionable.sol";
+import "../utils/IVersioned.sol";
 import "./ITransparentVaultExtended.sol";
 
 //import "hardhat/console.sol";
 
-contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, NFTOwned, ReentrancyGuard, TokenUtils {
+contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFTOwned, ReentrancyGuard {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
 
   // modifiers
@@ -28,6 +31,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, N
 
   IERC6551Registry internal _registry;
   ERC6551Account internal _account;
+  ITokenUtils internal _tokenUtils;
   OwnerNFT public ownerNFT;
   uint internal _salt;
   mapping(uint => address) internal _accountAddresses;
@@ -62,10 +66,12 @@ contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, N
   }
 
   // solhint-disable-next-line
-  constructor(address owningToken) NFTOwned(owningToken) {
+  constructor(address owningToken, address tokenUtils) NFTOwned(owningToken) {
     _protectedOwningToken = IProtectedERC721(owningToken);
     if (!IERC165(_owningToken).supportsInterface(type(IProtectedERC721).interfaceId)) revert OwningTokenNotProtected();
     _salt = uint(keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken))));
+    _tokenUtils = ITokenUtils(tokenUtils);
+    if (_tokenUtils.isTokenUtils() != ITokenUtils.isTokenUtils.selector) revert InvalidTokenUtils();
   }
 
   function version() external pure override returns (string memory) {
@@ -98,6 +104,11 @@ contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, N
   }
 
   function activateAccount(uint owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
+    if (!ownerNFT.isMinter(address(this))) {
+      // If the contract is no more the minter, there is a new version of the
+      // vault and new users must use the new version.
+      revert VaultHasBeenUpgraded();
+    }
     address account = accountAddress(owningTokenId);
     ownerNFT.mint(address(this), owningTokenId);
     if (_accountAddresses[owningTokenId] != address(0)) revert AccountAlreadyActive();
@@ -160,11 +171,11 @@ contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, N
   ) external override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
-      if (ids[i] == 0 && isERC20(assets[i])) {
+      if (ids[i] == 0 && _tokenUtils.isERC20(assets[i])) {
         _depositERC20(owningTokenId, assets[i], amounts[i]);
-      } else if (amounts[i] == 1 && isERC721(assets[i])) {
+      } else if (amounts[i] == 1 && _tokenUtils.isERC721(assets[i])) {
         _depositERC721(owningTokenId, assets[i], ids[i]);
-      } else if (amounts[i] > 0 && isERC1155(assets[i])) {
+      } else if (amounts[i] > 0 && _tokenUtils.isERC1155(assets[i])) {
         _depositERC1155(owningTokenId, assets[i], ids[i], amounts[i]);
       } else revert InvalidAsset();
     }
@@ -174,16 +185,16 @@ contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, N
     address account = accountAddress(owningTokenId);
     if (asset == address(0)) {
       return account.balance;
-    } else if (isERC20(asset)) {
+    } else if (_tokenUtils.isERC20(asset)) {
       return IERC20(asset).balanceOf(account);
-    } else if (isERC721(asset)) {
+    } else if (_tokenUtils.isERC721(asset)) {
       return IERC721(asset).ownerOf(id) == account ? 1 : 0;
-    } else if (isERC1155(asset)) {
+    } else if (_tokenUtils.isERC1155(asset)) {
       return IERC1155(asset).balanceOf(account, id);
     } else revert InvalidAsset();
   }
 
-  function _checkIfTransferAllowed(uint256 owningTokenId) internal view {
+  function _isChangeAllowed(uint256 owningTokenId) internal view {
     if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
   }
 
@@ -193,19 +204,19 @@ contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, N
     if (asset == address(0)) {
       // we talk of ETH
       accountInstance.executeCall(account, amount, "");
-    } else if (isERC721(asset)) {
+    } else if (_tokenUtils.isERC721(asset)) {
       accountInstance.executeCall(
         asset,
         0,
         abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", account, to, id)
       );
-    } else if (isERC1155(asset)) {
+    } else if (_tokenUtils.isERC1155(asset)) {
       accountInstance.executeCall(
         asset,
         0,
         abi.encodeWithSignature("safeTransferFrom(address,address,uint256,uint256,bytes)", account, to, id, amount, "")
       );
-    } else if (isERC20(asset)) {
+    } else if (_tokenUtils.isERC20(asset)) {
       accountInstance.executeCall(asset, 0, abi.encodeWithSignature("transfer(address,uint256)", to, amount));
     } else {
       // should never happen
@@ -240,7 +251,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, N
     onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
     nonReentrant
   {
-    _checkIfTransferAllowed(owningTokenId);
+    _isChangeAllowed(owningTokenId);
     _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
   }
 
@@ -257,7 +268,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, N
     onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
     nonReentrant
   {
-    _checkIfTransferAllowed(owningTokenId);
+    _isChangeAllowed(owningTokenId);
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
       withdrawAsset(owningTokenId, assets[i], ids[i], amounts[i], beneficiaries[i]);
@@ -280,24 +291,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, N
     onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
     nonReentrant
   {
-    bytes32 hash = hashWithdrawRequest(owningTokenId, asset, id, amount, beneficiary, timestamp, validFor);
+    bytes32 hash = _tokenUtils.hashWithdrawRequest(owningTokenId, asset, id, amount, beneficiary, timestamp, validFor);
     _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
     _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
-  }
-
-  function hashWithdrawRequest(
-    uint256 owningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount,
-    address beneficiary,
-    uint256 timestamp,
-    uint validFor
-  ) public view override returns (bytes32) {
-    return
-      keccak256(
-        abi.encodePacked("\x19\x01", block.chainid, owningTokenId, asset, id, amount, beneficiary, timestamp, validFor)
-      );
   }
 
   function protectedWithdrawAssets(
@@ -318,26 +314,11 @@ contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, N
   {
     if (assets.length != ids.length || assets.length != amounts.length || assets.length != beneficiaries.length)
       revert InconsistentLengths();
-    bytes32 hash = hashWithdrawsRequest(owningTokenId, assets, ids, amounts, beneficiaries, timestamp, validFor);
+    bytes32 hash = _tokenUtils.hashWithdrawsRequest(owningTokenId, assets, ids, amounts, beneficiaries, timestamp, validFor);
     _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
     for (uint256 i = 0; i < assets.length; i++) {
       _withdrawAsset(owningTokenId, assets[i], ids[i], amounts[i], beneficiaries[i]);
     }
-  }
-
-  function hashWithdrawsRequest(
-    uint256 owningTokenId,
-    address[] memory assets,
-    uint256[] memory ids,
-    uint256[] memory amounts,
-    address[] memory beneficiaries,
-    uint256 timestamp,
-    uint validFor
-  ) public view override returns (bytes32) {
-    return
-      keccak256(
-        abi.encodePacked("\x19\x01", block.chainid, owningTokenId, assets, ids, amounts, beneficiaries, timestamp, validFor)
-      );
   }
 
   // External services who need to see what a transparent vaults contains can call
@@ -355,16 +336,32 @@ contract TransparentVault is ITransparentVaultExtended, IVersionable, Ownable, N
     return amounts;
   }
 
-  function ejectAccount(
+  function _ejectAccount(
     uint256 owningTokenId
-  ) external onlyOwningTokenOwner(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
+  ) internal onlyOwningTokenOwner(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (_ejects[owningTokenId]) revert AccountAlreadyEjected();
     ownerNFT.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
     _ejects[owningTokenId] = true;
     emit BoundAccountEjected(owningTokenId);
   }
 
-  function reInjectEjectedAccount(uint256 owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
+  function ejectAccount(uint256 owningTokenId) external override {
+    _isChangeAllowed(owningTokenId);
+    _ejectAccount(owningTokenId);
+  }
+
+  function protectedEjectAccount(
+    uint256 owningTokenId,
+    uint256 timestamp,
+    uint validFor,
+    bytes calldata signature
+  ) external override {
+    bytes32 hash = _tokenUtils.hashEjectRequest(owningTokenId, timestamp, validFor);
+    _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
+    _ejectAccount(owningTokenId);
+  }
+
+  function reInjectEjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
     if (!_ejects[owningTokenId]) revert NotAPreviouslyEjectedAccount();
     // the contract must be approved
     ownerNFT.transferFrom(ownerOf(owningTokenId), address(this), owningTokenId);

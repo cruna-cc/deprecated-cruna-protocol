@@ -36,16 +36,6 @@ interface ITransparentVault {
     bytes calldata signature
   ) external;
 
-  function hashWithdrawRequest(
-    uint256 owningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount,
-    address beneficiary,
-    uint256 timestamp,
-    uint validFor
-  ) external view returns (bytes32);
-
   function withdrawAssets(
     uint owningTokenId,
     address[] memory assets,
@@ -65,19 +55,15 @@ interface ITransparentVault {
     bytes calldata signature
   ) external;
 
-  function hashWithdrawsRequest(
-    uint256 owningTokenId,
-    address[] memory assets,
-    uint256[] memory ids,
-    uint256[] memory amounts,
-    address[] memory beneficiaries,
-    uint256 timestamp,
-    uint validFor
-  ) external view returns (bytes32);
-
   function amountOf(
     uint256 owningTokenId,
     address[] memory asset,
     uint256[] memory id
   ) external view returns (uint256[] memory);
+
+  function ejectAccount(uint256 owningTokenId) external;
+
+  function protectedEjectAccount(uint256 owningTokenId, uint256 timestamp, uint validFor, bytes calldata signature) external;
+
+  function reInjectEjectedAccount(uint256 owningTokenId) external;
 }

@@ -17,11 +17,6 @@ contract OwnerNFT is ERC721, Ownable {
 
   mapping(address => bool) private _minters;
 
-  modifier onlyMinter() {
-    if (!_minters[_msgSender()]) revert NotAMinter();
-    _;
-  }
-
   constructor() ERC721("OwnerNFT", "oNFT") {}
 
   // the minter must be an
@@ -37,7 +32,12 @@ contract OwnerNFT is ERC721, Ownable {
     emit MinterSet(minter, active);
   }
 
-  function mint(address to, uint256 tokenId) public onlyMinter {
+  function isMinter(address minter) public view returns (bool) {
+    return _minters[minter];
+  }
+
+  function mint(address to, uint256 tokenId) public {
+    if (!isMinter(_msgSender())) revert NotAMinter();
     _mint(to, tokenId);
   }
 }

@@ -5,8 +5,8 @@ const DeployUtils = require("../scripts/lib/DeployUtils");
 describe("TransparentVault", function () {
   const deployUtils = new DeployUtils(ethers);
 
-  let protectedNft, transparentVault;
-  let registry, wallet;
+  let crunaVault, transparentVault;
+  let registry, wallet, tokenUtils;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   let notAToken;
@@ -22,28 +22,29 @@ describe("TransparentVault", function () {
   }
 
   beforeEach(async function () {
-    protectedNft = await deployContract("CrunaVault");
+    crunaVault = await deployContract("CrunaVault");
 
     registry = await deployContract("ERC6551Registry");
     wallet = await deployContract("ERC6551Account");
+    tokenUtils = await deployContract("TokenUtils");
 
-    transparentVault = await deployContract("TransparentVault", protectedNft.address);
+    transparentVault = await deployContract("TransparentVault", crunaVault.address, tokenUtils.address);
 
-    await protectedNft.addVault(transparentVault.address);
+    await crunaVault.addVault(transparentVault.address);
     await transparentVault.init(registry.address, wallet.address);
 
     notAToken = await deployContract("NotAToken");
 
-    await expect(protectedNft.safeMint(bob.address, 1))
-      .emit(protectedNft, "Transfer")
+    await expect(crunaVault.safeMint(bob.address))
+      .emit(crunaVault, "Transfer")
       .withArgs(ethers.constants.AddressZero, bob.address, 1);
 
-    await protectedNft.safeMint(bob.address, 2);
+    await crunaVault.safeMint(bob.address);
 
-    await protectedNft.safeMint(bob.address, 3);
-    await protectedNft.safeMint(bob.address, 4);
-    await protectedNft.safeMint(alice.address, 5);
-    await protectedNft.safeMint(alice.address, 6);
+    await crunaVault.safeMint(bob.address);
+    await crunaVault.safeMint(bob.address);
+    await crunaVault.safeMint(alice.address);
+    await crunaVault.safeMint(alice.address);
 
     // erc20
     bulls = await deployContract("Bulls");
@@ -103,8 +104,8 @@ describe("TransparentVault", function () {
     expect((await transparentVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
     // bob transfers the protected to alice
-    await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1))
-      .emit(protectedNft, "Transfer")
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1))
+      .emit(crunaVault, "Transfer")
       .withArgs(bob.address, alice.address, 1);
 
     expect(await stupidMonk.balanceOf(fred.address)).equal(0);
@@ -212,25 +213,25 @@ describe("TransparentVault", function () {
     await transparentVault.connect(bob).depositERC721(1, particle.address, 2);
     expect((await transparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(protectedNft.connect(bob).proposeProtector(mark.address))
-      .emit(protectedNft, "ProtectorProposed")
+    await expect(crunaVault.connect(bob).proposeProtector(mark.address))
+      .emit(crunaVault, "ProtectorProposed")
       .withArgs(bob.address, mark.address);
 
     // bob transfers the protected to alice
-    await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1))
-      .emit(protectedNft, "Transfer")
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1))
+      .emit(crunaVault, "Transfer")
       .withArgs(bob.address, alice.address, 1);
 
-    await expect(transferNft(protectedNft, alice)(alice.address, bob.address, 1))
-      .emit(protectedNft, "Transfer")
+    await expect(transferNft(crunaVault, alice)(alice.address, bob.address, 1))
+      .emit(crunaVault, "Transfer")
       .withArgs(alice.address, bob.address, 1);
 
-    await expect(protectedNft.connect(mark).acceptProposal(bob.address, false))
-      .emit(protectedNft, "ProtectorUpdated")
+    await expect(crunaVault.connect(mark).acceptProposal(bob.address, false))
+      .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, false);
 
-    await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1))
-      .emit(protectedNft, "Transfer")
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1))
+      .emit(crunaVault, "Transfer")
       .withArgs(bob.address, alice.address, 1);
   });
 
@@ -242,53 +243,53 @@ describe("TransparentVault", function () {
     await transparentVault.connect(bob).depositERC721(1, particle.address, 2);
     expect((await transparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(protectedNft.connect(bob).proposeProtector(mark.address))
-      .emit(protectedNft, "ProtectorProposed")
+    await expect(crunaVault.connect(bob).proposeProtector(mark.address))
+      .emit(crunaVault, "ProtectorProposed")
       .withArgs(bob.address, mark.address);
 
-    await expect(protectedNft.connect(mark).acceptProposal(bob.address, true))
-      .emit(protectedNft, "ProtectorUpdated")
+    await expect(crunaVault.connect(mark).acceptProposal(bob.address, true))
+      .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
-    await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
   });
 
   it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
     await transparentVault.connect(bob).activateAccount(1);
 
-    await expect(protectedNft.connect(bob).proposeProtector(john.address))
-      .emit(protectedNft, "ProtectorProposed")
+    await expect(crunaVault.connect(bob).proposeProtector(john.address))
+      .emit(crunaVault, "ProtectorProposed")
       .withArgs(bob.address, john.address);
 
-    await expect(protectedNft.connect(john).acceptProposal(bob.address, true))
-      .emit(protectedNft, "ProtectorUpdated")
+    await expect(crunaVault.connect(john).acceptProposal(bob.address, true))
+      .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, john.address, true);
 
-    await expect(transferNft(protectedNft, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith("TransferNotPermitted()");
 
     const timestamp = (await getTimestamp()) - 100;
     const validFor = 3600;
-    const hash = await protectedNft.hashTransferRequest(1, alice.address, timestamp, validFor);
+    const hash = await crunaVault.hashTransferRequest(1, alice.address, timestamp, validFor);
 
     // this helper function uses by default hardhat account [4], which is john, the protector
     const signature = await signPackedData(hash);
 
-    await expect(protectedNft.protectedTransfer(1, alice.address, timestamp, validFor, signature)).revertedWith(
+    await expect(crunaVault.protectedTransfer(1, alice.address, timestamp, validFor, signature)).revertedWith(
       "NotTheTokenOwner()"
     );
 
-    await expect(protectedNft.connect(bob).protectedTransfer(1, fred.address, timestamp, validFor, signature)).revertedWith(
+    await expect(crunaVault.connect(bob).protectedTransfer(1, fred.address, timestamp, validFor, signature)).revertedWith(
       "WrongDataOrNotSignedByProtector()"
     );
 
-    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, validFor, signature))
-      .emit(protectedNft, "Transfer")
+    await expect(crunaVault.connect(bob).protectedTransfer(1, alice.address, timestamp, validFor, signature))
+      .emit(crunaVault, "Transfer")
       .withArgs(bob.address, alice.address, 1);
 
     // transfer it back
-    transferNft(protectedNft, alice)(alice.address, bob.address, 1);
+    transferNft(crunaVault, alice)(alice.address, bob.address, 1);
 
-    await expect(protectedNft.connect(bob).protectedTransfer(1, alice.address, timestamp, validFor, signature)).revertedWith(
+    await expect(crunaVault.connect(bob).protectedTransfer(1, alice.address, timestamp, validFor, signature)).revertedWith(
       "SignatureAlreadyUsed()"
     );
   });

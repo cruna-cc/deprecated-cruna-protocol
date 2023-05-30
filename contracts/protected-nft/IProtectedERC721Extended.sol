@@ -21,7 +21,7 @@ interface IProtectedERC721Extended is IProtectedERC721, IERC6454 {
   error NotApprovable();
   error NotApprovableForAll();
   error NotTheContractDeployer();
-  error InvalidAddress();
+  error NoZeroAddress();
   error TokenDoesNotExist();
   error SenderDoesNotOwnAnyToken();
   error ProtectorNotFound();
@@ -58,7 +58,7 @@ interface IProtectedERC721Extended is IProtectedERC721, IERC6454 {
     UNSET,
     PENDING,
     ACTIVE,
-    REMOVABLE
+    RESIGNED
   }
 
   struct Protector {
