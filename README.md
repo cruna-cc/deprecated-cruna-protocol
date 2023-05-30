@@ -59,6 +59,10 @@ In particular, it uses a slightly modified version of [EIP-6551](https://eips.et
 
 ## History
 
+**1.2.6**
+
+- Allow the user to choose between an immutable bound-account and an upgradeable one
+
 **1.2.5**
 
 - Add clusters to the CrunaVault reference implementation, right now inside mocks
@@ -72,7 +76,7 @@ In particular, it uses a slightly modified version of [EIP-6551](https://eips.et
 **1.2.4**
 
 - Add `validFor` field in signature
-- Allow the protector to invalidate signatures
+- Allow the protector to invalidate signatures~~~~
 
 **1.2.3**
 
