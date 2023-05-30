@@ -20,7 +20,7 @@ import "../bound-account/OwnerNFT.sol";
 import "../utils/IVersioned.sol";
 import "./ITransparentVaultExtended.sol";
 
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFTOwned, ReentrancyGuard {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
@@ -30,13 +30,12 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   mapping(uint => bool) private _ejects;
 
   IERC6551Registry internal _registry;
-  IERC6551Account internal _boundAccount;
-  IERC6551Account internal _boundAccountUpgradeable;
+  IERC6551Account public boundAccount;
+  IERC6551Account public boundAccountUpgradeable;
   ITokenUtils internal _tokenUtils;
   OwnerNFT public ownerNFT;
   uint internal _salt;
   mapping(uint => address) internal _accountAddresses;
-  mapping(uint => bool) internal _usingUpgradeableAccount;
   bool private _initiated;
   IProtectedERC721 internal _protectedOwningToken;
 
@@ -80,23 +79,18 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     return "1.0.0";
   }
 
-  /*
-    @dev It allows to set the registry and the account proxy
-    @param registry The address of the registry
-    @param proxy The address of the account proxy
-  */
   function init(
     address registry,
-    address payable boundAccount,
-    address payable boundAccountUpgradeable
+    address payable boundAccount_,
+    address payable boundAccountUpgradeable_
   ) external override onlyOwner {
     if (_initiated) revert AlreadyInitiated();
     if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
-    if (!IERC165(boundAccount).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
-    if (!IERC165(boundAccountUpgradeable).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
+    if (!IERC165(boundAccount_).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
+    if (!IERC165(boundAccountUpgradeable_).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
     _registry = IERC6551Registry(registry);
-    _boundAccount = IERC6551Account(boundAccount);
-    _boundAccountUpgradeable = IERC6551Account(boundAccountUpgradeable);
+    boundAccount = IERC6551Account(boundAccount_);
+    boundAccountUpgradeable = IERC6551Account(boundAccountUpgradeable_);
     ownerNFT = new OwnerNFT();
     ownerNFT.setMinter(address(this), true);
     ownerNFT.transferOwnership(_msgSender());
@@ -107,9 +101,8 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     return this.isTransparentVault.selector;
   }
 
-  function accountAddress(uint owningTokenId) public view returns (address, address) {
-    address account = address(_usingUpgradeableAccount[owningTokenId] ? _boundAccountUpgradeable : _boundAccount);
-    return (account, _registry.account(account, block.chainid, address(ownerNFT), owningTokenId, _salt));
+  function accountAddress(uint owningTokenId) external view override returns (address) {
+    return _accountAddresses[owningTokenId];
   }
 
   function activateAccount(uint owningTokenId, bool useUpgradeableAccount) external onlyOwningTokenOwner(owningTokenId) {
@@ -118,9 +111,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
       // vault and new users must use the new version.
       revert VaultHasBeenUpgraded();
     }
-    if (useUpgradeableAccount) _usingUpgradeableAccount[owningTokenId] = true;
     if (_accountAddresses[owningTokenId] != address(0)) revert AccountAlreadyActive();
-    (address account, address walletAddress) = accountAddress(owningTokenId);
+    address account = address(useUpgradeableAccount ? boundAccountUpgradeable : boundAccount);
+    address walletAddress = _registry.account(account, block.chainid, address(ownerNFT), owningTokenId, _salt);
     ownerNFT.mint(address(this), owningTokenId);
     _accountAddresses[owningTokenId] = walletAddress;
     _registry.createAccount(account, block.chainid, address(ownerNFT), owningTokenId, _salt, "");
@@ -192,7 +185,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   function _getAccountBalance(uint256 owningTokenId, address asset, uint256 id) internal view returns (uint256) {
-    (, address walletAddress) = accountAddress(owningTokenId);
+    address walletAddress = _accountAddresses[owningTokenId];
     if (asset == address(0)) {
       return walletAddress.balance;
     } else if (_tokenUtils.isERC20(asset)) {
@@ -331,17 +324,14 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     }
   }
 
-  // External services who need to see what a transparent vaults contains can call
-  // the Cruna Web API to get the list of assets owned by a owningToken. Then, they can call
-  // this view to validate the results.
   function amountOf(
     uint256 owningTokenId,
-    address[] memory asset,
-    uint256[] memory id
+    address[] memory assets,
+    uint256[] memory ids
   ) external view virtual override returns (uint256[] memory) {
-    uint256[] memory amounts = new uint256[](asset.length);
-    for (uint256 i = 0; i < asset.length; i++) {
-      amounts[i] = _getAccountBalance(owningTokenId, asset[i], id[i]);
+    uint256[] memory amounts = new uint256[](assets.length);
+    for (uint256 i = 0; i < assets.length; i++) {
+      amounts[i] = _getAccountBalance(owningTokenId, assets[i], ids[i]);
     }
     return amounts;
   }

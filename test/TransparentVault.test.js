@@ -27,7 +27,9 @@ describe("TransparentVault", function () {
     registry = await deployContract("ERC6551Registry");
     wallet = await deployContract("ERC6551Account");
     tokenUtils = await deployContract("TokenUtils");
-    proxyWallet = await deployContractUpgradeable("ERC6551AccountUpgradeable");
+    // proxyWallet = await deployContractUpgradeable("ERC6551AccountUUPSUpgradeable");
+    let implementation = await deployUtils.deploy("ERC6551AccountUpgradeable");
+    proxyWallet = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
 
     transparentVault = await deployContract("TransparentVault", crunaVault.address, tokenUtils.address);
 
@@ -80,7 +82,7 @@ describe("TransparentVault", function () {
     await uselessWeapons.mintBatch(john.address, [3, 4], [10, 1], "0x00");
   });
 
-  it.only("should revert if not activated", async function () {
+  it("should revert if not activated", async function () {
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
     await expect(transparentVault.connect(bob).depositERC721(1, particle.address, 2)).revertedWith("NotActivated()");
@@ -157,7 +159,7 @@ describe("TransparentVault", function () {
   });
 
   it("should create a vaults, add assets to it, then eject and reinject again", async function () {
-    await transparentVault.connect(bob).activateAccount(1, false);
+    await transparentVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(transparentVault.address, true);

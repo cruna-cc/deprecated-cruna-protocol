@@ -5,62 +5,45 @@ pragma solidity ^0.8.0;
 
 /// @author: manifold.xyz
 
-import "@openzeppelin/contracts-upgradeable/utils/cryptography/SignatureCheckerUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721Upgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/IERC721ReceiverUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC1155/IERC1155ReceiverUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
-import "@openzeppelin/contracts-upgradeable/proxy/utils/UUPSUpgradeable.sol";
-//import Context.sol
-import "@openzeppelin/contracts-upgradeable/utils/ContextUpgradeable.sol";
+import "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import "@openzeppelin/contracts/utils/cryptography/SignatureChecker.sol";
+import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
+import "@openzeppelin/contracts/utils/StorageSlot.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 
 import "./IERC6551Account.sol";
 import "./lib/ERC6551AccountLib.sol";
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 /**
  * @title ERC6551AccountUpgradeable
  * @notice A lightweight smart contract wallet implementation that can be used by ERC6551AccountProxy
  */
-contract ERC6551AccountUpgradeable is
-  IERC165Upgradeable,
-  IERC721ReceiverUpgradeable,
-  IERC1155ReceiverUpgradeable,
-  IERC6551Account,
-  IERC1271Upgradeable,
-  Initializable,
-  UUPSUpgradeable
-{
-  error UpgradeUnauthorized();
-
+contract ERC6551AccountUpgradeable is IERC165, IERC721Receiver, IERC1155Receiver, IERC6551Account, IERC1271 {
   // Padding for initializable values
   uint256 private _nonce;
   address public deployer;
 
-  /// @custom:oz-upgrades-unsafe-allow constructor
-  // solhint-disable-next-line
+  /**
+   * @dev Storage slot with the address of the current implementation.
+   * This is the keccak-256 hash of "eip1967.proxy.implementation" subtracted by 1, and is
+   * validated in the constructor.
+   */
+  bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+
   constructor() {
-    _disableInitializers();
-  }
-
-  function initialize() public initializer {
     deployer = msg.sender;
-    __UUPSUpgradeable_init();
-  }
-
-  function _authorizeUpgrade(address) internal view override {
-    if (msg.sender != deployer) {
-      revert UpgradeUnauthorized();
-    }
   }
 
   function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
     return (interfaceId == type(IERC6551Account).interfaceId ||
-      interfaceId == type(IERC1155ReceiverUpgradeable).interfaceId ||
-      interfaceId == type(IERC721ReceiverUpgradeable).interfaceId ||
-      interfaceId == type(IERC165Upgradeable).interfaceId);
+      interfaceId == type(IERC1155Receiver).interfaceId ||
+      interfaceId == type(IERC721Receiver).interfaceId ||
+      interfaceId == type(IERC165).interfaceId);
   }
 
   function onERC721Received(address, address, uint256 receivedTokenId, bytes memory) public view returns (bytes4) {
@@ -104,7 +87,7 @@ contract ERC6551AccountUpgradeable is
           "Token in ownership chain"
         );
         // Advance up the ownership chain
-        currentOwner = IERC721Upgradeable(contractAddress).ownerOf(tokenId);
+        currentOwner = IERC721(contractAddress).ownerOf(tokenId);
         require(currentOwner != address(this), "Token in ownership chain");
       } catch {
         break;
@@ -129,7 +112,7 @@ contract ERC6551AccountUpgradeable is
   function owner() public view override returns (address) {
     (uint256 chainId, address contractAddress, uint256 tokenId) = ERC6551AccountLib.token();
     if (chainId != block.chainid) return address(0);
-    return IERC721Upgradeable(contractAddress).ownerOf(tokenId);
+    return IERC721(contractAddress).ownerOf(tokenId);
   }
 
   /**
@@ -157,12 +140,23 @@ contract ERC6551AccountUpgradeable is
     return _result;
   }
 
+  /**
+   * @dev Upgrades the implementation.
+   */
+  function upgrade(address implementation_) public {
+    require(deployer == msg.sender, "Caller not the deployer");
+    //    require(owner() == msg.sender, "Caller is not owner");
+    require(implementation_ != address(0), "Invalid implementation address");
+    ++_nonce;
+    StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = implementation_;
+  }
+
   receive() external payable {}
 
   function isValidSignature(bytes32 hash, bytes memory signature) external view returns (bytes4 magicValue) {
-    bool isValid = SignatureCheckerUpgradeable.isValidSignatureNow(owner(), hash, signature);
+    bool isValid = SignatureChecker.isValidSignatureNow(owner(), hash, signature);
     if (isValid) {
-      return IERC1271Upgradeable.isValidSignature.selector;
+      return IERC1271.isValidSignature.selector;
     }
 
     return "";
