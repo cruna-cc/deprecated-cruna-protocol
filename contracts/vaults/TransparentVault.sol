@@ -75,10 +75,16 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     if (_tokenUtils.isTokenUtils() != ITokenUtils.isTokenUtils.selector) revert InvalidTokenUtils();
   }
 
+  /**
+   * @dev {See IVersioned-version}
+   */
   function version() external pure override returns (string memory) {
     return "1.0.0";
   }
 
+  /**
+   * @dev {See ITransparentVault-init}
+   */
   function init(
     address registry,
     address payable boundAccount_,
@@ -97,14 +103,23 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _initiated = true;
   }
 
+  /**
+   * @dev {See ITransparentVault-isTransparentVault}
+   */
   function isTransparentVault() external pure override returns (bytes4) {
     return this.isTransparentVault.selector;
   }
 
+  /**
+   * @dev {See ITransparentVault-accountAddress}
+   */
   function accountAddress(uint owningTokenId) external view override returns (address) {
     return _accountAddresses[owningTokenId];
   }
 
+  /**
+   * @dev {See ITransparentVault-activateAccount}
+   */
   function activateAccount(uint owningTokenId, bool useUpgradeableAccount) external onlyOwningTokenOwner(owningTokenId) {
     if (!ownerNFT.isMinter(address(this))) {
       // If the contract is no more the minter, there is a new version of the
@@ -119,6 +134,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _registry.createAccount(account, block.chainid, address(ownerNFT), owningTokenId, _salt, "");
   }
 
+  /**
+   * @dev {See ITransparentVault-depositERC721}
+   */
   function depositERC721(
     uint256 owningTokenId,
     address asset,
@@ -127,6 +145,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _depositERC721(owningTokenId, asset, id);
   }
 
+  /**
+   * @dev {See ITransparentVault-depositERC20}
+   */
   function depositERC20(
     uint256 owningTokenId,
     address asset,
@@ -135,6 +156,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _depositERC20(owningTokenId, asset, amount);
   }
 
+  /**
+   * @dev {See ITransparentVault-depositERC1155}
+   */
   function depositERC1155(
     uint256 owningTokenId,
     address asset,
@@ -149,6 +173,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     IERC721(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id);
   }
 
+  /**
+   * @dev {See ITransparentVault-depositETH}
+   */
   function depositETH(uint256 owningTokenId) external payable override onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (msg.value == 0) revert NoETH();
     (bool success, ) = payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
@@ -166,6 +193,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     IERC1155(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id, amount, "");
   }
 
+  /**
+   * @dev {See ITransparentVault-depositAssets}
+   */
   function depositAssets(
     uint256 owningTokenId,
     address[] memory assets,
@@ -241,6 +271,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _transferToken(owningTokenId, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
   }
 
+  /**
+   * @dev {See ITransparentVault-withdrawAsset}
+   */
   function withdrawAsset(
     uint256 owningTokenId,
     address asset, // if address(0) we want to withdraw the native token, for example Ether
@@ -258,6 +291,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
   }
 
+  /**
+   * @dev {See ITransparentVault-withdrawAssets}
+   */
   function withdrawAssets(
     uint owningTokenId,
     address[] memory assets,
@@ -278,6 +314,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     }
   }
 
+  /**
+   * @dev {See ITransparentVault-protectedWithdrawAsset}
+   */
   function protectedWithdrawAsset(
     uint256 owningTokenId,
     address asset,
@@ -299,6 +338,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
   }
 
+  /**
+   * @dev {See ITransparentVault-protectedWithdrawAssets}
+   */
   function protectedWithdrawAssets(
     uint256 owningTokenId,
     address[] memory assets,
@@ -324,6 +366,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     }
   }
 
+  /**
+   * @dev {See ITransparentVault-amountOf}
+   */
   function amountOf(
     uint256 owningTokenId,
     address[] memory assets,
@@ -345,11 +390,17 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     emit BoundAccountEjected(owningTokenId);
   }
 
+  /**
+   * @dev {See ITransparentVault-ejectAccount}
+   */
   function ejectAccount(uint256 owningTokenId) external override {
     _isChangeAllowed(owningTokenId);
     _ejectAccount(owningTokenId);
   }
 
+  /**
+   * @dev {See ITransparentVault-protectedEjectAccount}
+   */
   function protectedEjectAccount(
     uint256 owningTokenId,
     uint256 timestamp,
@@ -361,6 +412,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _ejectAccount(owningTokenId);
   }
 
+  /**
+   * @dev {See ITransparentVault-reInjectEjectedAccount}
+   */
   function reInjectEjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
     if (!_ejects[owningTokenId]) revert NotAPreviouslyEjectedAccount();
     // the contract must be approved
