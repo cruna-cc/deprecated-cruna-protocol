@@ -66,7 +66,18 @@ contract TokenUtils is ITokenUtils, IVersioned {
   ) external view override returns (bytes32) {
     return
       keccak256(
-        abi.encodePacked("\x19\x01", block.chainid, owningTokenId, asset, id, amount, beneficiary, timestamp, validFor)
+        abi.encodePacked(
+          "\x19\x01",
+          block.chainid,
+          address(this),
+          owningTokenId,
+          asset,
+          id,
+          amount,
+          beneficiary,
+          timestamp,
+          validFor
+        )
       );
   }
 
@@ -81,11 +92,22 @@ contract TokenUtils is ITokenUtils, IVersioned {
   ) external view override returns (bytes32) {
     return
       keccak256(
-        abi.encodePacked("\x19\x01", block.chainid, owningTokenId, assets, ids, amounts, beneficiaries, timestamp, validFor)
+        abi.encodePacked(
+          "\x19\x01",
+          block.chainid,
+          address(this),
+          owningTokenId,
+          assets,
+          ids,
+          amounts,
+          beneficiaries,
+          timestamp,
+          validFor
+        )
       );
   }
 
   function hashEjectRequest(uint256 owningTokenId, uint256 timestamp, uint validFor) external view override returns (bytes32) {
-    return keccak256(abi.encodePacked("\x19\x01", block.chainid, owningTokenId, timestamp, validFor));
+    return keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), owningTokenId, timestamp, validFor));
   }
 }

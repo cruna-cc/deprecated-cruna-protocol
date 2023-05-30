@@ -13,14 +13,14 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../nft-owned/NFTOwned.sol";
 import "../protected-nft/IProtectedERC721.sol";
 import "../utils/ITokenUtils.sol";
-import "../bound-account/ERC6551Account.sol";
+import "../bound-account/IERC6551Account.sol";
 import "../bound-account/IERC6551Registry.sol";
 import "../bound-account/IERC6551Account.sol";
 import "../bound-account/OwnerNFT.sol";
 import "../utils/IVersioned.sol";
 import "./ITransparentVaultExtended.sol";
 
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFTOwned, ReentrancyGuard {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
@@ -30,7 +30,8 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   mapping(uint => bool) private _ejects;
 
   IERC6551Registry internal _registry;
-  ERC6551Account internal _account;
+  IERC6551Account public boundAccount;
+  IERC6551Account public boundAccountUpgradeable;
   ITokenUtils internal _tokenUtils;
   OwnerNFT public ownerNFT;
   uint internal _salt;
@@ -74,48 +75,68 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     if (_tokenUtils.isTokenUtils() != ITokenUtils.isTokenUtils.selector) revert InvalidTokenUtils();
   }
 
+  /**
+   * @dev {See IVersioned-version}
+   */
   function version() external pure override returns (string memory) {
     return "1.0.0";
   }
 
-  /*
-    @dev It allows to set the registry and the account proxy
-    @param registry The address of the registry
-    @param proxy The address of the account proxy
-  */
-  function init(address registry, address payable account) external override onlyOwner {
+  /**
+   * @dev {See ITransparentVault-init}
+   */
+  function init(
+    address registry,
+    address payable boundAccount_,
+    address payable boundAccountUpgradeable_
+  ) external override onlyOwner {
     if (_initiated) revert AlreadyInitiated();
     if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
+    if (!IERC165(boundAccount_).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
+    if (!IERC165(boundAccountUpgradeable_).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
     _registry = IERC6551Registry(registry);
-    if (!IERC165(account).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
-    _account = ERC6551Account(account);
+    boundAccount = IERC6551Account(boundAccount_);
+    boundAccountUpgradeable = IERC6551Account(boundAccountUpgradeable_);
     ownerNFT = new OwnerNFT();
     ownerNFT.setMinter(address(this), true);
     ownerNFT.transferOwnership(_msgSender());
     _initiated = true;
   }
 
+  /**
+   * @dev {See ITransparentVault-isTransparentVault}
+   */
   function isTransparentVault() external pure override returns (bytes4) {
     return this.isTransparentVault.selector;
   }
 
-  function accountAddress(uint owningTokenId) public view returns (address) {
-    return _registry.account(address(_account), block.chainid, address(ownerNFT), owningTokenId, _salt);
+  /**
+   * @dev {See ITransparentVault-accountAddress}
+   */
+  function accountAddress(uint owningTokenId) external view override returns (address) {
+    return _accountAddresses[owningTokenId];
   }
 
-  function activateAccount(uint owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
+  /**
+   * @dev {See ITransparentVault-activateAccount}
+   */
+  function activateAccount(uint owningTokenId, bool useUpgradeableAccount) external onlyOwningTokenOwner(owningTokenId) {
     if (!ownerNFT.isMinter(address(this))) {
       // If the contract is no more the minter, there is a new version of the
       // vault and new users must use the new version.
       revert VaultHasBeenUpgraded();
     }
-    address account = accountAddress(owningTokenId);
-    ownerNFT.mint(address(this), owningTokenId);
     if (_accountAddresses[owningTokenId] != address(0)) revert AccountAlreadyActive();
-    _accountAddresses[owningTokenId] = account;
-    _registry.createAccount(address(_account), block.chainid, address(ownerNFT), owningTokenId, _salt, "");
+    address account = address(useUpgradeableAccount ? boundAccountUpgradeable : boundAccount);
+    address walletAddress = _registry.account(account, block.chainid, address(ownerNFT), owningTokenId, _salt);
+    ownerNFT.mint(address(this), owningTokenId);
+    _accountAddresses[owningTokenId] = walletAddress;
+    _registry.createAccount(account, block.chainid, address(ownerNFT), owningTokenId, _salt, "");
   }
 
+  /**
+   * @dev {See ITransparentVault-depositERC721}
+   */
   function depositERC721(
     uint256 owningTokenId,
     address asset,
@@ -124,6 +145,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _depositERC721(owningTokenId, asset, id);
   }
 
+  /**
+   * @dev {See ITransparentVault-depositERC20}
+   */
   function depositERC20(
     uint256 owningTokenId,
     address asset,
@@ -132,6 +156,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _depositERC20(owningTokenId, asset, amount);
   }
 
+  /**
+   * @dev {See ITransparentVault-depositERC1155}
+   */
   function depositERC1155(
     uint256 owningTokenId,
     address asset,
@@ -146,6 +173,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     IERC721(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id);
   }
 
+  /**
+   * @dev {See ITransparentVault-depositETH}
+   */
   function depositETH(uint256 owningTokenId) external payable override onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (msg.value == 0) revert NoETH();
     (bool success, ) = payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
@@ -163,6 +193,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     IERC1155(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id, amount, "");
   }
 
+  /**
+   * @dev {See ITransparentVault-depositAssets}
+   */
   function depositAssets(
     uint256 owningTokenId,
     address[] memory assets,
@@ -182,15 +215,15 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   function _getAccountBalance(uint256 owningTokenId, address asset, uint256 id) internal view returns (uint256) {
-    address account = accountAddress(owningTokenId);
+    address walletAddress = _accountAddresses[owningTokenId];
     if (asset == address(0)) {
-      return account.balance;
+      return walletAddress.balance;
     } else if (_tokenUtils.isERC20(asset)) {
-      return IERC20(asset).balanceOf(account);
+      return IERC20(asset).balanceOf(walletAddress);
     } else if (_tokenUtils.isERC721(asset)) {
-      return IERC721(asset).ownerOf(id) == account ? 1 : 0;
+      return IERC721(asset).ownerOf(id) == walletAddress ? 1 : 0;
     } else if (_tokenUtils.isERC1155(asset)) {
-      return IERC1155(asset).balanceOf(account, id);
+      return IERC1155(asset).balanceOf(walletAddress, id);
     } else revert InvalidAsset();
   }
 
@@ -199,22 +232,22 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   function _transferToken(uint owningTokenId, address to, address asset, uint256 id, uint256 amount) internal {
-    address account = _accountAddresses[owningTokenId];
-    IERC6551Account accountInstance = IERC6551Account(payable(account));
+    address walletAddress = _accountAddresses[owningTokenId];
+    IERC6551Account accountInstance = IERC6551Account(payable(walletAddress));
     if (asset == address(0)) {
       // we talk of ETH
-      accountInstance.executeCall(account, amount, "");
+      accountInstance.executeCall(walletAddress, amount, "");
     } else if (_tokenUtils.isERC721(asset)) {
       accountInstance.executeCall(
         asset,
         0,
-        abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", account, to, id)
+        abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", walletAddress, to, id)
       );
     } else if (_tokenUtils.isERC1155(asset)) {
       accountInstance.executeCall(
         asset,
         0,
-        abi.encodeWithSignature("safeTransferFrom(address,address,uint256,uint256,bytes)", account, to, id, amount, "")
+        abi.encodeWithSignature("safeTransferFrom(address,address,uint256,uint256,bytes)", walletAddress, to, id, amount, "")
       );
     } else if (_tokenUtils.isERC20(asset)) {
       accountInstance.executeCall(asset, 0, abi.encodeWithSignature("transfer(address,uint256)", to, amount));
@@ -238,6 +271,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _transferToken(owningTokenId, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
   }
 
+  /**
+   * @dev {See ITransparentVault-withdrawAsset}
+   */
   function withdrawAsset(
     uint256 owningTokenId,
     address asset, // if address(0) we want to withdraw the native token, for example Ether
@@ -255,6 +291,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
   }
 
+  /**
+   * @dev {See ITransparentVault-withdrawAssets}
+   */
   function withdrawAssets(
     uint owningTokenId,
     address[] memory assets,
@@ -275,6 +314,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     }
   }
 
+  /**
+   * @dev {See ITransparentVault-protectedWithdrawAsset}
+   */
   function protectedWithdrawAsset(
     uint256 owningTokenId,
     address asset,
@@ -296,6 +338,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
   }
 
+  /**
+   * @dev {See ITransparentVault-protectedWithdrawAssets}
+   */
   function protectedWithdrawAssets(
     uint256 owningTokenId,
     address[] memory assets,
@@ -321,17 +366,17 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     }
   }
 
-  // External services who need to see what a transparent vaults contains can call
-  // the Cruna Web API to get the list of assets owned by a owningToken. Then, they can call
-  // this view to validate the results.
+  /**
+   * @dev {See ITransparentVault-amountOf}
+   */
   function amountOf(
     uint256 owningTokenId,
-    address[] memory asset,
-    uint256[] memory id
+    address[] memory assets,
+    uint256[] memory ids
   ) external view virtual override returns (uint256[] memory) {
-    uint256[] memory amounts = new uint256[](asset.length);
-    for (uint256 i = 0; i < asset.length; i++) {
-      amounts[i] = _getAccountBalance(owningTokenId, asset[i], id[i]);
+    uint256[] memory amounts = new uint256[](assets.length);
+    for (uint256 i = 0; i < assets.length; i++) {
+      amounts[i] = _getAccountBalance(owningTokenId, assets[i], ids[i]);
     }
     return amounts;
   }
@@ -345,11 +390,17 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     emit BoundAccountEjected(owningTokenId);
   }
 
+  /**
+   * @dev {See ITransparentVault-ejectAccount}
+   */
   function ejectAccount(uint256 owningTokenId) external override {
     _isChangeAllowed(owningTokenId);
     _ejectAccount(owningTokenId);
   }
 
+  /**
+   * @dev {See ITransparentVault-protectedEjectAccount}
+   */
   function protectedEjectAccount(
     uint256 owningTokenId,
     uint256 timestamp,
@@ -361,6 +412,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _ejectAccount(owningTokenId);
   }
 
+  /**
+   * @dev {See ITransparentVault-reInjectEjectedAccount}
+   */
   function reInjectEjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
     if (!_ejects[owningTokenId]) revert NotAPreviouslyEjectedAccount();
     // the contract must be approved

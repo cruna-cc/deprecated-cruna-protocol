@@ -26,6 +26,7 @@ import "./lib/ERC6551AccountLib.sol";
 contract ERC6551AccountUpgradeable is IERC165, IERC721Receiver, IERC1155Receiver, IERC6551Account, IERC1271 {
   // Padding for initializable values
   uint256 private _nonce;
+  address public deployer;
 
   /**
    * @dev Storage slot with the address of the current implementation.
@@ -33,6 +34,10 @@ contract ERC6551AccountUpgradeable is IERC165, IERC721Receiver, IERC1155Receiver
    * validated in the constructor.
    */
   bytes32 internal constant _IMPLEMENTATION_SLOT = 0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc;
+
+  constructor() {
+    deployer = msg.sender;
+  }
 
   function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
     return (interfaceId == type(IERC6551Account).interfaceId ||
@@ -136,10 +141,11 @@ contract ERC6551AccountUpgradeable is IERC165, IERC721Receiver, IERC1155Receiver
   }
 
   /**
-   * @dev Upgrades the implementation.  Only the token owner can call this.
+   * @dev Upgrades the implementation.
    */
   function upgrade(address implementation_) public {
-    require(owner() == msg.sender, "Caller is not owner");
+    require(deployer == msg.sender, "Caller not the deployer");
+    //    require(owner() == msg.sender, "Caller is not owner");
     require(implementation_ != address(0), "Invalid implementation address");
     ++_nonce;
     StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = implementation_;
