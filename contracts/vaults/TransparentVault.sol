@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../nft-owned/NFTOwned.sol";
 import "../protected-nft/IProtectedERC721.sol";
 import "../utils/ITokenUtils.sol";
-import "../bound-account/ERC6551Account.sol";
+import "../bound-account/IERC6551Account.sol";
 import "../bound-account/IERC6551Registry.sol";
 import "../bound-account/IERC6551Account.sol";
 import "../bound-account/OwnerNFT.sol";
@@ -30,11 +30,13 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   mapping(uint => bool) private _ejects;
 
   IERC6551Registry internal _registry;
-  ERC6551Account internal _account;
+  IERC6551Account internal _boundAccount;
+  IERC6551Account internal _boundAccountUpgradeable;
   ITokenUtils internal _tokenUtils;
   OwnerNFT public ownerNFT;
   uint internal _salt;
   mapping(uint => address) internal _accountAddresses;
+  mapping(uint => bool) internal _usingUpgradeableAccount;
   bool private _initiated;
   IProtectedERC721 internal _protectedOwningToken;
 
@@ -83,12 +85,18 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     @param registry The address of the registry
     @param proxy The address of the account proxy
   */
-  function init(address registry, address payable account) external override onlyOwner {
+  function init(
+    address registry,
+    address payable boundAccount,
+    address payable boundAccountUpgradeable
+  ) external override onlyOwner {
     if (_initiated) revert AlreadyInitiated();
     if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
+    if (!IERC165(boundAccount).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
+    if (!IERC165(boundAccountUpgradeable).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
     _registry = IERC6551Registry(registry);
-    if (!IERC165(account).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
-    _account = ERC6551Account(account);
+    _boundAccount = IERC6551Account(boundAccount);
+    _boundAccountUpgradeable = IERC6551Account(boundAccountUpgradeable);
     ownerNFT = new OwnerNFT();
     ownerNFT.setMinter(address(this), true);
     ownerNFT.transferOwnership(_msgSender());
@@ -99,21 +107,23 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     return this.isTransparentVault.selector;
   }
 
-  function accountAddress(uint owningTokenId) public view returns (address) {
-    return _registry.account(address(_account), block.chainid, address(ownerNFT), owningTokenId, _salt);
+  function accountAddress(uint owningTokenId) public view returns (address, address) {
+    address account = address(_usingUpgradeableAccount[owningTokenId] ? _boundAccountUpgradeable : _boundAccount);
+    return (account, _registry.account(account, block.chainid, address(ownerNFT), owningTokenId, _salt));
   }
 
-  function activateAccount(uint owningTokenId) external onlyOwningTokenOwner(owningTokenId) {
+  function activateAccount(uint owningTokenId, bool useUpgradeableAccount) external onlyOwningTokenOwner(owningTokenId) {
     if (!ownerNFT.isMinter(address(this))) {
       // If the contract is no more the minter, there is a new version of the
       // vault and new users must use the new version.
       revert VaultHasBeenUpgraded();
     }
-    address account = accountAddress(owningTokenId);
-    ownerNFT.mint(address(this), owningTokenId);
+    if (useUpgradeableAccount) _usingUpgradeableAccount[owningTokenId] = true;
     if (_accountAddresses[owningTokenId] != address(0)) revert AccountAlreadyActive();
-    _accountAddresses[owningTokenId] = account;
-    _registry.createAccount(address(_account), block.chainid, address(ownerNFT), owningTokenId, _salt, "");
+    (address account, address walletAddress) = accountAddress(owningTokenId);
+    ownerNFT.mint(address(this), owningTokenId);
+    _accountAddresses[owningTokenId] = walletAddress;
+    _registry.createAccount(account, block.chainid, address(ownerNFT), owningTokenId, _salt, "");
   }
 
   function depositERC721(
@@ -182,15 +192,15 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   function _getAccountBalance(uint256 owningTokenId, address asset, uint256 id) internal view returns (uint256) {
-    address account = accountAddress(owningTokenId);
+    (, address walletAddress) = accountAddress(owningTokenId);
     if (asset == address(0)) {
-      return account.balance;
+      return walletAddress.balance;
     } else if (_tokenUtils.isERC20(asset)) {
-      return IERC20(asset).balanceOf(account);
+      return IERC20(asset).balanceOf(walletAddress);
     } else if (_tokenUtils.isERC721(asset)) {
-      return IERC721(asset).ownerOf(id) == account ? 1 : 0;
+      return IERC721(asset).ownerOf(id) == walletAddress ? 1 : 0;
     } else if (_tokenUtils.isERC1155(asset)) {
-      return IERC1155(asset).balanceOf(account, id);
+      return IERC1155(asset).balanceOf(walletAddress, id);
     } else revert InvalidAsset();
   }
 
@@ -199,22 +209,22 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   function _transferToken(uint owningTokenId, address to, address asset, uint256 id, uint256 amount) internal {
-    address account = _accountAddresses[owningTokenId];
-    IERC6551Account accountInstance = IERC6551Account(payable(account));
+    address walletAddress = _accountAddresses[owningTokenId];
+    IERC6551Account accountInstance = IERC6551Account(payable(walletAddress));
     if (asset == address(0)) {
       // we talk of ETH
-      accountInstance.executeCall(account, amount, "");
+      accountInstance.executeCall(walletAddress, amount, "");
     } else if (_tokenUtils.isERC721(asset)) {
       accountInstance.executeCall(
         asset,
         0,
-        abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", account, to, id)
+        abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", walletAddress, to, id)
       );
     } else if (_tokenUtils.isERC1155(asset)) {
       accountInstance.executeCall(
         asset,
         0,
-        abi.encodeWithSignature("safeTransferFrom(address,address,uint256,uint256,bytes)", account, to, id, amount, "")
+        abi.encodeWithSignature("safeTransferFrom(address,address,uint256,uint256,bytes)", walletAddress, to, id, amount, "")
       );
     } else if (_tokenUtils.isERC20(asset)) {
       accountInstance.executeCall(asset, 0, abi.encodeWithSignature("transfer(address,uint256)", to, amount));

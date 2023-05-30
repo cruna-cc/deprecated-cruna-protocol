@@ -298,7 +298,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
       delete _lockedProtectorsFor[_msgSender()];
       emit ProtectorsLocked(_msgSender(), false);
     } else {
-      // reverts the change from REMOVABLE to ACTIVE
+      // reverts the change from RESIGNED to ACTIVE
       _lockedProtectorsFor[_msgSender()] = Status.ACTIVE;
     }
   }

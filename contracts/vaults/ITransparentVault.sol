@@ -6,7 +6,7 @@ pragma solidity ^0.8.19;
 interface ITransparentVault {
   function isTransparentVault() external pure returns (bytes4);
 
-  function init(address registry, address payable proxy) external;
+  function init(address registry, address payable account, address payable proxyAccount) external;
 
   function depositETH(uint256 owningTokenId) external payable;
 

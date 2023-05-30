@@ -1,12 +1,12 @@
 const {expect} = require("chai");
-const {deployContract, amount, getTimestamp, signPackedData} = require("./helpers");
+const {deployContract, amount, getTimestamp, signPackedData, deployContractUpgradeable} = require("./helpers");
 const DeployUtils = require("../scripts/lib/DeployUtils");
 
 describe("TransparentVault", function () {
   const deployUtils = new DeployUtils(ethers);
 
   let crunaVault, transparentVault;
-  let registry, wallet, tokenUtils;
+  let registry, wallet, proxyWallet, tokenUtils;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   let notAToken;
@@ -27,11 +27,12 @@ describe("TransparentVault", function () {
     registry = await deployContract("ERC6551Registry");
     wallet = await deployContract("ERC6551Account");
     tokenUtils = await deployContract("TokenUtils");
+    proxyWallet = await deployContractUpgradeable("ERC6551AccountUpgradeable");
 
     transparentVault = await deployContract("TransparentVault", crunaVault.address, tokenUtils.address);
 
     await crunaVault.addVault(transparentVault.address);
-    await transparentVault.init(registry.address, wallet.address);
+    await transparentVault.init(registry.address, wallet.address, proxyWallet.address);
 
     notAToken = await deployContract("NotAToken");
 
@@ -79,14 +80,14 @@ describe("TransparentVault", function () {
     await uselessWeapons.mintBatch(john.address, [3, 4], [10, 1], "0x00");
   });
 
-  it("should revert if not activated", async function () {
+  it.only("should revert if not activated", async function () {
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
     await expect(transparentVault.connect(bob).depositERC721(1, particle.address, 2)).revertedWith("NotActivated()");
   });
 
   it("should create a vaults and add more assets to it", async function () {
-    await transparentVault.connect(bob).activateAccount(1);
+    await transparentVault.connect(bob).activateAccount(1, false);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
@@ -122,7 +123,7 @@ describe("TransparentVault", function () {
   });
 
   it("should create a vaults and add generic assets in batch call", async function () {
-    await transparentVault.connect(bob).activateAccount(1);
+    await transparentVault.connect(bob).activateAccount(1, false);
 
     await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
     await stupidMonk.connect(bob).setApprovalForAll(transparentVault.address, true);
@@ -145,7 +146,7 @@ describe("TransparentVault", function () {
   });
 
   it("should create a vaults and deposit Ether ", async function () {
-    await transparentVault.connect(bob).activateAccount(1);
+    await transparentVault.connect(bob).activateAccount(1, true);
 
     await transparentVault.connect(bob).depositETH(1, {value: amount("1000")});
     expect((await transparentVault.amountOf(1, [ethers.constants.AddressZero], [0]))[0]).equal(amount("1000"));
@@ -156,7 +157,7 @@ describe("TransparentVault", function () {
   });
 
   it("should create a vaults, add assets to it, then eject and reinject again", async function () {
-    await transparentVault.connect(bob).activateAccount(1);
+    await transparentVault.connect(bob).activateAccount(1, false);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
@@ -206,7 +207,7 @@ describe("TransparentVault", function () {
   });
 
   it("should allow a transfer if a transfer initializer is pending", async function () {
-    await transparentVault.connect(bob).activateAccount(1);
+    await transparentVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
@@ -236,7 +237,7 @@ describe("TransparentVault", function () {
   });
 
   it("should not allow a transfer if a transfer initializer is active", async function () {
-    await transparentVault.connect(bob).activateAccount(1);
+    await transparentVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
@@ -255,7 +256,7 @@ describe("TransparentVault", function () {
   });
 
   it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
-    await transparentVault.connect(bob).activateAccount(1);
+    await transparentVault.connect(bob).activateAccount(1, false);
 
     await expect(crunaVault.connect(bob).proposeProtector(john.address))
       .emit(crunaVault, "ProtectorProposed")

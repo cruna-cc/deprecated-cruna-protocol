@@ -20,7 +20,7 @@ import "./lib/ERC6551AccountLib.sol";
 
 /**
  * @title ERC6551AccountUpgradeable
- * @notice A lightweight smart contract wallet implementation that can be used by ERC6551AccountProxy
+ * @notice A lightweight smart contract wallet implementation that can be used by ERC6551Account
  */
 contract ERC6551Account is IERC165, IERC721Receiver, IERC1155Receiver, IERC6551Account, IERC1271 {
   // Padding for initializable values
