@@ -18,32 +18,41 @@ contract CrunaVault is ProtectedERC721 {
 
   struct Cluster {
     string name;
-    address minter;
+    string symbol;
+    string baseTokenURI;
+    address owner;
     uint nextTokenId;
   }
   mapping(uint256 => Cluster) public clusters;
-  mapping(address => uint256) public clusterIdByMinters;
+  mapping(address => uint256) public clusterIdByOwners;
   uint internal _nextClusterId = 1;
 
   constructor() ProtectedERC721("Cruna Vault V1", "CRUNA") {
     _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
-    addCluster("", msg.sender);
+    addCluster("", "CRUNA", _baseTokenURI, 0, address(0));
   }
 
-  function addCluster(string memory name, address clusterMinter) public onlyOwner {
-    if (clusterMinter == address(0)) revert NoZeroAddress();
+  function addCluster(
+    string memory name,
+    string memory symbol,
+    string memory baseTokenURI,
+    uint256,
+    address clusterOwner
+  ) public onlyOwner returns (uint256) {
+    if (clusterOwner == address(0)) clusterOwner = msg.sender;
     if (bytes(name).length == 0) {
       name = "Cruna Vault";
     } else {
       name = string(abi.encodePacked(name, " Cruna Vault"));
     }
-    clusters[_nextClusterId] = Cluster(name, clusterMinter, 1 + ((_nextClusterId - 1) * 1e6));
-    clusterIdByMinters[clusterMinter] = _nextClusterId;
-    emit ClusterAdded(_nextClusterId++, name, clusterMinter);
+    clusters[_nextClusterId] = Cluster(name, symbol, baseTokenURI, clusterOwner, 1 + ((_nextClusterId - 1) * 1e5));
+    clusterIdByOwners[clusterOwner] = _nextClusterId;
+    emit ClusterAdded(_nextClusterId, name, clusterOwner);
+    return _nextClusterId++;
   }
 
   function safeMint(address to) public {
-    uint256 clusterId = clusterIdByMinters[msg.sender];
+    uint256 clusterId = clusterIdByOwners[msg.sender];
     if (clusterId == 0) revert NotAMinter();
     _safeMint(to, clusters[clusterId].nextTokenId++);
   }
