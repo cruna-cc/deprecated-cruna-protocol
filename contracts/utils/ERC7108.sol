@@ -1,23 +1,19 @@
-// SPDX-License-Identifier: GPL3
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "../protected-nft/ProtectedERC721.sol";
-import "../utils/IERC7108.sol";
+// Authors: Francesco Sullo <francesco@sullo.co>
 
-// reference implementation of a Cruna Vault
-contract CrunaVault is ProtectedERC721, IERC7108 {
+import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "./IERC7108.sol";
+
+//import "hardhat/console.sol";
+
+// Reference implementation of ERC-7108
+
+contract ERC7108 is IERC7108, ERC721 {
   using Strings for uint256;
-
-  event TokenURIFrozen();
-  event TokenURIUpdated(string uri);
-  error FrozenTokenURI();
-  error NotAMinter();
-
-  string private _baseTokenURI;
-  bool private _baseTokenURIFrozen;
-
-  // clustered
 
   error ZeroAddress();
   error NotClusterOwner();
@@ -37,20 +33,20 @@ contract CrunaVault is ProtectedERC721, IERC7108 {
 
   mapping(uint256 => Cluster) public clusters;
   mapping(address => uint256[]) public clusterIdByOwners;
-  uint256 public maxSize = 100000;
+  uint256 public maxSize = 10000;
+
   uint256 private _nextClusterId;
 
-  constructor(string memory baseUri_) ProtectedERC721("Cruna Vault V1", "CRUNA") {
-    _baseTokenURI = baseUri_;
-  }
+  constructor(string memory name, string memory symbol) ERC721(name, symbol) {}
 
+  // in this implementation anyone can create a new collection
   function addCluster(
     string memory name,
     string memory symbol,
     string memory baseTokenURI,
     uint256 size,
     address clusterOwner_
-  ) public override onlyOwner {
+  ) public override {
     if (clusterOwner_ == address(0)) revert ZeroAddress();
     if (size > maxSize) revert SizeTooLarge();
     uint256 lastTokenIdInClusters;
@@ -148,14 +144,12 @@ contract CrunaVault is ProtectedERC721, IERC7108 {
     return tokenId - clusters[clusterId].firstTokenId + 1;
   }
 
-  function safeMint(uint256 clusterId, address to) public {
+  function mint(uint256 clusterId, address to) public {
     if (clusters[clusterId].owner == address(0)) revert ClusterNotFound();
     if (clusters[clusterId].owner != msg.sender) revert NotClusterOwner();
     if (clusters[clusterId].nextTokenId > clusters[clusterId].firstTokenId + clusters[clusterId].size - 1) revert ClusterFull();
-    _safeMint(to, clusters[clusterId].nextTokenId++);
+    _mint(to, clusters[clusterId].nextTokenId++);
   }
-
-  // token URI management
 
   function tokenURI(uint256 tokenId) public view override returns (string memory) {
     _requireMinted(tokenId);
@@ -165,25 +159,7 @@ contract CrunaVault is ProtectedERC721, IERC7108 {
     return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
   }
 
-  function _baseURI() internal view virtual override returns (string memory) {
-    return _baseTokenURI;
-  }
-
-  function updateTokenURI(string memory uri) external onlyOwner {
-    if (_baseTokenURIFrozen) {
-      revert FrozenTokenURI();
-    }
-    // after revealing, this allows to set up a final uri
-    _baseTokenURI = uri;
-    emit TokenURIUpdated(uri);
-  }
-
-  function freezeTokenURI() external onlyOwner {
-    _baseTokenURIFrozen = true;
-    emit TokenURIFrozen();
-  }
-
-  function contractURI() public view returns (string memory) {
-    return string(abi.encodePacked(_baseTokenURI, "cruna-vault"));
+  function getInterfaceId() external pure returns (bytes4) {
+    return type(IERC7108).interfaceId;
   }
 }

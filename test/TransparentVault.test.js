@@ -11,10 +11,10 @@ describe("TransparentVault", function () {
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   let notAToken;
   // wallets
-  let e2Owner, bob, alice, fred, john, jane, mark;
+  let owner, bob, alice, fred, john, jane, mark;
 
   before(async function () {
-    [e2Owner, bob, alice, fred, john, jane, mark] = await ethers.getSigners();
+    [owner, bob, alice, fred, john, jane, mark] = await ethers.getSigners();
   });
 
   function transferNft(nft, user) {
@@ -22,7 +22,9 @@ describe("TransparentVault", function () {
   }
 
   beforeEach(async function () {
-    crunaVault = await deployContract("CrunaVault");
+    const _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
+    crunaVault = await deployContract("CrunaVault", _baseTokenURI);
+    await crunaVault.addCluster("Cruna Vault V1", "CRUNA", _baseTokenURI, 100000, owner.address);
 
     registry = await deployContract("ERC6551Registry");
     wallet = await deployContract("ERC6551Account");
@@ -38,16 +40,16 @@ describe("TransparentVault", function () {
 
     notAToken = await deployContract("NotAToken");
 
-    await expect(crunaVault.safeMint(bob.address))
+    await expect(crunaVault.safeMint(0, bob.address))
       .emit(crunaVault, "Transfer")
       .withArgs(ethers.constants.AddressZero, bob.address, 1);
 
-    await crunaVault.safeMint(bob.address);
+    await crunaVault.safeMint(0, bob.address);
 
-    await crunaVault.safeMint(bob.address);
-    await crunaVault.safeMint(bob.address);
-    await crunaVault.safeMint(alice.address);
-    await crunaVault.safeMint(alice.address);
+    await crunaVault.safeMint(0, bob.address);
+    await crunaVault.safeMint(0, bob.address);
+    await crunaVault.safeMint(0, alice.address);
+    await crunaVault.safeMint(0, alice.address);
 
     // erc20
     bulls = await deployContract("Bulls");
