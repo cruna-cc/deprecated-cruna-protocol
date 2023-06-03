@@ -20,7 +20,7 @@ import "../bound-account/OwnerNFT.sol";
 import "../utils/IVersioned.sol";
 import "./ITransparentVaultExtended.sol";
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFTOwned, ReentrancyGuard {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;

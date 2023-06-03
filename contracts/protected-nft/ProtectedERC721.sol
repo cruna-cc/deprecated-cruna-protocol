@@ -12,7 +12,7 @@ import "./IProtectedERC721Extended.sol";
 import "../utils/IVersioned.sol";
 import "../vaults/ITransparentVault.sol";
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC721, Ownable {
   using ECDSA for bytes32;
