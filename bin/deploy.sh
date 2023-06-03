@@ -5,5 +5,6 @@ if [[ "$2" == "localhost" ]]; then
   skip=true
 fi
 
+npm run clean
 scripts/check-hardhat-console.js \
   && SKIP_CRYPTOENV=$skip TOKEN_URI=$3 npx hardhat run scripts/deploy-$1.js --network $2

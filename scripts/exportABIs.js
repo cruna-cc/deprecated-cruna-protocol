@@ -12,12 +12,13 @@ async function main() {
     let json = require(source);
     ABIs.contracts[rename || name] = json.abi;
   }
-  abi("NftFactory", "");
-  abi("WhitelistSlot", "");
-  abi("Farm", "tokens");
-  abi("Turf", "tokens");
-  abi("SeedTokenMock", "mocks");
-  abi("GamePool", "");
+  abi("CrunaVault", "implementation");
+  abi("ERC6551Registry", "bound-account");
+  abi("ERC6551Account", "bound-account");
+  abi("ERC6551AccountUpgradeable", "bound-account");
+  abi("ERC6551AccountProxy", "bound-account");
+  abi("TransparentVault", "vaults");
+  abi("TokenUtils", "utils");
 
   await fs.writeFile(path.resolve(__dirname, "../export/ABIs.json"), JSON.stringify(ABIs, null, 2));
 }
