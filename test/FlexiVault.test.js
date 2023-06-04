@@ -2,10 +2,10 @@ const {expect} = require("chai");
 const {deployContract, amount, getTimestamp, signPackedData, deployContractUpgradeable} = require("./helpers");
 const DeployUtils = require("../scripts/lib/DeployUtils");
 
-describe("TransparentVault", function () {
+describe("FlexiVault", function () {
   const deployUtils = new DeployUtils(ethers);
 
-  let crunaVault, transparentVault;
+  let crunaVault, flexiVault;
   let registry, wallet, proxyWallet, tokenUtils;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
@@ -29,14 +29,13 @@ describe("TransparentVault", function () {
     registry = await deployContract("ERC6551Registry");
     wallet = await deployContract("ERC6551Account");
     tokenUtils = await deployContract("TokenUtils");
-    // proxyWallet = await deployContractUpgradeable("ERC6551AccountUUPSUpgradeable");
-    let implementation = await deployUtils.deploy("ERC6551AccountUpgradeable");
-    proxyWallet = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
+    let implementation = await deployContract("ERC6551AccountUpgradeable");
+    proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
-    transparentVault = await deployContract("TransparentVault", crunaVault.address, tokenUtils.address);
+    flexiVault = await deployContract("FlexiVault", crunaVault.address, tokenUtils.address);
 
-    await crunaVault.addVault(transparentVault.address);
-    await transparentVault.init(registry.address, wallet.address, proxyWallet.address);
+    await crunaVault.addVault(flexiVault.address);
+    await flexiVault.init(registry.address, wallet.address, proxyWallet.address);
 
     notAToken = await deployContract("NotAToken");
 
@@ -86,27 +85,27 @@ describe("TransparentVault", function () {
 
   it("should revert if not activated", async function () {
     // bob creates a vaults depositing a particle token
-    await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
-    await expect(transparentVault.connect(bob).depositERC721(1, particle.address, 2)).revertedWith("NotActivated()");
+    await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await expect(flexiVault.connect(bob).depositERC721(1, particle.address, 2)).revertedWith("NotActivated()");
   });
 
   it("should create a vaults and add more assets to it", async function () {
-    await transparentVault.connect(bob).activateAccount(1, false);
+    await flexiVault.connect(bob).activateAccount(1, false);
 
     // bob creates a vaults depositing a particle token
-    await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
-    await transparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await transparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
+    await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await flexiVault.connect(bob).depositERC721(1, particle.address, 2);
+    expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
     // bob adds a stupidMonk token to his vaults
-    await stupidMonk.connect(bob).setApprovalForAll(transparentVault.address, true);
-    await transparentVault.connect(bob).depositERC721(1, stupidMonk.address, 1);
-    expect((await transparentVault.amountOf(1, [stupidMonk.address], [1]))[0]).equal(1);
+    await stupidMonk.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await flexiVault.connect(bob).depositERC721(1, stupidMonk.address, 1);
+    expect((await flexiVault.amountOf(1, [stupidMonk.address], [1]))[0]).equal(1);
 
     // bob adds some bulls tokens to his vaults
-    await bulls.connect(bob).approve(transparentVault.address, amount("10000"));
-    await transparentVault.connect(bob).depositERC20(1, bulls.address, amount("5000"));
-    expect((await transparentVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
+    await bulls.connect(bob).approve(flexiVault.address, amount("10000"));
+    await flexiVault.connect(bob).depositERC20(1, bulls.address, amount("5000"));
+    expect((await flexiVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
     // bob transfers the protected to alice
     await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1))
@@ -116,25 +115,25 @@ describe("TransparentVault", function () {
     expect(await stupidMonk.balanceOf(fred.address)).equal(0);
 
     await expect(
-      transparentVault
+      flexiVault
         .connect(alice)
         ["withdrawAsset(uint256,address,uint256,uint256,address)"](1, stupidMonk.address, 1, 1, fred.address)
     )
-      .emit(transparentVault, "Withdrawal")
+      .emit(flexiVault, "Withdrawal")
       .emit(stupidMonk, "Transfer");
 
     expect(await stupidMonk.balanceOf(fred.address)).equal(1);
   });
 
   it("should create a vaults and add generic assets in batch call", async function () {
-    await transparentVault.connect(bob).activateAccount(1, false);
+    await flexiVault.connect(bob).activateAccount(1, false);
 
-    await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
-    await stupidMonk.connect(bob).setApprovalForAll(transparentVault.address, true);
-    await bulls.connect(bob).approve(transparentVault.address, amount("10000"));
-    await uselessWeapons.connect(bob).setApprovalForAll(transparentVault.address, true);
+    await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await stupidMonk.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await bulls.connect(bob).approve(flexiVault.address, amount("10000"));
+    await uselessWeapons.connect(bob).setApprovalForAll(flexiVault.address, true);
 
-    await transparentVault
+    await flexiVault
       .connect(bob)
       .depositAssets(
         1,
@@ -142,68 +141,68 @@ describe("TransparentVault", function () {
         [2, 1, 0, 2],
         [1, 1, amount("5000"), 2]
       );
-    expect((await transparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
-    expect((await transparentVault.amountOf(1, [stupidMonk.address], [1]))[0]).equal(1);
-    expect((await transparentVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
+    expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
+    expect((await flexiVault.amountOf(1, [stupidMonk.address], [1]))[0]).equal(1);
+    expect((await flexiVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
-    await expect(transparentVault.connect(bob).depositAssets(1, [notAToken.address], [1], [1])).revertedWith("InvalidAsset()");
+    await expect(flexiVault.connect(bob).depositAssets(1, [notAToken.address], [1], [1])).revertedWith("InvalidAsset()");
   });
 
   it("should create a vaults and deposit Ether ", async function () {
-    await transparentVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
-    await transparentVault.connect(bob).depositETH(1, {value: amount("1000")});
-    expect((await transparentVault.amountOf(1, [ethers.constants.AddressZero], [0]))[0]).equal(amount("1000"));
+    await flexiVault.connect(bob).depositETH(1, {value: amount("1000")});
+    expect((await flexiVault.amountOf(1, [ethers.constants.AddressZero], [0]))[0]).equal(amount("1000"));
 
-    const accountAddress = await transparentVault.accountAddress(1);
+    const accountAddress = await flexiVault.accountAddress(1);
 
     await expect((await ethers.provider.getBalance(accountAddress)).toString()).equal(amount("1000"));
   });
 
   it("should create a vaults, add assets to it, then eject and reinject again", async function () {
-    await transparentVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
-    await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
-    await transparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await transparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
+    await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await flexiVault.connect(bob).depositERC721(1, particle.address, 2);
+    expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
     // bob adds some UselessWeapons tokens to his vaults
-    await uselessWeapons.connect(bob).setApprovalForAll(transparentVault.address, true);
-    await transparentVault.connect(bob).depositERC1155(1, uselessWeapons.address, 2, 2);
-    expect((await transparentVault.amountOf(1, [uselessWeapons.address], [2]))[0]).equal(2);
+    await uselessWeapons.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await flexiVault.connect(bob).depositERC1155(1, uselessWeapons.address, 2, 2);
+    expect((await flexiVault.amountOf(1, [uselessWeapons.address], [2]))[0]).equal(2);
 
     // bob adds some bulls tokens to his vaults
-    await bulls.connect(fred).approve(transparentVault.address, amount("10000"));
-    await transparentVault.connect(fred).depositERC20(1, bulls.address, amount("5000"));
-    expect((await transparentVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
+    await bulls.connect(fred).approve(flexiVault.address, amount("10000"));
+    await flexiVault.connect(fred).depositERC20(1, bulls.address, amount("5000"));
+    expect((await flexiVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
-    const ownerNFTaddress = await transparentVault.ownerNFT();
-    const ownerNFT = await deployUtils.attach("OwnerNFT", ownerNFTaddress);
+    const trusteeAddress = await flexiVault.trustee();
+    const trustee = await deployUtils.attach("TrusteeNFT", trusteeAddress);
 
-    expect(await ownerNFT.ownerOf(1)).equal(transparentVault.address);
+    expect(await trustee.ownerOf(1)).equal(flexiVault.address);
 
-    await expect(transparentVault.connect(bob).reInjectEjectedAccount(1)).revertedWith("NotAPreviouslyEjectedAccount()");
+    await expect(flexiVault.connect(bob).reInjectEjectedAccount(1)).revertedWith("NotAPreviouslyEjectedAccount()");
 
-    await expect(transparentVault.connect(bob).ejectAccount(1)).emit(transparentVault, "BoundAccountEjected").withArgs(1);
+    await expect(flexiVault.connect(bob).ejectAccount(1)).emit(flexiVault, "BoundAccountEjected").withArgs(1);
 
-    expect(await ownerNFT.ownerOf(1)).equal(bob.address);
+    expect(await trustee.ownerOf(1)).equal(bob.address);
 
-    await expect(transparentVault.connect(bob).ejectAccount(1)).revertedWith("AccountHasBeenEjected()");
+    await expect(flexiVault.connect(bob).ejectAccount(1)).revertedWith("AccountHasBeenEjected()");
 
-    await expect(transparentVault.connect(bob).depositERC721(1, particle.address, 4)).revertedWith("AccountHasBeenEjected()");
+    await expect(flexiVault.connect(bob).depositERC721(1, particle.address, 4)).revertedWith("AccountHasBeenEjected()");
 
-    await ownerNFT.connect(bob).approve(transparentVault.address, 1);
+    await trustee.connect(bob).approve(flexiVault.address, 1);
 
-    await expect(transparentVault.connect(bob).reInjectEjectedAccount(1))
-      .emit(transparentVault, "EjectedBoundAccountReInjected")
+    await expect(flexiVault.connect(bob).reInjectEjectedAccount(1))
+      .emit(flexiVault, "EjectedBoundAccountReInjected")
       .withArgs(1);
 
-    expect(await ownerNFT.ownerOf(1)).equal(transparentVault.address);
+    expect(await trustee.ownerOf(1)).equal(flexiVault.address);
 
-    const accountAddress = await transparentVault.accountAddress(1);
+    const accountAddress = await flexiVault.accountAddress(1);
 
-    await expect(transparentVault.connect(bob).depositERC721(1, particle.address, 4))
+    await expect(flexiVault.connect(bob).depositERC721(1, particle.address, 4))
       .emit(particle, "Transfer")
       .withArgs(bob.address, accountAddress, 4);
 
@@ -211,12 +210,12 @@ describe("TransparentVault", function () {
   });
 
   it("should allow a transfer if a transfer initializer is pending", async function () {
-    await transparentVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
-    await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
-    await transparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await transparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
+    await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await flexiVault.connect(bob).depositERC721(1, particle.address, 2);
+    expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
     await expect(crunaVault.connect(bob).proposeProtector(mark.address))
       .emit(crunaVault, "ProtectorProposed")
@@ -241,12 +240,12 @@ describe("TransparentVault", function () {
   });
 
   it("should not allow a transfer if a transfer initializer is active", async function () {
-    await transparentVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
-    await particle.connect(bob).setApprovalForAll(transparentVault.address, true);
-    await transparentVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await transparentVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
+    await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await flexiVault.connect(bob).depositERC721(1, particle.address, 2);
+    expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
     await expect(crunaVault.connect(bob).proposeProtector(mark.address))
       .emit(crunaVault, "ProtectorProposed")
@@ -260,7 +259,7 @@ describe("TransparentVault", function () {
   });
 
   it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
-    await transparentVault.connect(bob).activateAccount(1, false);
+    await flexiVault.connect(bob).activateAccount(1, false);
 
     await expect(crunaVault.connect(bob).proposeProtector(john.address))
       .emit(crunaVault, "ProtectorProposed")

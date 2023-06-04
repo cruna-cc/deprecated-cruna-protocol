@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "./IERC6551Registry.sol";
 import "./lib/ERC6551BytecodeLib.sol";
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
 contract ERC6551Registry is IERC6551Registry, IERC165 {
   error InitializationFailed();

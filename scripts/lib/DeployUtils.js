@@ -119,14 +119,19 @@ class DeployUtils {
     return deployed;
   }
 
+  getAddress(chainId, contractName) {
+    let address = deployedJson[chainId][contractName];
+    if (Array.isArray(address)) {
+      address = address[address.length - 1];
+    }
+    return address;
+  }
+
   async attach(contractName, contractAddress) {
     const chainId = await this.currentChainId();
     const contract = await ethers.getContractFactory(contractName);
-    if (contractAddress || deployedJson[chainId][contractName]) {
-      return contract.attach(contractAddress || deployedJson[chainId][contractName]);
-    } else {
-      return false;
-    }
+    const address = contractAddress || this.getAddress(chainId, contractName);
+    return contract.attach(address);
   }
 
   async deployProxy(contractName, ...args) {
@@ -152,7 +157,8 @@ class DeployUtils {
     const chainId = await this.currentChainId();
     debug("Upgrading", contractName, "to", this.network(chainId));
     const Contract = await ethers.getContractFactory(contractName);
-    const upgraded = await upgrades.upgradeProxy(deployedJson[chainId][contractName], Contract, gasLimit ? {gasLimit} : {});
+    const address = this.getAddress(chainId, contractName);
+    const upgraded = await upgrades.upgradeProxy(address, Contract, gasLimit ? {gasLimit} : {});
     debug("Tx:", upgraded.deployTransaction.hash);
     await upgraded.deployed();
     debug("Upgraded");
@@ -187,9 +193,15 @@ class DeployUtils {
       }
       const data = {};
       for (let i = 0; i < names.length; i++) {
-        data[names[i]] = addresses[i];
+        if (!deployed[chainId][names[i]]) {
+          deployed[chainId][names[i]] = addresses[i];
+        } else if (!Array.isArray(deployed[chainId][names[i]])) {
+          deployed[chainId][names[i]] = [deployed[chainId][names[i]], addresses[i]];
+        } else {
+          deployed[chainId][names[i]].push(addresses[i]);
+        }
       }
-      deployed[chainId] = Object.assign(deployed[chainId], data);
+      // deployed[chainId] = Object.assign(deployed[chainId], data);
 
       if (extras) {
         // data needed for verifications
