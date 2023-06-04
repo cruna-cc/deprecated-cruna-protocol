@@ -8,6 +8,10 @@ if (!process.env.SKIP_CRYPTOENV && process.env.NODE_ENV !== "test") {
   require("@secrez/cryptoenv").parse();
 }
 
+const testEnv = require("./testEnv.json");
+
+const env = Object.assign(process, testEnv);
+
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");
 require("@openzeppelin/hardhat-upgrades");
@@ -40,55 +44,55 @@ module.exports = {
       chainId: 1337,
     },
     ethereum: {
-      url: `https://mainnet.infura.io/v3/${process.env.INFURA_API_KEY}`,
-      accounts: [process.env.FOR_MAINNET],
+      url: `https://mainnet.infura.io/v3/${env.INFURA_API_KEY}`,
+      accounts: [env.FOR_MAINNET],
       chainId: 1,
     },
     bsc: {
       url: "https://bsc-dataseed.binance.org",
       chainId: 56,
       gasPrice: 20000000000,
-      accounts: [process.env.FOR_MAINNET],
+      accounts: [env.FOR_MAINNET],
     },
     goerli: {
-      url: `https://goerli.infura.io/v3/${process.env.INFURA_API_KEY}`,
+      url: `https://goerli.infura.io/v3/${env.INFURA_API_KEY}`,
       gasLimit: 6000000,
-      accounts: [process.env.FOR_TESTNET],
+      accounts: [env.FOR_TESTNET],
     },
     bsc_testnet: {
       url: "https://data-seed-prebsc-1-s1.binance.org:8545",
       chainId: 97,
       // gasPrice: 20000000000,
       gasLimit: 6000000,
-      accounts: [process.env.FOR_TESTNET],
+      accounts: [env.FOR_TESTNET],
     },
     mumbai: {
       url: "https://matic-mumbai.chainstacklabs.com",
       chainId: 80001,
       // gasPrice: 20000000000,
       gasLimit: 6000000,
-      accounts: [process.env.FOR_TESTNET],
+      accounts: [env.FOR_TESTNET],
     },
     fuji: {
       url: "https://api.avax-test.network/ext/bc/C/rpc",
       gasPrice: 225000000000,
       chainId: 43113,
-      accounts: [process.env.FOR_TESTNET],
+      accounts: [env.FOR_TESTNET],
     },
     avalance: {
       url: "https://api.avax.network/ext/bc/C/rpc",
       gasPrice: 225000000000,
       chainId: 43114,
-      accounts: [process.env.FOR_TESTNET],
+      accounts: [env.FOR_TESTNET],
     },
     alfajores: {
       url: "https://alfajores-forno.celo-testnet.org",
-      accounts: [process.env.FOR_TESTNET],
+      accounts: [env.FOR_TESTNET],
       chainId: 44787,
     },
   },
   etherscan: {
-    apiKey: process.env.BSCSCAN_KEY,
+    apiKey: env.BSCSCAN_KEY,
   },
   gasReporter: {
     currency: "USD",
