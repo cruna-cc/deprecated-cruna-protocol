@@ -177,28 +177,28 @@ describe("TransparentVault", function () {
     await transparentVault.connect(fred).depositERC20(1, bulls.address, amount("5000"));
     expect((await transparentVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
-    const ownerNFTaddress = await transparentVault.ownerNFT();
-    const ownerNFT = await deployUtils.attach("OwnerNFT", ownerNFTaddress);
+    const trusteeAddress = await transparentVault.trustee();
+    const trustee = await deployUtils.attach("TrusteeNFT", trusteeAddress);
 
-    expect(await ownerNFT.ownerOf(1)).equal(transparentVault.address);
+    expect(await trustee.ownerOf(1)).equal(transparentVault.address);
 
     await expect(transparentVault.connect(bob).reInjectEjectedAccount(1)).revertedWith("NotAPreviouslyEjectedAccount()");
 
     await expect(transparentVault.connect(bob).ejectAccount(1)).emit(transparentVault, "BoundAccountEjected").withArgs(1);
 
-    expect(await ownerNFT.ownerOf(1)).equal(bob.address);
+    expect(await trustee.ownerOf(1)).equal(bob.address);
 
     await expect(transparentVault.connect(bob).ejectAccount(1)).revertedWith("AccountHasBeenEjected()");
 
     await expect(transparentVault.connect(bob).depositERC721(1, particle.address, 4)).revertedWith("AccountHasBeenEjected()");
 
-    await ownerNFT.connect(bob).approve(transparentVault.address, 1);
+    await trustee.connect(bob).approve(transparentVault.address, 1);
 
     await expect(transparentVault.connect(bob).reInjectEjectedAccount(1))
       .emit(transparentVault, "EjectedBoundAccountReInjected")
       .withArgs(1);
 
-    expect(await ownerNFT.ownerOf(1)).equal(transparentVault.address);
+    expect(await trustee.ownerOf(1)).equal(transparentVault.address);
 
     const accountAddress = await transparentVault.accountAddress(1);
 

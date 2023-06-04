@@ -10,14 +10,14 @@ import "../vaults/ITransparentVaultExtended.sol";
 // @dev The NFTs owning the bound account are all minted from this contract.
 // The minter must be an active TransparentVault
 // The NFT can be ejected from the TransparentVault and transferred to the owner
-contract OwnerNFT is ERC721, Ownable {
+contract TrusteeNFT is ERC721, Ownable {
   event MinterSet(address indexed minter, bool active);
   error NotAMinter();
   error MinterNotATransparentVault();
 
   mapping(address => bool) private _minters;
 
-  constructor() ERC721("OwnerNFT", "oNFT") {}
+  constructor() ERC721("TrusteeNFT", "oNFT") {}
 
   // the minter must be an
   function setMinter(address minter, bool active) public onlyOwner {

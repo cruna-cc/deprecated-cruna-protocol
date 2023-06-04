@@ -16,7 +16,7 @@ import "../utils/ITokenUtils.sol";
 import "../bound-account/IERC6551Account.sol";
 import "../bound-account/IERC6551Registry.sol";
 import "../bound-account/IERC6551Account.sol";
-import "../bound-account/OwnerNFT.sol";
+import "../bound-account/TrusteeNFT.sol";
 import "../utils/IVersioned.sol";
 import "./ITransparentVaultExtended.sol";
 
@@ -33,7 +33,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   IERC6551Account public boundAccount;
   IERC6551Account public boundAccountUpgradeable;
   ITokenUtils internal _tokenUtils;
-  OwnerNFT public ownerNFT;
+  TrusteeNFT public trustee;
   uint internal _salt;
   mapping(uint => address) internal _accountAddresses;
   bool private _initiated;
@@ -97,9 +97,9 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     _registry = IERC6551Registry(registry);
     boundAccount = IERC6551Account(boundAccount_);
     boundAccountUpgradeable = IERC6551Account(boundAccountUpgradeable_);
-    ownerNFT = new OwnerNFT();
-    ownerNFT.setMinter(address(this), true);
-    ownerNFT.transferOwnership(_msgSender());
+    trustee = new TrusteeNFT();
+    trustee.setMinter(address(this), true);
+    trustee.transferOwnership(_msgSender());
     _initiated = true;
   }
 
@@ -121,17 +121,17 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
    * @dev {See ITransparentVault-activateAccount}
    */
   function activateAccount(uint owningTokenId, bool useUpgradeableAccount) external onlyOwningTokenOwner(owningTokenId) {
-    if (!ownerNFT.isMinter(address(this))) {
+    if (!trustee.isMinter(address(this))) {
       // If the contract is no more the minter, there is a new version of the
       // vault and new users must use the new version.
       revert VaultHasBeenUpgraded();
     }
     if (_accountAddresses[owningTokenId] != address(0)) revert AccountAlreadyActive();
     address account = address(useUpgradeableAccount ? boundAccountUpgradeable : boundAccount);
-    address walletAddress = _registry.account(account, block.chainid, address(ownerNFT), owningTokenId, _salt);
-    ownerNFT.mint(address(this), owningTokenId);
+    address walletAddress = _registry.account(account, block.chainid, address(trustee), owningTokenId, _salt);
+    trustee.mint(address(this), owningTokenId);
     _accountAddresses[owningTokenId] = walletAddress;
-    _registry.createAccount(account, block.chainid, address(ownerNFT), owningTokenId, _salt, "");
+    _registry.createAccount(account, block.chainid, address(trustee), owningTokenId, _salt, "");
   }
 
   /**
@@ -385,7 +385,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
     uint256 owningTokenId
   ) internal onlyOwningTokenOwner(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (_ejects[owningTokenId]) revert AccountAlreadyEjected();
-    ownerNFT.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
+    trustee.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
     _ejects[owningTokenId] = true;
     emit BoundAccountEjected(owningTokenId);
   }
@@ -418,7 +418,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   function reInjectEjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
     if (!_ejects[owningTokenId]) revert NotAPreviouslyEjectedAccount();
     // the contract must be approved
-    ownerNFT.transferFrom(ownerOf(owningTokenId), address(this), owningTokenId);
+    trustee.transferFrom(ownerOf(owningTokenId), address(this), owningTokenId);
     delete _ejects[owningTokenId];
     emit EjectedBoundAccountReInjected(owningTokenId);
   }
