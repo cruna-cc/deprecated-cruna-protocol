@@ -3,12 +3,12 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-interface ITransparentVault {
+interface IFlexiVault {
   /**
    * @dev It checks if the contract is a Transparent Vault
-   * @return bytes4(keccak256('isTransparentVault()')) if the contract is a Transparent Vault
+   * @return bytes4(keccak256('isFlexiVault()')) if the contract is a Transparent Vault
    */
-  function isTransparentVault() external pure returns (bytes4);
+  function isFlexiVault() external pure returns (bytes4);
 
   /**
    * @dev It returns the address of the account bound to the tokenId

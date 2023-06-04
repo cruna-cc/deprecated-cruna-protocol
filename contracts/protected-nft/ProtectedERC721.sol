@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../nft-owned/NFTOwned.sol";
 import "./IProtectedERC721Extended.sol";
 import "../utils/IVersioned.sol";
-import "../vaults/ITransparentVault.sol";
+import "../vaults/IFlexiVault.sol";
 
 //import "hardhat/console.sol";
 
@@ -72,10 +72,10 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
   }
 
   function addVault(address vault) external onlyOwner {
-    try ITransparentVault(vault).isTransparentVault() returns (bytes4 result) {
-      if (result != ITransparentVault.isTransparentVault.selector) revert NotATransparentVault();
+    try IFlexiVault(vault).isFlexiVault() returns (bytes4 result) {
+      if (result != IFlexiVault.isFlexiVault.selector) revert NotAFlexiVault();
     } catch {
-      revert NotATransparentVault();
+      revert NotAFlexiVault();
     }
     for (uint i = 0; i < _vaults.length; i++) {
       if (_vaults[i] == vault) revert VaultAlreadyAdded();
@@ -248,7 +248,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
   function setSignatureAsUsed(uint tokenId, bytes calldata signature) public override {
     for (uint i = 0; i < _vaults.length; i++) {
       if (_vaults[i] == _msgSender()) {
-        revert NotATransparentVault();
+        revert NotAFlexiVault();
       }
     }
     _usedSignatures[keccak256(abi.encodePacked(tokenId, signature))] = true;

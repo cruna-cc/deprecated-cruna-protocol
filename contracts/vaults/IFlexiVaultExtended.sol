@@ -3,9 +3,9 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "./ITransparentVault.sol";
+import "./IFlexiVault.sol";
 
-interface ITransparentVaultExtended is ITransparentVault {
+interface IFlexiVaultExtended is IFlexiVault {
   event BoundAccountEjected(uint256 indexed owningTokenId);
   event EjectedBoundAccountReInjected(uint256 indexed owningTokenId);
 
