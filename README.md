@@ -24,15 +24,15 @@ A real-world example can be a CEO who purchases two vaults—one for Marketing a
 
 While it is possible for an owner not to set any Protectors and manage the vault directly, this approach is not recommended due to potential security risks.
 
-### 2. The Transparent Vault
+### 2. The Flexi Vault
 
-The Transparent Vault is an application designed to securely store and protect assets (ERC20, ERC721, ERC1155). The ownership of the Transparent Vault is linked to the owning NFT, signifying that transferring the ownership of the NFT also transfers the ownership of the Transparent Vault.
+The Flexi Vault is an application designed to securely store and protect assets (ERC20, ERC721, ERC1155). The ownership of the Flexi Vault is linked to the owning NFT, signifying that transferring the ownership of the NFT also transfers the ownership of the Flexi Vault.
 
-Since the Cruna Vault is a ProtectedERC721, the Transparent Vault inherits its security features. When the owner of the NFT has designated a Protector, any asset movement from the Transparent Vault to external wallets or other vaults not owned by the same owner necessitates a signature from the Protector, enhancing the security of asset transfers.
+Since the Cruna Vault is a ProtectedERC721, the Flexi Vault inherits its security features. When the owner of the NFT has designated a Protector, any asset movement from the Flexi Vault to external wallets or other vaults not owned by the same owner necessitates a signature from the Protector, enhancing the security of asset transfers.
 
-On deployment, the Transparent Vault initiates a TrusteeNFT, a distinct NFT designed to manage smart contract wallets using [ERC6551](https://eips.ethereum.org/EIPS/eip-6551) bound accounts. Any tokenId of the TrusteeNFT is initially owned by the Transparent Vault and, by extension, by the Vault's owner.
+On deployment, the Flexi Vault initiates a TrusteeNFT, a distinct NFT designed to manage smart contract wallets using [ERC6551](https://eips.ethereum.org/EIPS/eip-6551) bound accounts. Any tokenId of the TrusteeNFT is initially owned by the Flexi Vault and, by extension, by the Vault's owner.
 
-The owner reserves the right to eject their TrusteeNFT at any moment, facilitating the transfer of an ID ownership from the Transparent Vault to the Cruna Vault's owner. This action can be reversed in the future, thereby reactivating the vault and resuming asset management.
+The owner reserves the right to eject their TrusteeNFT at any moment, facilitating the transfer of an ID ownership from the Flexi Vault to the Cruna Vault's owner. This action can be reversed in the future, thereby reactivating the vault and resuming asset management.
 
 ### 3. TrusteeNFT, Smart Contracts, and Vault Migration
 
@@ -45,20 +45,20 @@ During the activation of the vault, users have the option to select either an im
 The process of upgrading a Cruna Vault to a new version is straightforward, although it requires careful steps due to the immutable nature of smart contracts.
 
 1. **Deployment of the New Contract**: The first step involves deploying the new contract for the upgraded Cruna Vault (V2).
-2. **Eject the TrusteeNFT from the Old Vault**: The owner must then eject the TrusteeNFT from the current vault (V1). This action transfers the ownership of the TrusteeNFT ID from the Transparent Vault to the owner of the Cruna Vault.
+2. **Eject the TrusteeNFT from the Old Vault**: The owner must then eject the TrusteeNFT from the current vault (V1). This action transfers the ownership of the TrusteeNFT ID from the Flexi Vault to the owner of the Cruna Vault.
 3. **Re-Inject the TrusteeNFT into the New Vault**: The final step is to re-inject the ejected TrusteeNFT into the new vault (V2). This effectively transfers the management of the assets from the old vault to the new one.
 
 Through this migration process, users can seamlessly transition to newer versions of the Cruna Vault, ensuring they can take advantage of new features and improved security measures while maintaining the control and security of their assets.
 
 ### Use Cases
 
-- Consolidate all assets of a collection into a single Transparent Vault, allowing a seamless transfer of ownership without needing to move each asset individually. This offers significant improvements in security and user experience.
+- Consolidate all assets of a collection into a single Flexi Vault, allowing a seamless transfer of ownership without needing to move each asset individually. This offers significant improvements in security and user experience.
 
 - Create asset bundles and list them for sale as a single NFT on popular marketplaces like OpenSea.
 
-- Deposit vested assets into a Transparent Vault for scheduled distribution to investors, team members, etc. Note that for this to work, the asset must be capable of managing the vesting schedule. In a future version of the Cruna Core Protocol, a Transparent Distributor will be introduced to handle the vesting of any assets.
+- Deposit vested assets into a Flexi Vault for scheduled distribution to investors, team members, etc. Note that for this to work, the asset must be capable of managing the vesting schedule. In a future version of the Cruna Core Protocol, a Flexi Distributor will be introduced to handle the vesting of any assets.
 
-- Create a Transparent Vault for a DAO, allowing the DAO to manage its assets collectively.
+- Create a Flexi Vault for a DAO, allowing the DAO to manage its assets collectively.
 
 ### Future developments
 
@@ -85,13 +85,14 @@ These future developments further enhance the flexibility, security, and utility
 - Integrate ERC7108 to manage clusters inside the Cruna Vault
 - Allow the user to choose between an immutable bound-account and an upgradeable one
 - Renames OwnerNFT to TrusteeNFT
+- Rename TransparentVault to FlexiVault
 
 **1.2.5**
 
 - Add clusters to the CrunaVault reference implementation, right now inside mocks
 - Add missing protectedEjectAccount function, when protectors exist
 - Add eject/inject functions to interface also missed in previous PR
-- Optimize the size of TransparentVault moving some functions to TokenUtils that now works as an external contract, instead of being extended
+- Optimize the size of FlexiVault moving some functions to TokenUtils that now works as an external contract, instead of being extended
 - Change isSignatureUsed adding explicitly tokenId as a parameter
 - Make little change to tests to let them pass after the changes
 - Rename Status.REMOVABLE to Status.RESIGNED to align it with the changed names of the functions
@@ -109,7 +110,7 @@ These future developments further enhance the flexibility, security, and utility
 
 **1.2.0**
 
-- Park the Transparent Vault contracts, as they are not used in the current version of the protocol
+- Park the Flexi Vault contracts, as they are not used in the current version of the protocol
 - Introduce an airdroppable version of the vault, using ERC6551 to handle the assets
 - Add in the lockable folder the ERC721Lockable contracts, taken from [ndujaLabs/erc721lockable](https://github.com/ndujalabs/erc721lockable) repo, for completeness
 - Make the CrunaSafebox not upgradeable for improved trust, allowing migration to V2 in the future
@@ -119,7 +120,7 @@ These future developments further enhance the flexibility, security, and utility
 **1.0.3**
 
 - Remove some unused variables from TransparentSafeBox
-- Modify TransparentSafeBox so that TransparentVaultEnumerable can extend it
+- Modify TransparentSafeBox so that FlexiVaultEnumerable can extend it
 - Check at initialization time if the owning token is a ProtectedERC721 and saves it in a variable
 
 **1.0.2**

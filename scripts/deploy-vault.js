@@ -10,7 +10,7 @@ async function main() {
   const chainId = await deployUtils.currentChainId();
   const [owner] = await ethers.getSigners();
 
-  let crunaVault, transparentVault;
+  let crunaVault, flexiVault;
   let registry, wallet, proxyWallet, tokenUtils;
 
   const _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
@@ -23,10 +23,10 @@ async function main() {
   let implementation = await deployUtils.deploy("ERC6551AccountUpgradeable");
   proxyWallet = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
 
-  transparentVault = await deployContract("TransparentVault", crunaVault.address, tokenUtils.address);
+  flexiVault = await deployContract("FlexiVault", crunaVault.address, tokenUtils.address);
 
-  await crunaVault.addVault(transparentVault.address);
-  await transparentVault.init(registry.address, wallet.address, proxyWallet.address);
+  await crunaVault.addVault(flexiVault.address);
+  await flexiVault.init(registry.address, wallet.address, proxyWallet.address);
 
   console.log(`
   

@@ -5,15 +5,15 @@ import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../vaults/ITransparentVaultExtended.sol";
+import "../vaults/IFlexiVaultExtended.sol";
 
 // @dev The NFTs owning the bound account are all minted from this contract.
-// The minter must be an active TransparentVault
-// The NFT can be ejected from the TransparentVault and transferred to the owner
+// The minter must be an active FlexiVault
+// The NFT can be ejected from the FlexiVault and transferred to the owner
 contract TrusteeNFT is ERC721, Ownable {
   event MinterSet(address indexed minter, bool active);
   error NotAMinter();
-  error MinterNotATransparentVault();
+  error MinterNotAFlexiVault();
 
   mapping(address => bool) private _minters;
 
@@ -22,10 +22,10 @@ contract TrusteeNFT is ERC721, Ownable {
   // the minter must be an
   function setMinter(address minter, bool active) public onlyOwner {
     if (active) {
-      try ITransparentVault(minter).isTransparentVault() returns (bytes4 result) {
-        if (result != ITransparentVault.isTransparentVault.selector) revert MinterNotATransparentVault();
+      try IFlexiVault(minter).isFlexiVault() returns (bytes4 result) {
+        if (result != IFlexiVault.isFlexiVault.selector) revert MinterNotAFlexiVault();
       } catch {
-        revert MinterNotATransparentVault();
+        revert MinterNotAFlexiVault();
       }
       _minters[minter] = true;
     } else if (_minters[minter]) delete _minters[minter];

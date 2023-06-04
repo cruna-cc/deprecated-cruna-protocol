@@ -18,11 +18,11 @@ import "../bound-account/IERC6551Registry.sol";
 import "../bound-account/IERC6551Account.sol";
 import "../bound-account/TrusteeNFT.sol";
 import "../utils/IVersioned.sol";
-import "./ITransparentVaultExtended.sol";
+import "./IFlexiVaultExtended.sol";
 
 //import "hardhat/console.sol";
 
-contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFTOwned, ReentrancyGuard {
+contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, ReentrancyGuard {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
 
   // modifiers
@@ -83,7 +83,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-init}
+   * @dev {See IFlexiVault-init}
    */
   function init(
     address registry,
@@ -104,21 +104,21 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-isTransparentVault}
+   * @dev {See IFlexiVault-isFlexiVault}
    */
-  function isTransparentVault() external pure override returns (bytes4) {
-    return this.isTransparentVault.selector;
+  function isFlexiVault() external pure override returns (bytes4) {
+    return this.isFlexiVault.selector;
   }
 
   /**
-   * @dev {See ITransparentVault-accountAddress}
+   * @dev {See IFlexiVault-accountAddress}
    */
   function accountAddress(uint owningTokenId) external view override returns (address) {
     return _accountAddresses[owningTokenId];
   }
 
   /**
-   * @dev {See ITransparentVault-activateAccount}
+   * @dev {See IFlexiVault-activateAccount}
    */
   function activateAccount(uint owningTokenId, bool useUpgradeableAccount) external onlyOwningTokenOwner(owningTokenId) {
     if (!trustee.isMinter(address(this))) {
@@ -135,7 +135,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-depositERC721}
+   * @dev {See IFlexiVault-depositERC721}
    */
   function depositERC721(
     uint256 owningTokenId,
@@ -146,7 +146,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-depositERC20}
+   * @dev {See IFlexiVault-depositERC20}
    */
   function depositERC20(
     uint256 owningTokenId,
@@ -157,7 +157,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-depositERC1155}
+   * @dev {See IFlexiVault-depositERC1155}
    */
   function depositERC1155(
     uint256 owningTokenId,
@@ -174,7 +174,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-depositETH}
+   * @dev {See IFlexiVault-depositETH}
    */
   function depositETH(uint256 owningTokenId) external payable override onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (msg.value == 0) revert NoETH();
@@ -194,7 +194,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-depositAssets}
+   * @dev {See IFlexiVault-depositAssets}
    */
   function depositAssets(
     uint256 owningTokenId,
@@ -272,7 +272,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-withdrawAsset}
+   * @dev {See IFlexiVault-withdrawAsset}
    */
   function withdrawAsset(
     uint256 owningTokenId,
@@ -292,7 +292,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-withdrawAssets}
+   * @dev {See IFlexiVault-withdrawAssets}
    */
   function withdrawAssets(
     uint owningTokenId,
@@ -315,7 +315,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-protectedWithdrawAsset}
+   * @dev {See IFlexiVault-protectedWithdrawAsset}
    */
   function protectedWithdrawAsset(
     uint256 owningTokenId,
@@ -339,7 +339,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-protectedWithdrawAssets}
+   * @dev {See IFlexiVault-protectedWithdrawAssets}
    */
   function protectedWithdrawAssets(
     uint256 owningTokenId,
@@ -367,7 +367,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-amountOf}
+   * @dev {See IFlexiVault-amountOf}
    */
   function amountOf(
     uint256 owningTokenId,
@@ -391,7 +391,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-ejectAccount}
+   * @dev {See IFlexiVault-ejectAccount}
    */
   function ejectAccount(uint256 owningTokenId) external override {
     _isChangeAllowed(owningTokenId);
@@ -399,7 +399,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-protectedEjectAccount}
+   * @dev {See IFlexiVault-protectedEjectAccount}
    */
   function protectedEjectAccount(
     uint256 owningTokenId,
@@ -413,7 +413,7 @@ contract TransparentVault is ITransparentVaultExtended, IVersioned, Ownable, NFT
   }
 
   /**
-   * @dev {See ITransparentVault-reInjectEjectedAccount}
+   * @dev {See IFlexiVault-reInjectEjectedAccount}
    */
   function reInjectEjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
     if (!_ejects[owningTokenId]) revert NotAPreviouslyEjectedAccount();
