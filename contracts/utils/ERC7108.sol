@@ -6,14 +6,15 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./IClusteredERC721.sol";
+import "./IERC7108.sol";
 
-import "hardhat/console.sol";
+//import "hardhat/console.sol";
 
-// Reference implementation of ClusteredERC721
+// Reference implementation of ERC-7108
 
-contract ClusteredNFT is IClusteredERC721, ERC721, Ownable {
+contract ERC7108 is IERC7108, ERC721 {
+  using Strings for uint256;
+
   error ZeroAddress();
   error NotClusterOwner();
   error SizeTooLarge();
@@ -34,7 +35,7 @@ contract ClusteredNFT is IClusteredERC721, ERC721, Ownable {
   mapping(address => uint256[]) public clusterIdByOwners;
   uint256 public maxSize = 10000;
 
-  uint256 private _nextClusterId = 0;
+  uint256 private _nextClusterId;
 
   constructor(string memory name, string memory symbol) ERC721(name, symbol) {}
 
@@ -66,12 +67,16 @@ contract ClusteredNFT is IClusteredERC721, ERC721, Ownable {
     _nextClusterId++;
   }
 
+  function clustersByOwner(address owner) public view returns (uint256[] memory) {
+    return clusterIdByOwners[owner];
+  }
+
   function _binarySearch(uint x) internal view returns (uint) {
     if (_nextClusterId == 0) {
       return type(uint).max;
     }
 
-    uint start = 0;
+    uint start;
     uint end = _nextClusterId - 1;
     uint mid;
 
@@ -124,11 +129,13 @@ contract ClusteredNFT is IClusteredERC721, ERC721, Ownable {
     return _nextClusterId;
   }
 
-  function transferClusterOwnership(uint256 clusterId, address newOwner) public override {
+  // This function was originally part of the interface but it was removed
+  // to leave the implementer full freedom about how to manage the ownership
+  function transferClusterOwnership(uint256 clusterId, address newOwner) public {
     if (newOwner == address(0)) revert ZeroAddress();
     if (clusters[clusterId].owner != msg.sender) revert NotClusterOwner();
     clusters[clusterId].owner = newOwner;
-    emit ClusterOwnershipTransferred(clusterId, msg.sender, newOwner);
+    emit ClusterOwnershipTransferred(clusterId, newOwner);
   }
 
   function normalizedTokenId(uint256 tokenId) public view override returns (uint256) {
@@ -144,7 +151,15 @@ contract ClusteredNFT is IClusteredERC721, ERC721, Ownable {
     _mint(to, clusters[clusterId].nextTokenId++);
   }
 
-  function getInterfaceId() external view returns (bytes4) {
-    return type(IClusteredERC721).interfaceId;
+  function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    _requireMinted(tokenId);
+    uint256 clusterId = _binarySearch(tokenId);
+    string memory baseURI = clusters[clusterId].baseTokenURI;
+    tokenId -= clusters[clusterId].firstTokenId - 1;
+    return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
+  }
+
+  function getInterfaceId() external pure returns (bytes4) {
+    return type(IERC7108).interfaceId;
   }
 }

@@ -4,11 +4,10 @@ pragma solidity ^0.8.9;
 // Authors: Francesco Sullo <francesco@sullo.co>
 
 /**
- * @title IClusteredERC721
- * @dev IClusteredERC721 interface allows managing clusters or sub-collections of ERC721 tokens within a single contract
-    ERC165 InterfaceId = 0x8a7bc8c2
+ * @title IERC7108
+ * @dev This interface allows managing clusters or sub-collections of ERC721 tokens within a single contract
  */
-interface IClusteredERC721 {
+interface IERC7108 {
   /**
    * @dev Emitted when a new cluster is added
    */
@@ -16,8 +15,11 @@ interface IClusteredERC721 {
 
   /**
    * @dev Emitted when ownership of a cluster is transferred
+      The interface does not specify functions to transfer the ownership of the cluster
+      to leave the implementer full freedom about how to implement it, with the only
+      requirement that a ClusterOwnershipTransferred event MUST be emitted if so
    */
-  event ClusterOwnershipTransferred(uint256 indexed clusterId, address indexed previousOwner, address indexed newOwner);
+  event ClusterOwnershipTransferred(uint256 indexed clusterId, address indexed newOwner);
 
   /**
    * @notice Gets the id of the cluster to which a token belongs
@@ -76,14 +78,6 @@ interface IClusteredERC721 {
     uint256 size,
     address clusterOwner
   ) external;
-
-  /**
-   * @notice Transfers ownership of a cluster
-   * @dev The ClusterOwnershipTransferred event MUST be emitted upon successful execution
-   * @param clusterId ID of the cluster
-   * @param newOwner Address of the new owner
-   */
-  function transferClusterOwnership(uint256 clusterId, address newOwner) external;
 
   /**
    * @notice Gets the normalized token ID for a token

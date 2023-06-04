@@ -1,18 +1,18 @@
 const {expect} = require("chai");
 const {addr0} = require("./helpers");
 
-describe.only("ClusteredNFT", function () {
+describe("ClusteredNFT", function () {
   let ClusteredNFT, clusteredNFT, owner, owner2, owner3, bob, alice, fred, john;
 
   beforeEach(async function () {
-    ClusteredNFT = await ethers.getContractFactory("ClusteredNFT");
+    ClusteredNFT = await ethers.getContractFactory("ERC7108");
 
     [owner, owner2, owner3, bob, alice, fred, john] = await ethers.getSigners();
 
     clusteredNFT = await ClusteredNFT.deploy("ClusteredNFT", "cNFT");
     await clusteredNFT.deployed();
 
-    expect(await clusteredNFT.getInterfaceId()).equal("0x8a7bc8c2");
+    expect(await clusteredNFT.getInterfaceId()).equal("0x4d676ad4");
   });
 
   it("Deploys contracts, mints tokens and checks ownerships", async function () {
@@ -63,6 +63,41 @@ describe.only("ClusteredNFT", function () {
 
     expect(await clusteredNFT.normalizedTokenId(1)).equal(1);
     expect(await clusteredNFT.normalizedTokenId(2223)).equal(1);
+    expect(await clusteredNFT.normalizedTokenId(2224)).equal(2);
     expect(await clusteredNFT.normalizedTokenId(2225)).equal(3);
+
+    expect(await clusteredNFT.tokenURI(2224)).equal("https://bud-token.cc/meta/2");
+
+    // verify that the binary search works as expected
+
+    let k = (await clusteredNFT.rangeOf(1))[1].toNumber();
+    let k0 = k;
+    let l = 2;
+    for (let i = 0, j = 1000; i < 79; i++, j += 33) {
+      let owner = i % 2 ? owner2 : owner3;
+      await clusteredNFT.connect(owner3).addCluster("Some Token", "ST", "https://some-token.cc/meta/", j, owner.address);
+      let v = k + j - 10;
+      const result = await clusteredNFT.clusterOf(v);
+      expect(result).equal(i + 2);
+      k += j - 1;
+    }
+
+    k = k0;
+    j = 1000;
+    for (let i = 0, j = 1000; i < 79; i++, j += 33) {
+      let v = k + j - 10;
+      const result = await clusteredNFT.clusterOf(v);
+      // console.log(v, result, i + 2);
+      expect(result).equal(i + 2);
+      k += j - 1;
+    }
+
+    let myClusters = (await clusteredNFT.clustersByOwner(owner3.address)).map((e) => e.toNumber());
+    expect(myClusters.length).equal(41);
+    expect(myClusters[10]).equal(20);
+
+    myClusters = (await clusteredNFT.clustersByOwner(owner2.address)).map((e) => e.toNumber());
+    expect(myClusters.length).equal(40);
+    expect(myClusters[10]).equal(21);
   });
 });

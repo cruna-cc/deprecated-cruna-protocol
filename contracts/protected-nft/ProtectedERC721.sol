@@ -219,7 +219,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
     uint256 timestamp,
     uint validFor
   ) public view override returns (bytes32) {
-    return keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), tokenId, to, timestamp, validFor));
+    return keccak256(abi.encode("\x19\x01", block.chainid, address(this), tokenId, to, timestamp, validFor));
   }
 
   function protectedTransfer(

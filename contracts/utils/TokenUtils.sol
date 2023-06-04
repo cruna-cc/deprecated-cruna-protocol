@@ -9,15 +9,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import "../protected-nft/IProtectedERC721.sol";
-import "./ITokenUtils.sol";
-import "./IVersioned.sol";
 
 //import "hardhat/console.sol";
 
-contract TokenUtils is ITokenUtils, IVersioned {
+library TokenUtils {
   error TheERC721IsAProtector();
 
-  function isERC721(address asset) public view override returns (bool) {
+  function isERC721(address asset) public view returns (bool) {
     try IERC165(asset).supportsInterface(type(IProtectedERC721).interfaceId) returns (bool result) {
       if (result) revert TheERC721IsAProtector();
     } catch {}
@@ -28,7 +26,7 @@ contract TokenUtils is ITokenUtils, IVersioned {
   }
 
   // It should work fine with ERC20 and ERC777
-  function isERC20(address asset) public view override returns (bool) {
+  function isERC20(address asset) public view returns (bool) {
     if (!isERC721(asset)) {
       // we exclude ERC721 because totalSupply can be also returned
       // by enumerable ERC721
@@ -39,7 +37,7 @@ contract TokenUtils is ITokenUtils, IVersioned {
     return false;
   }
 
-  function isERC1155(address asset) public view override returns (bool) {
+  function isERC1155(address asset) public view returns (bool) {
     // will revert if asset does not implement IERC165
     try IERC165(asset).supportsInterface(type(IERC1155).interfaceId) returns (bool result) {
       return result;
@@ -47,12 +45,12 @@ contract TokenUtils is ITokenUtils, IVersioned {
     return false;
   }
 
-  function version() external pure override returns (string memory) {
+  function version() external pure returns (string memory) {
     return "1.0.0";
   }
 
-  function isTokenUtils() external pure override returns (bytes4) {
-    return this.isTokenUtils.selector;
+  function isTokenUtils() external pure returns (bytes4) {
+    return TokenUtils.isTokenUtils.selector;
   }
 
   function hashWithdrawRequest(
@@ -63,21 +61,10 @@ contract TokenUtils is ITokenUtils, IVersioned {
     address beneficiary,
     uint256 timestamp,
     uint validFor
-  ) external view override returns (bytes32) {
+  ) external view returns (bytes32) {
     return
       keccak256(
-        abi.encodePacked(
-          "\x19\x01",
-          block.chainid,
-          address(this),
-          owningTokenId,
-          asset,
-          id,
-          amount,
-          beneficiary,
-          timestamp,
-          validFor
-        )
+        abi.encode("\x19\x01", block.chainid, address(this), owningTokenId, asset, id, amount, beneficiary, timestamp, validFor)
       );
   }
 
@@ -89,10 +76,10 @@ contract TokenUtils is ITokenUtils, IVersioned {
     address[] memory beneficiaries,
     uint256 timestamp,
     uint validFor
-  ) external view override returns (bytes32) {
+  ) external view returns (bytes32) {
     return
       keccak256(
-        abi.encodePacked(
+        abi.encode(
           "\x19\x01",
           block.chainid,
           address(this),
@@ -107,7 +94,7 @@ contract TokenUtils is ITokenUtils, IVersioned {
       );
   }
 
-  function hashEjectRequest(uint256 owningTokenId, uint256 timestamp, uint validFor) external view override returns (bytes32) {
+  function hashEjectRequest(uint256 owningTokenId, uint256 timestamp, uint validFor) external view returns (bytes32) {
     return keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), owningTokenId, timestamp, validFor));
   }
 }
