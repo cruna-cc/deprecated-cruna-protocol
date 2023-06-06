@@ -180,7 +180,7 @@ These future developments further enhance the flexibility, security, and utility
 
 ## Contributions
 
-This project has born from the collaboration between [CoolProject](https://everdragons2.com), [Nduja Labs](https://ndujalabs.com) and [The Round Table](https://trt.gg).
+This project started from the collaboration between [Everdragons2](https://everdragons2.com), [Nduja Labs](https://ndujalabs.com) and [The Round Table](https://trt.gg).
 
 ## License
 
