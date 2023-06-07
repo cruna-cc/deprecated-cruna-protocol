@@ -1,5 +1,6 @@
 const fs = require("fs-extra");
 const path = require("path");
+const {deployContract} = require("../test/helpers");
 
 async function main() {
   const ABIs = {
@@ -23,6 +24,13 @@ async function main() {
   abi("ERC20", "@openzeppelin/contracts/token/ERC20");
   abi("ERC721", "@openzeppelin/contracts/token/ERC721");
   abi("ERC1155", "@openzeppelin/contracts/token/ERC1155");
+
+  // for dev only
+  abi("Bulls", "contracts/mocks/fake-tokens");
+  abi("FatBelly", "contracts/mocks/fake-tokens");
+  abi("Particle", "contracts/mocks/fake-tokens");
+  abi("StupidMonk", "contracts/mocks/fake-tokens");
+  abi("UselessWeapons", "contracts/mocks/fake-tokens");
 
   await fs.writeFile(path.resolve(__dirname, "../export/ABIs.json"), JSON.stringify(ABIs, null, 2));
 }
