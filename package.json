@@ -44,7 +44,7 @@
     "@nomiclabs/hardhat-waffle": "^2.0.5",
     "@openzeppelin/hardhat-upgrades": "^1.24.0",
     "@openzeppelin/test-helpers": "^0.5.16",
-    "@secrez/cryptoenv": "^0.2.3",
+    "@secrez/cryptoenv": "^0.2.4",
     "case": "^1.6.3",
     "chai": "^4.3.7",
     "dotenv": "^16.1.3",
