@@ -86,7 +86,7 @@ describe("FlexiVault", function () {
   it("should revert if not activated", async function () {
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
-    await expect(flexiVault.connect(bob).depositERC721(1, particle.address, 2)).revertedWith("NotActivated()");
+    await expect(flexiVault.connect(bob).depositAssets(1, [particle.address], [2], [1])).revertedWith("NotActivated()");
   });
 
   it("should create a vaults and add more assets to it", async function () {
@@ -94,17 +94,19 @@ describe("FlexiVault", function () {
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
-    await flexiVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
     // bob adds a stupidMonk token to his vaults
     await stupidMonk.connect(bob).setApprovalForAll(flexiVault.address, true);
-    await flexiVault.connect(bob).depositERC721(1, stupidMonk.address, 1);
-    expect((await flexiVault.amountOf(1, [stupidMonk.address], [1]))[0]).equal(1);
 
     // bob adds some bulls tokens to his vaults
     await bulls.connect(bob).approve(flexiVault.address, amount("10000"));
-    await flexiVault.connect(bob).depositERC20(1, bulls.address, amount("5000"));
+
+    await flexiVault
+      .connect(bob)
+      .depositAssets(1, [particle.address, stupidMonk.address, bulls.address], [2, 1, 0], [1, 1, amount("5000")]);
+
+    expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
+    expect((await flexiVault.amountOf(1, [stupidMonk.address], [1]))[0]).equal(1);
     expect((await flexiVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
     // bob transfers the protected to alice
@@ -114,11 +116,7 @@ describe("FlexiVault", function () {
 
     expect(await stupidMonk.balanceOf(fred.address)).equal(0);
 
-    await expect(
-      flexiVault
-        .connect(alice)
-        ["withdrawAsset(uint256,address,uint256,uint256,address)"](1, stupidMonk.address, 1, 1, fred.address)
-    )
+    await expect(flexiVault.connect(alice).withdrawAssets(1, [stupidMonk.address], [1], [1], [fred.address]))
       .emit(flexiVault, "Withdrawal")
       .emit(stupidMonk, "Transfer");
 
@@ -151,7 +149,7 @@ describe("FlexiVault", function () {
   it("should create a vaults and deposit Ether ", async function () {
     await flexiVault.connect(bob).activateAccount(1, true);
 
-    await flexiVault.connect(bob).depositETH(1, {value: amount("1000")});
+    await flexiVault.connect(bob).depositAssets(1, [ethers.constants.AddressZero], [0], [0], {value: amount("1000")});
     expect((await flexiVault.amountOf(1, [ethers.constants.AddressZero], [0]))[0]).equal(amount("1000"));
 
     const accountAddress = await flexiVault.accountAddress(1);
@@ -162,19 +160,14 @@ describe("FlexiVault", function () {
   it("should create a vaults, add assets to it, then eject and reinject again", async function () {
     await flexiVault.connect(bob).activateAccount(1, true);
 
-    // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
-    await flexiVault.connect(bob).depositERC721(1, particle.address, 2);
-    expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
-
-    // bob adds some UselessWeapons tokens to his vaults
     await uselessWeapons.connect(bob).setApprovalForAll(flexiVault.address, true);
-    await flexiVault.connect(bob).depositERC1155(1, uselessWeapons.address, 2, 2);
+    await flexiVault.connect(bob).depositAssets(1, [particle.address, uselessWeapons.address], [2, 2], [1, 2]);
     expect((await flexiVault.amountOf(1, [uselessWeapons.address], [2]))[0]).equal(2);
 
     // bob adds some bulls tokens to his vaults
     await bulls.connect(fred).approve(flexiVault.address, amount("10000"));
-    await flexiVault.connect(fred).depositERC20(1, bulls.address, amount("5000"));
+    await flexiVault.connect(fred).depositAssets(1, [bulls.address], [0], [amount("5000")]);
     expect((await flexiVault.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
     const trusteeAddress = await flexiVault.trustee();
@@ -190,7 +183,9 @@ describe("FlexiVault", function () {
 
     await expect(flexiVault.connect(bob).ejectAccount(1)).revertedWith("AccountHasBeenEjected()");
 
-    await expect(flexiVault.connect(bob).depositERC721(1, particle.address, 4)).revertedWith("AccountHasBeenEjected()");
+    await expect(flexiVault.connect(bob).depositAssets(1, [particle.address], [4], [1])).revertedWith(
+      "AccountHasBeenEjected()"
+    );
 
     await trustee.connect(bob).approve(flexiVault.address, 1);
 
@@ -202,7 +197,7 @@ describe("FlexiVault", function () {
 
     const accountAddress = await flexiVault.accountAddress(1);
 
-    await expect(flexiVault.connect(bob).depositERC721(1, particle.address, 4))
+    await expect(flexiVault.connect(bob).depositAssets(1, [particle.address], [4], [1]))
       .emit(particle, "Transfer")
       .withArgs(bob.address, accountAddress, 4);
 
@@ -214,7 +209,7 @@ describe("FlexiVault", function () {
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
-    await flexiVault.connect(bob).depositERC721(1, particle.address, 2);
+    await flexiVault.connect(bob).depositAssets(1, [particle.address], [2], [1]);
     expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
     await expect(crunaVault.connect(bob).proposeProtector(mark.address))
@@ -244,7 +239,7 @@ describe("FlexiVault", function () {
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
-    await flexiVault.connect(bob).depositERC721(1, particle.address, 2);
+    await flexiVault.connect(bob).depositAssets(1, [particle.address], [2], [1]);
     expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
     await expect(crunaVault.connect(bob).proposeProtector(mark.address))

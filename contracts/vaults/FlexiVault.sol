@@ -134,39 +134,39 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     _registry.createAccount(account, block.chainid, address(trustee), owningTokenId, _salt, "");
   }
 
-  /**
-   * @dev {See IFlexiVault-depositERC721}
-   */
-  function depositERC721(
-    uint256 owningTokenId,
-    address asset,
-    uint256 id
-  ) public override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    _depositERC721(owningTokenId, asset, id);
-  }
-
-  /**
-   * @dev {See IFlexiVault-depositERC20}
-   */
-  function depositERC20(
-    uint256 owningTokenId,
-    address asset,
-    uint256 amount
-  ) public override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    _depositERC20(owningTokenId, asset, amount);
-  }
-
-  /**
-   * @dev {See IFlexiVault-depositERC1155}
-   */
-  function depositERC1155(
-    uint256 owningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount
-  ) public override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    _depositERC1155(owningTokenId, asset, id, amount);
-  }
+  //  /**
+  //   * @dev {See IFlexiVault-depositERC721}
+  //   */
+  //  function depositERC721(
+  //    uint256 owningTokenId,
+  //    address asset,
+  //    uint256 id
+  //  ) public override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
+  //    _depositERC721(owningTokenId, asset, id);
+  //  }
+  //
+  //  /**
+  //   * @dev {See IFlexiVault-depositERC20}
+  //   */
+  //  function depositERC20(
+  //    uint256 owningTokenId,
+  //    address asset,
+  //    uint256 amount
+  //  ) public override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
+  //    _depositERC20(owningTokenId, asset, amount);
+  //  }
+  //
+  //  /**
+  //   * @dev {See IFlexiVault-depositERC1155}
+  //   */
+  //  function depositERC1155(
+  //    uint256 owningTokenId,
+  //    address asset,
+  //    uint256 id,
+  //    uint256 amount
+  //  ) public override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
+  //    _depositERC1155(owningTokenId, asset, id, amount);
+  //  }
 
   function _depositERC721(uint256 owningTokenId, address asset, uint256 id) internal {
     // the following reverts if not an ERC721. We do not pre-check to save gas.
@@ -176,7 +176,13 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
   /**
    * @dev {See IFlexiVault-depositETH}
    */
-  function depositETH(uint256 owningTokenId) external payable override onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
+  //  function depositETH(uint256 owningTokenId) external payable override onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
+  //    if (msg.value == 0) revert NoETH();
+  //    (bool success, ) = payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
+  //    if (!success) revert ETHDepositFailed();
+  //  }
+
+  function _depositETH(uint256 owningTokenId) internal {
     if (msg.value == 0) revert NoETH();
     (bool success, ) = payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
     if (!success) revert ETHDepositFailed();
@@ -201,10 +207,12 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     address[] memory assets,
     uint256[] memory ids, // 0 for ERC20
     uint256[] memory amounts // 1 for ERC721
-  ) external override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
+  ) external payable override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
-      if (ids[i] == 0 && _tokenUtils.isERC20(assets[i])) {
+      if (ids[i] == 0 && assets[i] == address(0)) {
+        _depositETH(owningTokenId);
+      } else if (ids[i] == 0 && _tokenUtils.isERC20(assets[i])) {
         _depositERC20(owningTokenId, assets[i], amounts[i]);
       } else if (amounts[i] == 1 && _tokenUtils.isERC721(assets[i])) {
         _depositERC721(owningTokenId, assets[i], ids[i]);
@@ -274,22 +282,22 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
   /**
    * @dev {See IFlexiVault-withdrawAsset}
    */
-  function withdrawAsset(
-    uint256 owningTokenId,
-    address asset, // if address(0) we want to withdraw the native token, for example Ether
-    uint256 id,
-    uint256 amount,
-    address beneficiary // if address(0) we send to the owner of the owningTokenId
-  )
-    public
-    override
-    onlyOwningTokenOwnerOrOperator(owningTokenId)
-    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
-    nonReentrant
-  {
-    _isChangeAllowed(owningTokenId);
-    _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
-  }
+  //  function withdrawAsset(
+  //    uint256 owningTokenId,
+  //    address asset, // if address(0) we want to withdraw the native token, for example Ether
+  //    uint256 id,
+  //    uint256 amount,
+  //    address beneficiary // if address(0) we send to the owner of the owningTokenId
+  //  )
+  //    public
+  //    override
+  //    onlyOwningTokenOwnerOrOperator(owningTokenId)
+  //    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
+  //    nonReentrant
+  //  {
+  //    _isChangeAllowed(owningTokenId);
+  //    _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
+  //  }
 
   /**
    * @dev {See IFlexiVault-withdrawAssets}
@@ -310,33 +318,33 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     _isChangeAllowed(owningTokenId);
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
-      withdrawAsset(owningTokenId, assets[i], ids[i], amounts[i], beneficiaries[i]);
+      _withdrawAsset(owningTokenId, assets[i], ids[i], amounts[i], beneficiaries[i]);
     }
   }
 
   /**
    * @dev {See IFlexiVault-protectedWithdrawAsset}
    */
-  function protectedWithdrawAsset(
-    uint256 owningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount,
-    address beneficiary,
-    uint256 timestamp,
-    uint validFor,
-    bytes calldata signature
-  )
-    public
-    override
-    onlyOwningTokenOwnerOrOperator(owningTokenId)
-    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
-    nonReentrant
-  {
-    bytes32 hash = _tokenUtils.hashWithdrawRequest(owningTokenId, asset, id, amount, beneficiary, timestamp, validFor);
-    _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
-    _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
-  }
+  //  function protectedWithdrawAsset(
+  //    uint256 owningTokenId,
+  //    address asset,
+  //    uint256 id,
+  //    uint256 amount,
+  //    address beneficiary,
+  //    uint256 timestamp,
+  //    uint validFor,
+  //    bytes calldata signature
+  //  )
+  //    public
+  //    override
+  //    onlyOwningTokenOwnerOrOperator(owningTokenId)
+  //    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
+  //    nonReentrant
+  //  {
+  //    bytes32 hash = _tokenUtils.hashWithdrawRequest(owningTokenId, asset, id, amount, beneficiary, timestamp, validFor);
+  //    _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
+  //    _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
+  //  }
 
   /**
    * @dev {See IFlexiVault-protectedWithdrawAssets}
