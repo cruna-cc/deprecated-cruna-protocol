@@ -134,90 +134,30 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     _registry.createAccount(account, block.chainid, address(trustee), owningTokenId, _salt, "");
   }
 
-  //  /**
-  //   * @dev {See IFlexiVault-depositERC721}
-  //   */
-  //  function depositERC721(
-  //    uint256 owningTokenId,
-  //    address asset,
-  //    uint256 id
-  //  ) public override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-  //    _depositERC721(owningTokenId, asset, id);
-  //  }
-  //
-  //  /**
-  //   * @dev {See IFlexiVault-depositERC20}
-  //   */
-  //  function depositERC20(
-  //    uint256 owningTokenId,
-  //    address asset,
-  //    uint256 amount
-  //  ) public override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-  //    _depositERC20(owningTokenId, asset, amount);
-  //  }
-  //
-  //  /**
-  //   * @dev {See IFlexiVault-depositERC1155}
-  //   */
-  //  function depositERC1155(
-  //    uint256 owningTokenId,
-  //    address asset,
-  //    uint256 id,
-  //    uint256 amount
-  //  ) public override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-  //    _depositERC1155(owningTokenId, asset, id, amount);
-  //  }
-
-  function _depositERC721(uint256 owningTokenId, address asset, uint256 id) internal {
-    // the following reverts if not an ERC721. We do not pre-check to save gas.
-    IERC721(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id);
-  }
-
-  /**
-   * @dev {See IFlexiVault-depositETH}
-   */
-  //  function depositETH(uint256 owningTokenId) external payable override onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-  //    if (msg.value == 0) revert NoETH();
-  //    (bool success, ) = payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
-  //    if (!success) revert ETHDepositFailed();
-  //  }
-
-  function _depositETH(uint256 owningTokenId) internal {
-    if (msg.value == 0) revert NoETH();
-    (bool success, ) = payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
-    if (!success) revert ETHDepositFailed();
-  }
-
-  function _depositERC20(uint256 owningTokenId, address asset, uint256 amount) internal {
-    // the following reverts if not an ERC20
-    bool transferred = IERC20(asset).transferFrom(_msgSender(), _accountAddresses[owningTokenId], amount);
-    if (!transferred) revert TransferFailed();
-  }
-
-  function _depositERC1155(uint256 owningTokenId, address asset, uint256 id, uint256 amount) internal {
-    // the following reverts if not an ERC1155
-    IERC1155(asset).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], id, amount, "");
-  }
-
   /**
    * @dev {See IFlexiVault-depositAssets}
    */
   function depositAssets(
     uint256 owningTokenId,
+    TokenType[] memory tokenTypes,
     address[] memory assets,
-    uint256[] memory ids, // 0 for ERC20
-    uint256[] memory amounts // 1 for ERC721
+    uint256[] memory ids,
+    uint256[] memory amounts
   ) external payable override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
+    if (assets.length != ids.length || assets.length != amounts.length || assets.length != tokenTypes.length)
+      revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
-      if (ids[i] == 0 && assets[i] == address(0)) {
-        _depositETH(owningTokenId);
-      } else if (ids[i] == 0 && _tokenUtils.isERC20(assets[i])) {
-        _depositERC20(owningTokenId, assets[i], amounts[i]);
-      } else if (amounts[i] == 1 && _tokenUtils.isERC721(assets[i])) {
-        _depositERC721(owningTokenId, assets[i], ids[i]);
-      } else if (amounts[i] > 0 && _tokenUtils.isERC1155(assets[i])) {
-        _depositERC1155(owningTokenId, assets[i], ids[i], amounts[i]);
+      if (tokenTypes[i] == TokenType.ETH) {
+        if (msg.value == 0) revert NoETH();
+        (bool success, ) = payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
+        if (!success) revert ETHDepositFailed();
+      } else if (tokenTypes[i] == TokenType.ERC20) {
+        bool transferred = IERC20(assets[i]).transferFrom(_msgSender(), _accountAddresses[owningTokenId], amounts[i]);
+        if (!transferred) revert TransferFailed();
+      } else if (tokenTypes[i] == TokenType.ERC721) {
+        IERC721(assets[i]).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], ids[i]);
+      } else if (tokenTypes[i] == TokenType.ERC1155) {
+        IERC1155(assets[i]).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], ids[i], amounts[i], "");
       } else revert InvalidAsset();
     }
   }
@@ -239,25 +179,32 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
   }
 
-  function _transferToken(uint owningTokenId, address to, address asset, uint256 id, uint256 amount) internal {
+  function _transferToken(
+    uint owningTokenId,
+    TokenType tokenType,
+    address to,
+    address asset,
+    uint256 id,
+    uint256 amount
+  ) internal {
     address walletAddress = _accountAddresses[owningTokenId];
     IERC6551Account accountInstance = IERC6551Account(payable(walletAddress));
-    if (asset == address(0)) {
+    if (tokenType == TokenType.ETH) {
       // we talk of ETH
       accountInstance.executeCall(walletAddress, amount, "");
-    } else if (_tokenUtils.isERC721(asset)) {
+    } else if (tokenType == TokenType.ERC721) {
       accountInstance.executeCall(
         asset,
         0,
         abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", walletAddress, to, id)
       );
-    } else if (_tokenUtils.isERC1155(asset)) {
+    } else if (tokenType == TokenType.ERC1155) {
       accountInstance.executeCall(
         asset,
         0,
         abi.encodeWithSignature("safeTransferFrom(address,address,uint256,uint256,bytes)", walletAddress, to, id, amount, "")
       );
-    } else if (_tokenUtils.isERC20(asset)) {
+    } else if (tokenType == TokenType.ERC20) {
       accountInstance.executeCall(asset, 0, abi.encodeWithSignature("transfer(address,uint256)", to, amount));
     } else {
       // should never happen
@@ -267,6 +214,7 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
 
   function _withdrawAsset(
     uint256 owningTokenId,
+    TokenType tokenType,
     address asset,
     uint256 id,
     uint256 amount,
@@ -276,34 +224,15 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     if (amount == 0) revert InvalidAmount();
     uint balance = _getAccountBalance(owningTokenId, asset, id);
     if (balance < amount) revert InsufficientBalance();
-    _transferToken(owningTokenId, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
+    _transferToken(owningTokenId, tokenType, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
   }
-
-  /**
-   * @dev {See IFlexiVault-withdrawAsset}
-   */
-  //  function withdrawAsset(
-  //    uint256 owningTokenId,
-  //    address asset, // if address(0) we want to withdraw the native token, for example Ether
-  //    uint256 id,
-  //    uint256 amount,
-  //    address beneficiary // if address(0) we send to the owner of the owningTokenId
-  //  )
-  //    public
-  //    override
-  //    onlyOwningTokenOwnerOrOperator(owningTokenId)
-  //    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
-  //    nonReentrant
-  //  {
-  //    _isChangeAllowed(owningTokenId);
-  //    _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
-  //  }
 
   /**
    * @dev {See IFlexiVault-withdrawAssets}
    */
   function withdrawAssets(
     uint owningTokenId,
+    TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts,
@@ -318,39 +247,16 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     _isChangeAllowed(owningTokenId);
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
-      _withdrawAsset(owningTokenId, assets[i], ids[i], amounts[i], beneficiaries[i]);
+      _withdrawAsset(owningTokenId, tokenTypes[i], assets[i], ids[i], amounts[i], beneficiaries[i]);
     }
   }
-
-  /**
-   * @dev {See IFlexiVault-protectedWithdrawAsset}
-   */
-  //  function protectedWithdrawAsset(
-  //    uint256 owningTokenId,
-  //    address asset,
-  //    uint256 id,
-  //    uint256 amount,
-  //    address beneficiary,
-  //    uint256 timestamp,
-  //    uint validFor,
-  //    bytes calldata signature
-  //  )
-  //    public
-  //    override
-  //    onlyOwningTokenOwnerOrOperator(owningTokenId)
-  //    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
-  //    nonReentrant
-  //  {
-  //    bytes32 hash = _tokenUtils.hashWithdrawRequest(owningTokenId, asset, id, amount, beneficiary, timestamp, validFor);
-  //    _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
-  //    _withdrawAsset(owningTokenId, asset, id, amount, beneficiary);
-  //  }
 
   /**
    * @dev {See IFlexiVault-protectedWithdrawAssets}
    */
   function protectedWithdrawAssets(
     uint256 owningTokenId,
+    TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts,
@@ -367,10 +273,19 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
   {
     if (assets.length != ids.length || assets.length != amounts.length || assets.length != beneficiaries.length)
       revert InconsistentLengths();
-    bytes32 hash = _tokenUtils.hashWithdrawsRequest(owningTokenId, assets, ids, amounts, beneficiaries, timestamp, validFor);
+    bytes32 hash = _tokenUtils.hashWithdrawsRequest(
+      owningTokenId,
+      tokenTypes,
+      assets,
+      ids,
+      amounts,
+      beneficiaries,
+      timestamp,
+      validFor
+    );
     _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
     for (uint256 i = 0; i < assets.length; i++) {
-      _withdrawAsset(owningTokenId, assets[i], ids[i], amounts[i], beneficiaries[i]);
+      _withdrawAsset(owningTokenId, tokenTypes[i], assets[i], ids[i], amounts[i], beneficiaries[i]);
     }
   }
 

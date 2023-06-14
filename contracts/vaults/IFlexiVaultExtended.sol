@@ -35,10 +35,4 @@ interface IFlexiVaultExtended is IFlexiVault {
   error OwningTokenNotProtected();
   error VaultHasBeenUpgraded();
   error InvalidTokenUtils();
-
-  enum TokenType {
-    ERC20,
-    ERC721,
-    ERC1155
-  }
 }
