@@ -310,7 +310,7 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     _isChangeAllowed(owningTokenId);
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
-      withdrawAsset(owningTokenId, assets[i], ids[i], amounts[i], beneficiaries[i]);
+      _withdrawAsset(owningTokenId, assets[i], ids[i], amounts[i], beneficiaries[i]);
     }
   }
 
