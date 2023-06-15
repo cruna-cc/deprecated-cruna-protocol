@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import "../protected-nft/IProtectedERC721.sol";
+import "../vaults/IFlexiVault.sol";
 
 //import "hardhat/console.sol";
 
@@ -70,6 +71,7 @@ library TokenUtils {
 
   function hashWithdrawsRequest(
     uint256 owningTokenId,
+    IFlexiVault.TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts,
@@ -84,6 +86,7 @@ library TokenUtils {
           block.chainid,
           address(this),
           owningTokenId,
+          tokenTypes,
           assets,
           ids,
           amounts,
