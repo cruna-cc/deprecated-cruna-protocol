@@ -13,8 +13,6 @@ describe("FlexiVault", function () {
   // wallets
   let owner, bob, alice, fred, john, jane, mark;
 
-  let ETH, ERC20, ERC721, ERC1155;
-
   before(async function () {
     [owner, bob, alice, fred, john, jane, mark] = await ethers.getSigners();
   });
