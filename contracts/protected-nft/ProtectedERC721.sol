@@ -21,8 +21,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
   using ECDSA for bytes32;
   using Strings for uint256;
 
-  // tokenId => isApprovable
-  mapping(uint256 => bool) private _notApprovable;
+  ITokenUtils internal _tokenUtils;
 
   // the address of a second wallet required to validate the transfer of a token
   // the user can set up to 2 protectors
@@ -46,8 +45,6 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
   mapping(bytes32 => bool) private _usedSignatures;
 
   address[] private _vaults;
-  uint private _flexiVaultVersion;
-  ITokenUtils internal _tokenUtils;
 
   modifier onlyProtectorFor(address owner_) {
     (uint i, Status status) = _findProtector(owner_, _msgSender());
