@@ -2,5 +2,5 @@
 pragma solidity ^0.8.19;
 
 interface IVersioned {
-  function version() external pure returns (string memory);
+  function version() external view returns (string memory);
 }

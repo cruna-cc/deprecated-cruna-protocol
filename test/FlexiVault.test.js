@@ -24,13 +24,13 @@ describe("FlexiVault", function () {
   }
 
   beforeEach(async function () {
+    tokenUtils = await deployContract("TokenUtils");
     const _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
-    crunaVault = await deployContract("CrunaVault", _baseTokenURI);
+    crunaVault = await deployContract("CrunaVault", _baseTokenURI, tokenUtils.address);
     await crunaVault.addCluster("Cruna Vault V1", "CRUNA", _baseTokenURI, 100000, owner.address);
 
     registry = await deployContract("ERC6551Registry");
     wallet = await deployContract("ERC6551Account");
-    tokenUtils = await deployContract("TokenUtils");
     let implementation = await deployContract("ERC6551AccountUpgradeable");
     proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
@@ -291,7 +291,7 @@ describe("FlexiVault", function () {
 
     const timestamp = (await getTimestamp()) - 100;
     const validFor = 3600;
-    const hash = await crunaVault.hashTransferRequest(1, alice.address, timestamp, validFor);
+    const hash = await tokenUtils.hashTransferRequest(1, alice.address, timestamp, validFor);
 
     // this helper function uses by default hardhat account [4], which is john, the protector
     const signature = await signPackedData(hash);

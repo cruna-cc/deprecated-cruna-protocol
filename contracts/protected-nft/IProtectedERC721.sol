@@ -121,15 +121,6 @@ interface IProtectedERC721 {
   function signedByProtector(uint tokenId, bytes32 hash, bytes memory signature) external view returns (bool);
 
   /**
-   * @dev Returns the hash of a transfer request
-   * @param tokenId The token id
-   * @param to The address of the recipient
-   * @param timestamp The timestamp of the transfer request
-   * @return The hash of the transfer request
-   */
-  function hashTransferRequest(uint256 tokenId, address to, uint256 timestamp, uint validFor) external view returns (bytes32);
-
-  /**
    * @dev Transfers a token to a recipient usign a valid signed transferRequest
    * @notice The function MUST be executed by the owner
    * @param tokenId The token id

@@ -4,18 +4,23 @@ pragma solidity ^0.8.19;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../nft-owned/NFTOwned.sol";
 import "./IProtectedERC721Extended.sol";
 import "../utils/IVersioned.sol";
 import "../vaults/IFlexiVault.sol";
+import "../utils/ITokenUtils.sol";
 
 //import "hardhat/console.sol";
 
-abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC721, Ownable {
+abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC721, ERC721Enumerable, Ownable {
   using ECDSA for bytes32;
+  using Strings for uint256;
+
   // tokenId => isApprovable
   mapping(uint256 => bool) private _notApprovable;
 
@@ -41,6 +46,8 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
   mapping(bytes32 => bool) private _usedSignatures;
 
   address[] private _vaults;
+  uint private _flexiVaultVersion;
+  ITokenUtils internal _tokenUtils;
 
   modifier onlyProtectorFor(address owner_) {
     (uint i, Status status) = _findProtector(owner_, _msgSender());
@@ -65,10 +72,13 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
     _;
   }
 
-  constructor(string memory name_, string memory symbol_) ERC721(name_, symbol_) {}
+  constructor(string memory name_, string memory symbol_, address tokenUtils) ERC721(name_, symbol_) {
+    _tokenUtils = ITokenUtils(tokenUtils);
+    if (_tokenUtils.isTokenUtils() != ITokenUtils.isTokenUtils.selector) revert InvalidTokenUtils();
+  }
 
-  function version() external pure override returns (string memory) {
-    return "1.0.0";
+  function version() external view override returns (string memory) {
+    return string(abi.encodePacked((_vaults.length + 1).toString(), ".0.0"));
   }
 
   function addVault(address vault) external onlyOwner {
@@ -213,15 +223,6 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
     return status > Status.UNSET;
   }
 
-  function hashTransferRequest(
-    uint256 tokenId,
-    address to,
-    uint256 timestamp,
-    uint validFor
-  ) public view override returns (bytes32) {
-    return keccak256(abi.encode("\x19\x01", block.chainid, address(this), tokenId, to, timestamp, validFor));
-  }
-
   function protectedTransfer(
     uint tokenId,
     address to,
@@ -233,7 +234,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
       tokenId,
       timestamp,
       validFor,
-      hashTransferRequest(tokenId, to, timestamp, validFor),
+      _tokenUtils.hashTransferRequest(tokenId, to, timestamp, validFor),
       signature
     );
     _approvedTransfers[tokenId] = true;
@@ -287,8 +288,8 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
 
   function unlockProtectorsFor(address tokensOwner_) external onlyProtectorFor(tokensOwner_) {
     if (_lockedProtectorsFor[tokensOwner_] == Status.UNSET) revert ProtectorsNotLocked();
-    if (_lockedProtectorsFor[tokensOwner_] != Status.RESIGNED) revert ProtectorsUnlockAlreadyStarted();
-    // else is Status.ACTIVE
+    if (_lockedProtectorsFor[tokensOwner_] == Status.RESIGNED) revert ProtectorsUnlockAlreadyStarted();
+    // else is ACTIVE, since there is no PENDING status
     _lockedProtectorsFor[tokensOwner_] = Status.RESIGNED;
   }
 
@@ -344,22 +345,21 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
     address to,
     uint256 tokenId,
     uint256 batchSize
-  ) internal virtual override(ERC721) {
+  ) internal virtual override(ERC721, ERC721Enumerable) {
     if (!isTransferable(tokenId, from, to)) revert TransferNotPermitted();
     delete _operators[tokenId];
     super._beforeTokenTransfer(from, to, tokenId, batchSize);
   }
 
-  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721) returns (bool) {
+  function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721Enumerable) returns (bool) {
     return interfaceId == type(IProtectedERC721).interfaceId || super.supportsInterface(interfaceId);
   }
 
   // IERC6454
 
   function isTransferable(uint256 tokenId, address from, address to) public view override returns (bool) {
-    // In general it is not transferable and burning is not allowed
-    // so we can just verify the to
-    if (to == address(0)) return false;
+    // Burnings and self transfers are not allowed
+    if (to == address(0) || from == to) return false;
     // if from zero, it is minting
     else if (from == address(0)) return true;
     else {

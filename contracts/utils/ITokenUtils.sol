@@ -37,4 +37,13 @@ interface ITokenUtils {
   ) external view returns (bytes32);
 
   function hashEjectRequest(uint256 owningTokenId, uint256 timestamp, uint validFor) external view returns (bytes32);
+
+  /**
+   * @dev Returns the hash of a transfer request
+   * @param tokenId The token id
+   * @param to The address of the recipient
+   * @param timestamp The timestamp of the transfer request
+   * @return The hash of the transfer request
+   */
+  function hashTransferRequest(uint256 tokenId, address to, uint256 timestamp, uint validFor) external view returns (bytes32);
 }

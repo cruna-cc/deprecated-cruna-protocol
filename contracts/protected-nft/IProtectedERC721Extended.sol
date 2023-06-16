@@ -53,6 +53,7 @@ interface IProtectedERC721Extended is IProtectedERC721, IERC6454 {
   error OperatorNotActive();
   error NotAFlexiVault();
   error VaultAlreadyAdded();
+  error InvalidTokenUtils();
 
   enum Status {
     UNSET,

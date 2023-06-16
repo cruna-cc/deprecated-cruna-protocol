@@ -100,4 +100,8 @@ library TokenUtils {
   function hashEjectRequest(uint256 owningTokenId, uint256 timestamp, uint validFor) external view returns (bytes32) {
     return keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), owningTokenId, timestamp, validFor));
   }
+
+  function hashTransferRequest(uint256 tokenId, address to, uint256 timestamp, uint validFor) public view returns (bytes32) {
+    return keccak256(abi.encode("\x19\x01", block.chainid, address(this), tokenId, to, timestamp, validFor));
+  }
 }
