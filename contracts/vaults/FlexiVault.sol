@@ -283,7 +283,7 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
       timestamp,
       validFor
     );
-    _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
+    _protectedOwningToken.validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
     for (uint256 i = 0; i < assets.length; i++) {
       _withdrawAsset(owningTokenId, tokenTypes[i], assets[i], ids[i], amounts[i], beneficiaries[i]);
     }
@@ -331,7 +331,7 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     bytes calldata signature
   ) external override {
     bytes32 hash = _tokenUtils.hashEjectRequest(owningTokenId, timestamp, validFor);
-    _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
+    _protectedOwningToken.validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
     _ejectAccount(owningTokenId);
   }
 

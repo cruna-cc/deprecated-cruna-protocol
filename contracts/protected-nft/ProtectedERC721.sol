@@ -36,7 +36,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   error ProtectorAlreadySetByYou();
   error NotAProtector();
   error NotOwnByRelatedOwner();
-  error TransferNotPermitted();
+  error NotPermittedWhenProtectorsAreActive();
   error TokenIdTooBig();
   error PendingProtectorNotFound();
   error ResignationAlreadySubmitted();
@@ -161,10 +161,6 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     }
   }
 
-  function _removeProtector(address tokensOwner_, uint i) private {
-    _removeActorByIndex(tokensOwner_, i, Role.PROTECTOR);
-  }
-
   function isProtectorFor(address tokensOwner_, address protector_) external view returns (bool) {
     Status status = _actorStatus(tokensOwner_, protector_, Role.PROTECTOR);
     return status > Status.PENDING;
@@ -185,7 +181,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
       _updateStatus(tokensOwner_, i, Role.PROTECTOR, Status.ACTIVE);
       _ownersByProtector[_msgSender()] = tokensOwner_;
     } else {
-      _removeProtector(tokensOwner_, i);
+      _removeActorByIndex(tokensOwner_, i, Role.PROTECTOR);
     }
     emit ProtectorUpdated(tokensOwner_, _msgSender(), accepted_);
   }
@@ -201,22 +197,21 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
       emit ProtectorResigned(_msgSender(), _msgSender());
     } else {
       // it obtains similar results like not accepting a proposal
-      _removeProtector(tokensOwner_, i);
+      _removeActorByIndex(tokensOwner_, i, Role.PROTECTOR);
     }
   }
 
   function acceptResignation(address protector_) external onlyTokensOwner {
     (uint i, Status status) = _findProtector(_msgSender(), protector_);
     if (status == Status.RESIGNED) {
-      _removeProtector(_msgSender(), i);
+      _removeActorByIndex(_msgSender(), i, Role.PROTECTOR);
     } else {
       revert ResignationNotSubmitted();
     }
   }
 
-  function signedByProtector(uint tokenId, bytes32 hash, bytes memory signature) public view override returns (bool) {
+  function signedByProtector(address owner_, bytes32 hash, bytes memory signature) public view override returns (bool) {
     address signer = hash.recover(signature);
-    address owner_ = ownerOf(tokenId);
     (, Status status) = _findProtector(owner_, signer);
     return status > Status.UNSET;
   }
@@ -229,7 +224,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     bytes calldata signature
   ) external override onlyTokenOwner(tokenId) {
     validateTimestampAndSignature(
-      tokenId,
+      ownerOf(tokenId),
       timestamp,
       validFor,
       _tokenUtils.hashTransferRequest(tokenId, to, timestamp, validFor),
@@ -240,37 +235,38 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     delete _approvedTransfers[tokenId];
   }
 
-  function isSignatureUsed(uint tokenId, bytes calldata signature) public view override returns (bool) {
-    return _usedSignatures[keccak256(abi.encodePacked(tokenId, signature))];
+  function isSignatureUsed(bytes calldata signature) public view override returns (bool) {
+    return _usedSignatures[keccak256(signature)];
   }
 
-  function setSignatureAsUsed(uint tokenId, bytes calldata signature) public override {
+  function setSignatureAsUsed(bytes calldata signature) public override {
     for (uint i = 0; i < _vaults.length; i++) {
       if (_vaults[i] == _msgSender()) {
         revert NotAFlexiVault();
       }
     }
-    _usedSignatures[keccak256(abi.encodePacked(tokenId, signature))] = true;
+    _usedSignatures[keccak256(signature)] = true;
   }
 
   function validateTimestampAndSignature(
-    uint256 tokenId,
+    address tokenOwner_,
     uint256 timestamp,
     uint validFor,
     bytes32 hash,
     bytes calldata signature
   ) public override {
     if (timestamp > block.timestamp || timestamp < block.timestamp - validFor) revert TimestampInvalidOrExpired();
-    if (!signedByProtector(tokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
-    if (isSignatureUsed(tokenId, signature)) revert SignatureAlreadyUsed();
-    setSignatureAsUsed(tokenId, signature);
+    if (!signedByProtector(tokenOwner_, hash, signature)) revert WrongDataOrNotSignedByProtector();
+    if (isSignatureUsed(signature)) revert SignatureAlreadyUsed();
+    setSignatureAsUsed(signature);
   }
 
   function invalidateSignatureFor(uint tokenId, bytes32 hash, bytes calldata signature) external override {
+    address tokenOwner_ = ownerOf(tokenId);
     (, Status status) = _findProtector(ownerOf(tokenId), _msgSender());
     if (status < Status.ACTIVE) revert NotAProtector();
-    if (!signedByProtector(tokenId, hash, signature)) revert WrongDataOrNotSignedByProtector();
-    setSignatureAsUsed(tokenId, signature);
+    if (!signedByProtector(tokenOwner_, hash, signature)) revert WrongDataOrNotSignedByProtector();
+    setSignatureAsUsed(signature);
   }
 
   function lockProtectors() external onlyTokensOwner {
@@ -344,13 +340,55 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     uint256 tokenId,
     uint256 batchSize
   ) internal virtual override(ERC721, ERC721Enumerable) {
-    if (!isTransferable(tokenId, from, to)) revert TransferNotPermitted();
+    if (!isTransferable(tokenId, from, to)) revert NotPermittedWhenProtectorsAreActive();
     delete _operators[tokenId];
     super._beforeTokenTransfer(from, to, tokenId, batchSize);
   }
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721Enumerable) returns (bool) {
     return interfaceId == type(IProtectedERC721).interfaceId || super.supportsInterface(interfaceId);
+  }
+
+  // safe recipients
+
+  function _setSafeRecipient(address recipient, Level level) private {
+    if (level == Level.NONE) {
+      _removeActor(_msgSender(), recipient, Role.RECIPIENT);
+    } else {
+      _addActor(_msgSender(), recipient, Role.RECIPIENT, Status.ACTIVE, level);
+    }
+    emit SafeRecipientUpdated(_msgSender(), recipient, level);
+  }
+
+  function setSafeRecipient(address recipient, Level level) external onlyTokensOwner {
+    if (_countActiveProtectors(_msgSender()) > 0) revert NotPermittedWhenProtectorsAreActive();
+    _setSafeRecipient(recipient, level);
+  }
+
+  function setProtectedSafeRecipient(
+    address recipient,
+    Level level,
+    uint256 timestamp,
+    uint validFor,
+    bytes calldata signature
+  ) external override onlyTokensOwner {
+    validateTimestampAndSignature(
+      _msgSender(),
+      timestamp,
+      validFor,
+      _tokenUtils.hashRecipientRequest(_msgSender(), recipient, level, timestamp, validFor),
+      signature
+    );
+    _setSafeRecipient(recipient, level);
+  }
+
+  function safeRecipientLevel(address tokenOwner_, address recipient) public view override returns (Level) {
+    (, Actor memory actor) = _getActor(tokenOwner_, recipient, Role.RECIPIENT);
+    return actor.level;
+  }
+
+  function getSafeRecipients(address tokenOwner_) external view override returns (Actor[] memory) {
+    return _getActors(tokenOwner_, Role.RECIPIENT);
   }
 
   // IERC6454
@@ -362,7 +400,10 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     else if (from == address(0)) return true;
     else {
       _requireMinted(tokenId);
-      return _countActiveProtectors(ownerOf(tokenId)) == 0 || _approvedTransfers[tokenId];
+      return
+        _countActiveProtectors(ownerOf(tokenId)) == 0 ||
+        _approvedTransfers[tokenId] ||
+        safeRecipientLevel(ownerOf(tokenId), to) == Level.HIGH;
     }
   }
 }

@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import "../protected-nft/IProtectedERC721.sol";
 import "../vaults/IFlexiVault.sol";
+import "../protected-nft/IActors.sol";
 
 //import "hardhat/console.sol";
 
@@ -67,6 +68,16 @@ library TokenUtils {
       keccak256(
         abi.encode("\x19\x01", block.chainid, address(this), owningTokenId, asset, id, amount, beneficiary, timestamp, validFor)
       );
+  }
+
+  function hashRecipientRequest(
+    address owner,
+    address recipient,
+    IActors.Level level,
+    uint256 timestamp,
+    uint validFor
+  ) external view returns (bytes32) {
+    return keccak256(abi.encode("\x19\x01", block.chainid, address(this), owner, recipient, level, timestamp, validFor));
   }
 
   function hashWithdrawsRequest(

@@ -3,6 +3,8 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
+import "./IActors.sol";
+
 // erc165 interfaceId 0x8dca4bea
 interface IProtectedERC721 {
   /**
@@ -39,6 +41,11 @@ interface IProtectedERC721 {
    * @dev Emitted when the process to update a protector starts
    */
   event ProtectorUpdateStarted(address indexed owner, address indexed protector, bool status);
+
+  /**
+   * @dev Emitted when the level of an allowed recipient is updated
+   */
+  event SafeRecipientUpdated(address indexed owner, address indexed recipient, IActors.Level level);
 
   /**
   * @dev Return the protectors set for the tokensOwner
@@ -118,12 +125,12 @@ interface IProtectedERC721 {
 
   /**
    * @dev Verifies if the transfer request is signed by a protector
-   * @param tokenId The token id
+   * @param tokenOwner_ The token owner
    * @param hash The hash of the transfer request
    * @param signature The signature of the transfer request
    * @return True if the transfer request is signed by a protector
    */
-  function signedByProtector(uint tokenId, bytes32 hash, bytes memory signature) external view returns (bool);
+  function signedByProtector(address tokenOwner_, bytes32 hash, bytes memory signature) external view returns (bool);
 
   /**
    * @dev Transfers a token to a recipient usign a valid signed transferRequest
@@ -137,29 +144,27 @@ interface IProtectedERC721 {
 
   /**
    * @dev Checks if a signature has been used
-   * @param tokenId The token id
    * @param signature The signature of the transfer request
    * @return True if the signature has been used
    */
-  function isSignatureUsed(uint tokenId, bytes calldata signature) external view returns (bool);
+  function isSignatureUsed(bytes calldata signature) external view returns (bool);
 
   /**
    * @dev Sets a signature as used
-   * @param tokenId The token id
    * @param signature The signature of the transfer request
    */
-  function setSignatureAsUsed(uint tokenId, bytes calldata signature) external;
+  function setSignatureAsUsed(bytes calldata signature) external;
 
   /**
    * @dev Validates a timestamp and signature
-   * @param owningTokenId The token id
+   * @param tokenOwner_ The token owner
    * @param timestamp The timestamp of the transfer request
    * @param validFor The number of seconds the signature is valid for
    * @param hash The signed hash
    * @param signature The signature of the transfer request
    */
   function validateTimestampAndSignature(
-    uint256 owningTokenId,
+    address tokenOwner_,
     uint256 timestamp,
     uint validFor,
     bytes32 hash,
@@ -210,4 +215,20 @@ interface IProtectedERC721 {
    * @return true if the address is an owner or operator for the token, false otherwise
    */
   function isOwnerOrOperator(uint tokenId, address ownerOrOperator) external view returns (bool);
+
+  // safe recipients
+
+  function setSafeRecipient(address recipient, IActors.Level level) external;
+
+  function setProtectedSafeRecipient(
+    address recipient,
+    IActors.Level level,
+    uint256 timestamp,
+    uint validFor,
+    bytes calldata signature
+  ) external;
+
+  function safeRecipientLevel(address tokenOwner_, address recipient) external view returns (IActors.Level);
+
+  function getSafeRecipients(address tokenOwner_) external view returns (IActors.Actor[] memory);
 }
