@@ -330,9 +330,9 @@ describe("FlexiVault", function () {
     await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
     expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 3))
+    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 2))
       .emit(crunaVault, "SafeRecipientUpdated")
-      .withArgs(bob.address, alice.address, 3);
+      .withArgs(bob.address, alice.address, 2);
 
     await expect(crunaVault.connect(bob).proposeProtector(mark.address))
       .emit(crunaVault, "ProtectorProposed")
@@ -342,7 +342,7 @@ describe("FlexiVault", function () {
       .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
-    await expect(crunaVault.connect(bob).setSafeRecipient(fred.address, 3)).revertedWith(
+    await expect(crunaVault.connect(bob).setSafeRecipient(fred.address, 2)).revertedWith(
       "NotPermittedWhenProtectorsAreActive()"
     );
 
@@ -359,9 +359,9 @@ describe("FlexiVault", function () {
     await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
     expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 2))
+    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 1))
       .emit(crunaVault, "SafeRecipientUpdated")
-      .withArgs(bob.address, alice.address, 2);
+      .withArgs(bob.address, alice.address, 1);
 
     await expect(crunaVault.connect(bob).proposeProtector(mark.address))
       .emit(crunaVault, "ProtectorProposed")
@@ -384,9 +384,9 @@ describe("FlexiVault", function () {
     await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
     expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 2))
+    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 1))
       .emit(crunaVault, "SafeRecipientUpdated")
-      .withArgs(bob.address, alice.address, 2);
+      .withArgs(bob.address, alice.address, 1);
 
     await expect(crunaVault.connect(bob).proposeProtector(mark.address))
       .emit(crunaVault, "ProtectorProposed")

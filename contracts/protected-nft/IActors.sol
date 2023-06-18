@@ -33,7 +33,6 @@ interface IActors {
     */
   enum Level {
     NONE,
-    LOW,
     MEDIUM,
     HIGH
   }
