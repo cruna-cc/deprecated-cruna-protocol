@@ -301,7 +301,7 @@ describe("FlexiVault", function () {
     );
 
     await expect(crunaVault.connect(bob).protectedTransfer(1, fred.address, timestamp, validFor, signature)).revertedWith(
-      "WrongDataOrNotSignedByProtector()"
+      "ActorNotFound(0)"
     );
 
     await expect(crunaVault.connect(bob).protectedTransfer(1, alice.address, timestamp, validFor, signature))

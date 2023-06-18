@@ -10,23 +10,62 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "../nft-owned/NFTOwned.sol";
-import "./IProtectedERC721Extended.sol";
+import "./IProtectedERC721.sol";
 import "../utils/IVersioned.sol";
 import "../vaults/IFlexiVault.sol";
 import "../utils/ITokenUtils.sol";
+import "./IERC6454.sol";
+import "./Actors.sol";
 
 //import "hardhat/console.sol";
 
-abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC721, ERC721Enumerable, Ownable {
+abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Actors, ERC721, ERC721Enumerable, Ownable {
   using ECDSA for bytes32;
   using Strings for uint256;
+
+  error NotTheTokenOwner();
+  error NotApprovable();
+  error NotApprovableForAll();
+  error NotTheContractDeployer();
+  error TokenDoesNotExist();
+  error SenderDoesNotOwnAnyToken();
+  error ProtectorNotFound();
+  error TokenAlreadyBeingTransferred();
+  error AssociatedToAnotherOwner();
+  error ProtectorAlreadySet();
+  error ProtectorAlreadySetByYou();
+  error NotAProtector();
+  error NotOwnByRelatedOwner();
+  error TransferNotPermitted();
+  error TokenIdTooBig();
+  error PendingProtectorNotFound();
+  error ResignationAlreadySubmitted();
+  error UnsetNotStarted();
+  error NotTheProtector();
+  error NotATokensOwner();
+  error ResignationNotSubmitted();
+  error TooManyProtectors();
+  error InvalidDuration();
+  error NoActiveProtectors();
+  error ProtectorsAlreadyLocked();
+  error ProtectorsUnlockAlreadyStarted();
+  error ProtectorsUnlockNotStarted();
+  error ProtectorsNotLocked();
+  error TimestampInvalidOrExpired();
+  error WrongDataOrNotSignedByProtector();
+  error SignatureAlreadyUsed();
+  error OperatorAlreadyActive();
+  error OperatorNotActive();
+  error NotAFlexiVault();
+  error VaultAlreadyAdded();
+  error InvalidTokenUtils();
 
   ITokenUtils internal _tokenUtils;
 
   // the address of a second wallet required to validate the transfer of a token
   // the user can set up to 2 protectors
   // owner >> protector >> approved
-  mapping(address => Protector[]) private _protectors;
+  //  mapping(address => Protector[]) private _protectors;
 
   // the address of the owner given the second wallet required to start the transfer
   mapping(address => address) private _ownersByProtector;
@@ -91,66 +130,26 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
   }
 
   function _countActiveProtectors(address tokensOwner_) internal view returns (uint) {
-    uint activeProtectorCount = 0;
-    for (uint i = 0; i < _protectors[tokensOwner_].length; i++) {
-      if (_protectors[tokensOwner_][i].status > Status.PENDING) {
-        activeProtectorCount++;
-      }
-    }
-    return activeProtectorCount;
-  }
-
-  function protectorsFor(address tokensOwner_) external view override returns (address[] memory) {
-    address[] memory activeProtectors = new address[](_countActiveProtectors(tokensOwner_));
-    uint activeIndex = 0;
-    for (uint i = 0; i < _protectors[tokensOwner_].length; i++) {
-      if (_protectors[tokensOwner_][i].status > Status.PENDING) {
-        activeProtectors[activeIndex] = _protectors[tokensOwner_][i].protector;
-        activeIndex++;
-      }
-    }
-    return activeProtectors;
-  }
-
-  function isProtectorFor(address tokensOwner_, address protector_) external view override returns (bool) {
-    for (uint i = 0; i < _protectors[tokensOwner_].length; i++) {
-      if (_protectors[tokensOwner_][i].protector == protector_ && _protectors[tokensOwner_][i].status > Status.PENDING) {
-        return true;
-      }
-    }
-    return false;
-  }
-
-  function _getProtectorStatus(address tokensOwner_, address protector_) internal view returns (Status) {
-    for (uint i = 0; i < _protectors[tokensOwner_].length; i++) {
-      if (_protectors[tokensOwner_][i].protector == protector_) {
-        return _protectors[tokensOwner_][i].status;
-      }
-    }
-    return Status.UNSET;
+    return _countActiveActorsByRole(tokensOwner_, Role.PROTECTOR);
   }
 
   function proposeProtector(address protector_) external onlyTokensOwner {
     if (protector_ == address(0)) revert NoZeroAddress();
     // in this contract we limit to max 2 protectors
-    if (_protectors[_msgSender()].length == 2) revert TooManyProtectors();
+    if (_actorLength(_msgSender(), Role.PROTECTOR) == 2) revert TooManyProtectors();
     if (_ownersByProtector[protector_] != address(0)) {
       if (_ownersByProtector[protector_] == _msgSender()) revert ProtectorAlreadySetByYou();
       else revert AssociatedToAnotherOwner();
     }
-    Status status = _getProtectorStatus(_msgSender(), protector_);
+    Status status = _actorStatus(_msgSender(), protector_, Role.PROTECTOR);
     if (status != Status.UNSET) revert ProtectorAlreadySet();
-    _protectors[_msgSender()].push(Protector(protector_, Status.PENDING));
+    _addActor(_msgSender(), protector_, Role.PROTECTOR, Status.PENDING, Level.NONE);
     emit ProtectorProposed(_msgSender(), protector_);
   }
 
   function _findProtector(address tokensOwner_, address protector_) private view returns (uint, Status) {
-    for (uint i = 0; i < _protectors[tokensOwner_].length; i++) {
-      if (_protectors[tokensOwner_][i].protector == protector_) {
-        return (i, _protectors[tokensOwner_][i].status);
-      }
-    }
-    return (0, Status.UNSET);
+    (uint i, Actor storage actor) = _findActor(tokensOwner_, protector_, Role.PROTECTOR);
+    return (i, actor.status);
   }
 
   function _validatePendingProtector(address tokensOwner_, address protector_) private view returns (uint) {
@@ -163,11 +162,16 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
   }
 
   function _removeProtector(address tokensOwner_, uint i) private {
-    if (i < _protectors[tokensOwner_].length - 1) {
-      emit ProtectorUpdated(tokensOwner_, _protectors[tokensOwner_][i].protector, false);
-      _protectors[tokensOwner_][i] = _protectors[tokensOwner_][_protectors[tokensOwner_].length - 1];
-    }
-    _protectors[tokensOwner_].pop();
+    _removeActorByIndex(tokensOwner_, i, Role.PROTECTOR);
+  }
+
+  function isProtectorFor(address tokensOwner_, address protector_) external view returns (bool) {
+    Status status = _actorStatus(tokensOwner_, protector_, Role.PROTECTOR);
+    return status > Status.PENDING;
+  }
+
+  function protectorsFor(address tokensOwner_) external view override returns (address[] memory) {
+    return _listActiveActors(tokensOwner_, Role.PROTECTOR);
   }
 
   function acceptProposal(address tokensOwner_, bool accepted_) external {
@@ -178,7 +182,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
       revert AssociatedToAnotherOwner();
     }
     if (accepted_) {
-      _protectors[tokensOwner_][i].status = Status.ACTIVE;
+      _updateStatus(tokensOwner_, i, Role.PROTECTOR, Status.ACTIVE);
       _ownersByProtector[_msgSender()] = tokensOwner_;
     } else {
       _removeProtector(tokensOwner_, i);
@@ -193,7 +197,7 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
     } else if (status == Status.RESIGNED) {
       revert ResignationAlreadySubmitted();
     } else if (status == Status.ACTIVE) {
-      _protectors[_msgSender()][i].status = Status.RESIGNED;
+      _updateStatus(tokensOwner_, i, Role.PROTECTOR, Status.RESIGNED);
       emit ProtectorResigned(_msgSender(), _msgSender());
     } else {
       // it obtains similar results like not accepting a proposal
@@ -205,9 +209,6 @@ abstract contract ProtectedERC721 is IProtectedERC721Extended, IVersioned, ERC72
     (uint i, Status status) = _findProtector(_msgSender(), protector_);
     if (status == Status.RESIGNED) {
       _removeProtector(_msgSender(), i);
-      if (_countActiveProtectors(_msgSender()) == 0) {
-        //        emit Locked(_msgSender());
-      }
     } else {
       revert ResignationNotSubmitted();
     }

@@ -36,6 +36,11 @@ interface IProtectedERC721 {
   event OperatorUpdated(uint indexed tokenId, address indexed operator, bool status);
 
   /**
+   * @dev Emitted when the process to update a protector starts
+   */
+  event ProtectorUpdateStarted(address indexed owner, address indexed protector, bool status);
+
+  /**
   * @dev Return the protectors set for the tokensOwner
   * @notice It is not the specific tokenId that is protected, is all the tokens owned by
      tokensOwner_ that are protected. So, protectors are set for the tokensOwner, not for the specific token.
