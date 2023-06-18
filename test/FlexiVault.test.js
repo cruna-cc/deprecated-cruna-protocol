@@ -1,6 +1,7 @@
 const {expect} = require("chai");
 const {deployContract, amount, getTimestamp, signPackedData, deployContractUpgradeable} = require("./helpers");
 const DeployUtils = require("../scripts/lib/DeployUtils");
+const {expectRevert} = require("@openzeppelin/test-helpers");
 
 describe("FlexiVault", function () {
   const deployUtils = new DeployUtils(ethers);
@@ -118,9 +119,10 @@ describe("FlexiVault", function () {
 
     expect(await stupidMonk.balanceOf(fred.address)).equal(0);
 
-    await expect(flexiVault.connect(alice).withdrawAssets(1, [2], [stupidMonk.address], [1], [1], [fred.address]))
-      .emit(flexiVault, "Withdrawal")
-      .emit(stupidMonk, "Transfer");
+    await expect(flexiVault.connect(alice).withdrawAssets(1, [2], [stupidMonk.address], [1], [1], [fred.address])).emit(
+      stupidMonk,
+      "Transfer"
+    );
 
     expect(await stupidMonk.balanceOf(fred.address)).equal(1);
   });
@@ -320,7 +322,7 @@ describe("FlexiVault", function () {
     );
   });
 
-  it("should allow a transfer to a safe recipient even if a protector is active", async function () {
+  it("should allow a transfer to a safe recipient level HIGH even if a protector is active", async function () {
     await flexiVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
@@ -347,5 +349,57 @@ describe("FlexiVault", function () {
     await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1))
       .emit(crunaVault, "Transfer")
       .withArgs(bob.address, alice.address, 1);
+  });
+
+  it("should not allow a transfer to a safe recipient level MEDIUM if a protector is active", async function () {
+    await flexiVault.connect(bob).activateAccount(1, true);
+
+    // bob creates a vaults depositing a particle token
+    await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
+    expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
+
+    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 2))
+      .emit(crunaVault, "SafeRecipientUpdated")
+      .withArgs(bob.address, alice.address, 2);
+
+    await expect(crunaVault.connect(bob).proposeProtector(mark.address))
+      .emit(crunaVault, "ProtectorProposed")
+      .withArgs(bob.address, mark.address);
+
+    await expect(crunaVault.connect(mark).acceptProposal(bob.address, true))
+      .emit(crunaVault, "ProtectorUpdated")
+      .withArgs(bob.address, mark.address, true);
+
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith(
+      "NotPermittedWhenProtectorsAreActive()"
+    );
+  });
+
+  it("should allow withdrawals when protectors are active if safe recipient", async function () {
+    await flexiVault.connect(bob).activateAccount(1, true);
+
+    // bob creates a vaults depositing a particle token
+    await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
+    expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
+
+    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 2))
+      .emit(crunaVault, "SafeRecipientUpdated")
+      .withArgs(bob.address, alice.address, 2);
+
+    await expect(crunaVault.connect(bob).proposeProtector(mark.address))
+      .emit(crunaVault, "ProtectorProposed")
+      .withArgs(bob.address, mark.address);
+
+    await expect(crunaVault.connect(mark).acceptProposal(bob.address, true))
+      .emit(crunaVault, "ProtectorUpdated")
+      .withArgs(bob.address, mark.address, true);
+
+    let account = await flexiVault.accountAddress(1);
+
+    await expect(flexiVault.connect(bob).withdrawAssets(1, [2], [particle.address], [2], [1], [alice.address]))
+      .emit(particle, "Transfer")
+      .withArgs(account, alice.address, 2);
   });
 });

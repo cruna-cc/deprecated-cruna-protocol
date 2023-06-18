@@ -16,12 +16,21 @@ interface IActors {
     RESIGNED
   }
 
+  /**
+    * @dev Protectors, beneficiaries and recipients are actors
+       with well separated roles
+    */
   enum Role {
     PROTECTOR,
-    OPERATOR,
+    BENEFICIARY,
     RECIPIENT
   }
 
+  /**
+    * @dev Recipients can have different levels of protection
+       a recipient level LOW or MEDIUM can move assets inside the vault skipping the protector
+       a recipient level HIGH can receive the CrunaVault skipping the protector
+    */
   enum Level {
     NONE,
     LOW,
@@ -30,10 +39,9 @@ interface IActors {
   }
 
   /**
-    * @dev Protectors and recipients are actors
-    * @notice It is not the specific tokenId that is protected, is all the tokens owned by
-      tokensOwner_ that are protected. So, protectors are set for the tokensOwner, not for the specific token.
-      It is this way to reduce gas consumption.
+    * @dev Protectors, beneficiaries and recipients are actors
+    * @notice Actors are set for the tokensOwner, not for the specific token,
+       to reduce gas consumption.
     */
   struct Actor {
     address actor;
