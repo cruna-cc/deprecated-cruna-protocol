@@ -19,8 +19,11 @@ async function main() {
   let crunaVault, flexiVault;
   let registry, wallet, proxyWallet, tokenUtils;
 
+  tokenUtils = await deployContract("TokenUtils");
+
   const _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
-  crunaVault = await deployUtils.deploy("CrunaVault", _baseTokenURI);
+  crunaVault = await deployUtils.deploy("CrunaVault", _baseTokenURI, tokenUtils.address);
+
   await crunaVault.addCluster("Cruna Vault V1", "CRUNA", _baseTokenURI, 100000, owner.address);
 
   registry = await deployUtils.deploy("ERC6551Registry");
