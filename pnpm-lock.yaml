@@ -8,7 +8,7 @@ specifiers:
   '@openzeppelin/contracts-upgradeable': ^4.8.3
   '@openzeppelin/hardhat-upgrades': ^1.24.0
   '@openzeppelin/test-helpers': ^0.5.16
-  '@secrez/cryptoenv': ^0.2.2
+  '@secrez/cryptoenv': ^0.2.4
   case: ^1.6.3
   chai: ^4.3.7
   dotenv: ^16.1.3
@@ -28,15 +28,17 @@ specifiers:
   solidity-coverage: ^0.8.2
   typescript: ^4.9.5
 
+dependencies:
+  '@openzeppelin/contracts': 4.8.3
+  '@openzeppelin/contracts-upgradeable': 4.8.3
+
 devDependencies:
   '@nomiclabs/hardhat-ethers': 2.2.3_kftl4jxdh4nrzvmw72kgr5bdrq
   '@nomiclabs/hardhat-etherscan': 3.1.7_hardhat@2.14.0
   '@nomiclabs/hardhat-waffle': 2.0.5_22dfjv7rzmcdbmiechxuk3dhju
-  '@openzeppelin/contracts': 4.8.3
-  '@openzeppelin/contracts-upgradeable': 4.8.3
   '@openzeppelin/hardhat-upgrades': 1.24.0_dd3hwbt7tuub5dzi3gdskdlauq
   '@openzeppelin/test-helpers': 0.5.16
-  '@secrez/cryptoenv': 0.2.2
+  '@secrez/cryptoenv': 0.2.4
   case: 1.6.3
   chai: 4.3.7
   dotenv: 16.1.3
@@ -955,11 +957,11 @@ packages:
 
   /@openzeppelin/contracts-upgradeable/4.8.3:
     resolution: {integrity: sha512-SXDRl7HKpl2WDoJpn7CK/M9U4Z8gNXDHHChAKh0Iz+Wew3wu6CmFYBeie3je8V0GSXZAIYYwUktSrnW/kwVPtg==}
-    dev: true
+    dev: false
 
   /@openzeppelin/contracts/4.8.3:
     resolution: {integrity: sha512-bQHV8R9Me8IaJoJ2vPG4rXcL7seB7YVuskr4f+f5RyOStSZetwzkWtoqDMl5erkBJy0lDRUnIR2WIkPiC0GJlg==}
-    dev: true
+    dev: false
 
   /@openzeppelin/hardhat-upgrades/1.24.0_dd3hwbt7tuub5dzi3gdskdlauq:
     resolution: {integrity: sha512-PmNf6y1eXSZ4k4f6Y42mcHeMfwY81MBiuh6vne+fOnWNZANCpjMV9b2Dy7SoS6IgFjq0umAtQYBsHWVWiaMSaw==}
@@ -1100,10 +1102,9 @@ packages:
       tweetnacl: 1.0.3
     dev: true
 
-  /@secrez/cryptoenv/0.2.2:
-    resolution: {integrity: sha512-TxCoU7TM0R29R16ygQOysJK6Wt+MBVJgumrITi0Z+dAphgIuP6v9bAZ1mDhebIfQcyx04Vjaq9rtm+4CLgQWgg==}
+  /@secrez/cryptoenv/0.2.4:
+    resolution: {integrity: sha512-YJ7iBj25kKJ9eYnwUyIo5KeDh7D+QW5GMA3w9fvUEbC7XfwjCuHCKO/GR7ij7koud7y2Wqxzb1jyfUHlT8PYsQ==}
     hasBin: true
-    requiresBuild: true
     dependencies:
       '@secrez/crypto': 1.0.3
       '@secrez/utils': 1.0.3
