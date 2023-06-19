@@ -59,6 +59,16 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   error NotAFlexiVault();
   error VaultAlreadyAdded();
   error InvalidTokenUtils();
+  error QuorumCannotBeZero();
+  error QuorumCannotBeGreaterThanBeneficiaries();
+  error BeneficiaryNotConfigured();
+  error NotExpiredYet();
+  error BeneficiaryAlreadyRequested();
+  error InconsistentRecipient();
+  error NotABeneficiary();
+  error RequestAlreadyApproved();
+  error NotTheRecipient();
+  error Unauthorized();
 
   ITokenUtils internal _tokenUtils;
 
@@ -84,6 +94,24 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   mapping(bytes32 => bool) private _usedSignatures;
 
   address[] private _vaults;
+
+  struct BeneficiaryConf {
+    uint256 quorum;
+    uint256 proofOfLifeDurationInDays;
+    uint256 lastProofOfLife;
+  }
+
+  struct BeneficiaryRequest {
+    address recipient;
+    uint256 startedAt;
+    address[] approvers;
+    // if there is a second thought about the recipient, the beneficiary can change it
+    // after the request is expired if not approved in the meantime
+  }
+
+  mapping(address => BeneficiaryRequest) private _beneficiariesRequests;
+
+  mapping(address => BeneficiaryConf) private _beneficiaryConfs;
 
   modifier onlyProtectorFor(address owner_) {
     (uint i, Status status) = _findProtector(owner_, _msgSender());
@@ -360,7 +388,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     emit SafeRecipientUpdated(_msgSender(), recipient, level);
   }
 
-  function setSafeRecipient(address recipient, Level level) external onlyTokensOwner {
+  function setSafeRecipient(address recipient, Level level) external override onlyTokensOwner {
     if (_countActiveProtectors(_msgSender()) > 0) revert NotPermittedWhenProtectorsAreActive();
     _setSafeRecipient(recipient, level);
   }
@@ -405,5 +433,109 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
         _approvedTransfers[tokenId] ||
         safeRecipientLevel(ownerOf(tokenId), to) == Level.HIGH;
     }
+  }
+
+  // beneficiaries
+
+  function _setBeneficiary(address beneficiary, Status status) private {
+    if (status == Status.UNSET) {
+      _removeActor(_msgSender(), beneficiary, Role.BENEFICIARY);
+    } else {
+      _addActor(_msgSender(), beneficiary, Role.BENEFICIARY, status, Level.NONE);
+    }
+    emit BeneficiaryUpdated(_msgSender(), beneficiary, status);
+  }
+
+  function setBeneficiary(address recipient, Status status) external onlyTokensOwner {
+    if (_countActiveProtectors(_msgSender()) > 0) revert NotPermittedWhenProtectorsAreActive();
+    _setBeneficiary(recipient, status);
+  }
+
+  function setProtectedBeneficiary(
+    address beneficiary,
+    Status status,
+    uint256 timestamp,
+    uint validFor,
+    bytes calldata signature
+  ) external onlyTokensOwner {
+    validateTimestampAndSignature(
+      _msgSender(),
+      timestamp,
+      validFor,
+      _tokenUtils.hashBeneficiaryRequest(_msgSender(), beneficiary, status, timestamp, validFor),
+      signature
+    );
+    _setBeneficiary(beneficiary, status);
+  }
+
+  function configureBeneficiary(uint quorum, uint proofOfLifeDurationInDays) external onlyTokensOwner {
+    if (_countActiveProtectors(_msgSender()) > 0) revert NotPermittedWhenProtectorsAreActive();
+    if (quorum == 0) revert QuorumCannotBeZero();
+    if (quorum > _countActiveActorsByRole(_msgSender(), Role.BENEFICIARY)) revert QuorumCannotBeGreaterThanBeneficiaries();
+    _beneficiaryConfs[_msgSender()] = BeneficiaryConf(quorum, proofOfLifeDurationInDays, block.timestamp);
+    delete _beneficiariesRequests[_msgSender()];
+  }
+
+  function getBeneficiaries(address tokenOwner_) external view returns (Actor[] memory, BeneficiaryConf memory) {
+    return (_getActors(tokenOwner_, Role.BENEFICIARY), _beneficiaryConfs[tokenOwner_]);
+  }
+
+  function proofOfLife() external onlyTokensOwner {
+    if (_beneficiaryConfs[_msgSender()].proofOfLifeDurationInDays == 0) revert BeneficiaryNotConfigured();
+    _beneficiaryConfs[_msgSender()].lastProofOfLife = block.timestamp;
+    delete _beneficiariesRequests[_msgSender()];
+  }
+
+  function _hasApproved(address tokenOwner_) internal view returns (bool) {
+    for (uint i = 0; i < _beneficiariesRequests[tokenOwner_].approvers.length; i++) {
+      if (_msgSender() == _beneficiariesRequests[tokenOwner_].approvers[i]) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  function requestTransfer(address tokenOwner_, address beneficiaryRecipient) external {
+    if (beneficiaryRecipient == address(0)) revert NoZeroAddress();
+    if (_beneficiaryConfs[tokenOwner_].proofOfLifeDurationInDays == 0) revert BeneficiaryNotConfigured();
+    (, Actor storage actor) = _getActor(tokenOwner_, _msgSender(), Role.BENEFICIARY);
+    if (actor.status == Status.UNSET) revert NotABeneficiary();
+    if (
+      _beneficiaryConfs[tokenOwner_].lastProofOfLife + (_beneficiaryConfs[tokenOwner_].proofOfLifeDurationInDays * 3600) >
+      block.timestamp
+    ) revert NotExpiredYet();
+    // the following prevents hostile beneficiaries from blocking the process not allowing them to reset the recipient
+    if (_hasApproved(_msgSender())) revert RequestAlreadyApproved();
+    // the beneficiary is proposing a new recipient
+    if (_beneficiariesRequests[tokenOwner_].recipient != beneficiaryRecipient) {
+      if (block.timestamp - _beneficiariesRequests[tokenOwner_].startedAt > 30 days) {
+        // reset the request
+        delete _beneficiariesRequests[tokenOwner_];
+      } else revert InconsistentRecipient();
+    }
+    if (_beneficiariesRequests[tokenOwner_].recipient == address(0)) {
+      _beneficiariesRequests[tokenOwner_].recipient = beneficiaryRecipient;
+      _beneficiariesRequests[tokenOwner_].startedAt = block.timestamp;
+      _beneficiariesRequests[tokenOwner_].approvers.push(_msgSender());
+    } else if (!_hasApproved(_msgSender())) {
+      _beneficiariesRequests[tokenOwner_].approvers.push(_msgSender());
+    }
+  }
+
+  function inherit(address tokenOwner_) external {
+    if (
+      _beneficiariesRequests[tokenOwner_].recipient == _msgSender() &&
+      _beneficiariesRequests[tokenOwner_].approvers.length >= _beneficiaryConfs[tokenOwner_].quorum
+    ) {
+      uint balance = balanceOf(tokenOwner_);
+      uint[] memory tokenIds = new uint[](balance);
+      for (uint i = 0; i < balance; i++) {
+        tokenIds[i] = tokenOfOwnerByIndex(tokenOwner_, i);
+      }
+      for (uint i = 0; i < balance; i++) {
+        _safeTransfer(tokenOwner_, _msgSender(), tokenIds[i], "");
+      }
+      emit Inherited(tokenOwner_, _msgSender(), balance);
+    } else revert Unauthorized();
   }
 }

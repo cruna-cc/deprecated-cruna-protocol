@@ -48,6 +48,13 @@ interface IProtectedERC721 {
   event SafeRecipientUpdated(address indexed owner, address indexed recipient, IActors.Level level);
 
   /**
+   * @dev Emitted when a beneficiary is updated
+   */
+  event BeneficiaryUpdated(address indexed owner, address indexed beneficiary, IActors.Status status);
+
+  event Inherited(address indexed from, address indexed to, uint amount);
+
+  /**
   * @dev Return the protectors set for the tokensOwner
   * @notice It is not the specific tokenId that is protected, is all the tokens owned by
      tokensOwner_ that are protected. So, protectors are set for the tokensOwner, not for the specific token.

@@ -80,6 +80,16 @@ library TokenUtils {
     return keccak256(abi.encode("\x19\x01", block.chainid, address(this), owner, recipient, level, timestamp, validFor));
   }
 
+  function hashBeneficiaryRequest(
+    address owner,
+    address beneficiary,
+    IActors.Status status,
+    uint256 timestamp,
+    uint validFor
+  ) external view returns (bytes32) {
+    return keccak256(abi.encode("\x19\x01", block.chainid, address(this), owner, beneficiary, status, timestamp, validFor));
+  }
+
   function hashWithdrawsRequest(
     uint256 owningTokenId,
     IFlexiVault.TokenType[] memory tokenTypes,

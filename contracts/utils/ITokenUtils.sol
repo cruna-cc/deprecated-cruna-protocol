@@ -47,6 +47,14 @@ interface ITokenUtils {
     uint validFor
   ) external view returns (bytes32);
 
+  function hashBeneficiaryRequest(
+    address owner,
+    address beneficiary,
+    IActors.Status status,
+    uint256 timestamp,
+    uint validFor
+  ) external view returns (bytes32);
+
   /**
    * @dev Returns the hash of a transfer request
    * @param tokenId The token id
