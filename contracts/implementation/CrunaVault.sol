@@ -4,9 +4,10 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "../protected-nft/ProtectedERC721.sol";
 import "../utils/IERC7108.sol";
+import "../utils/IERC7108Enumerable.sol";
 
 // reference implementation of a Cruna Vault
-contract CrunaVault is ProtectedERC721, IERC7108 {
+contract CrunaVault is ProtectedERC721, IERC7108, IERC7108Enumerable {
   using Strings for uint256;
 
   event TokenURIFrozen();
@@ -40,7 +41,7 @@ contract CrunaVault is ProtectedERC721, IERC7108 {
   uint256 public maxSize = 100000;
   uint256 private _nextClusterId;
 
-  constructor(string memory baseUri_) ProtectedERC721("Cruna Vault V1", "CRUNA") {
+  constructor(string memory baseUri_, address tokenUtils) ProtectedERC721("Cruna Vault", "CRUNA", tokenUtils) {
     _baseTokenURI = baseUri_;
   }
 
@@ -125,6 +126,12 @@ contract CrunaVault is ProtectedERC721, IERC7108 {
     return (clusters[clusterId].firstTokenId, clusters[clusterId].firstTokenId + clusters[clusterId].size - 1);
   }
 
+  function ownerOfWithin(uint256 normalizedTokenId_, uint256 clusterId) external view returns (address) {
+    if (clusters[clusterId].owner == address(0)) revert ClusterNotFound();
+    if (normalizedTokenId_ > clusters[clusterId].size) revert TokenDoesNotExist();
+    return ownerOf(clusters[clusterId].firstTokenId + normalizedTokenId_ - 1);
+  }
+
   function clusterOwner(uint256 clusterId) public view override returns (address) {
     return clusters[clusterId].owner;
   }
@@ -146,6 +153,22 @@ contract CrunaVault is ProtectedERC721, IERC7108 {
     uint256 clusterId = _binarySearch(tokenId);
     if (clusterId == type(uint32).max) revert ClusterNotFound();
     return tokenId - clusters[clusterId].firstTokenId + 1;
+  }
+
+  function balanceOfWithin(address owner, uint256 clusterId) external view override returns (uint) {
+    uint256 balance = balanceOf(owner);
+    if (balance != 0) {
+      uint result = 0;
+      (uint256 start, uint end) = rangeOf(clusterId);
+      for (uint256 i = 0; i < balance; i++) {
+        uint256 tokenId = tokenOfOwnerByIndex(owner, i);
+        if (tokenId >= start && tokenId <= end) {
+          result++;
+        }
+      }
+      balance = result;
+    }
+    return balance;
   }
 
   function safeMint(uint256 clusterId, address to) public {

@@ -19,6 +19,7 @@ import "../bound-account/IERC6551Account.sol";
 import "../bound-account/TrusteeNFT.sol";
 import "../utils/IVersioned.sol";
 import "./IFlexiVaultExtended.sol";
+import "../protected-nft/IActors.sol";
 
 //import "hardhat/console.sol";
 
@@ -244,9 +245,15 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
     nonReentrant
   {
-    _isChangeAllowed(owningTokenId);
+    bool hasProtectors = _protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0;
     if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
     for (uint256 i = 0; i < assets.length; i++) {
+      if (
+        hasProtectors &&
+        _protectedOwningToken.safeRecipientLevel(ownerOf(owningTokenId), beneficiaries[i]) == IActors.Level.NONE
+      ) {
+        revert NotAllowedWhenProtector();
+      }
       _withdrawAsset(owningTokenId, tokenTypes[i], assets[i], ids[i], amounts[i], beneficiaries[i]);
     }
   }
@@ -283,7 +290,7 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
       timestamp,
       validFor
     );
-    _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
+    _protectedOwningToken.validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
     for (uint256 i = 0; i < assets.length; i++) {
       _withdrawAsset(owningTokenId, tokenTypes[i], assets[i], ids[i], amounts[i], beneficiaries[i]);
     }
@@ -317,7 +324,7 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
    * @dev {See IFlexiVault-ejectAccount}
    */
   function ejectAccount(uint256 owningTokenId) external override {
-    _isChangeAllowed(owningTokenId);
+    if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
     _ejectAccount(owningTokenId);
   }
 
@@ -331,7 +338,7 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     bytes calldata signature
   ) external override {
     bytes32 hash = _tokenUtils.hashEjectRequest(owningTokenId, timestamp, validFor);
-    _protectedOwningToken.validateTimestampAndSignature(owningTokenId, timestamp, validFor, hash, signature);
+    _protectedOwningToken.validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
     _ejectAccount(owningTokenId);
   }
 

@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import "../protected-nft/IProtectedERC721.sol";
 import "../vaults/IFlexiVault.sol";
+import "../protected-nft/IActors.sol";
 
 //import "hardhat/console.sol";
 
@@ -69,6 +70,26 @@ library TokenUtils {
       );
   }
 
+  function hashRecipientRequest(
+    address owner,
+    address recipient,
+    IActors.Level level,
+    uint256 timestamp,
+    uint validFor
+  ) external view returns (bytes32) {
+    return keccak256(abi.encode("\x19\x01", block.chainid, address(this), owner, recipient, level, timestamp, validFor));
+  }
+
+  function hashBeneficiaryRequest(
+    address owner,
+    address beneficiary,
+    IActors.Status status,
+    uint256 timestamp,
+    uint validFor
+  ) external view returns (bytes32) {
+    return keccak256(abi.encode("\x19\x01", block.chainid, address(this), owner, beneficiary, status, timestamp, validFor));
+  }
+
   function hashWithdrawsRequest(
     uint256 owningTokenId,
     IFlexiVault.TokenType[] memory tokenTypes,
@@ -99,5 +120,9 @@ library TokenUtils {
 
   function hashEjectRequest(uint256 owningTokenId, uint256 timestamp, uint validFor) external view returns (bytes32) {
     return keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), owningTokenId, timestamp, validFor));
+  }
+
+  function hashTransferRequest(uint256 tokenId, address to, uint256 timestamp, uint validFor) public view returns (bytes32) {
+    return keccak256(abi.encode("\x19\x01", block.chainid, address(this), tokenId, to, timestamp, validFor));
   }
 }
