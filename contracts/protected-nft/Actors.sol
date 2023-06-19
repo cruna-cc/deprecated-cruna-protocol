@@ -9,27 +9,34 @@ import "./IActors.sol";
 
 contract Actors is IActors {
   mapping(Role => mapping(address => Actor[])) private _actors;
+  Actor private _emptyActor = Actor(address(0), Status.UNSET, Level.NONE);
 
-  // actors (protectors, recipients, etc.)
+  function _getActors(address owner_, Role role) internal view returns (Actor[] memory) {
+    return _actors[role][owner_];
+  }
 
-  function _findActor(address owner_, address actor_, Role role) internal view returns (uint, Actor storage) {
+  function _getActor(address owner_, address actor_, Role role) internal view returns (uint, Actor storage) {
     Actor[] storage actors = _actors[role][owner_];
     for (uint i = 0; i < actors.length; i++) {
       if (actors[i].actor == actor_) {
         return (i, actors[i]);
       }
     }
-    revert ActorNotFound(role);
+    return (0, _emptyActor);
+  }
+
+  // similar to getActor, but reverts if actor not found
+  function _findActor(address owner_, address actor_, Role role) internal view returns (uint, Actor storage) {
+    (uint i, Actor storage actor) = _getActor(owner_, actor_, role);
+    if (actor.status == Status.UNSET) {
+      revert ActorNotFound(role);
+    }
+    return (i, actor);
   }
 
   function _actorStatus(address owner_, address actor_, Role role) internal view returns (Status) {
-    Actor[] storage actors = _actors[role][owner_];
-    for (uint i = 0; i < actors.length; i++) {
-      if (actors[i].actor == actor_) {
-        return actors[i].status;
-      }
-    }
-    return Status.UNSET;
+    (, Actor storage actor) = _getActor(owner_, actor_, role);
+    return actor.status;
   }
 
   function _actorLength(address owner_, Role role) internal view returns (uint) {
@@ -77,13 +84,9 @@ contract Actors is IActors {
     _actors[role][owner_][i].level = level_;
   }
 
-  function _removeActor(address owner_, address actor_, Role role) internal returns (bool) {
-    (uint i, Actor memory actor) = _findActor(owner_, actor_, role);
-    if (actor.status != Status.UNSET) {
-      _removeActorByIndex(owner_, i, role);
-      return true;
-    }
-    return false;
+  function _removeActor(address owner_, address actor_, Role role) internal {
+    (uint i, ) = _findActor(owner_, actor_, role);
+    _removeActorByIndex(owner_, i, role);
   }
 
   function _removeActorByIndex(address owner_, uint i, Role role) internal {

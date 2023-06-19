@@ -5,6 +5,7 @@ pragma solidity ^0.8.19;
 
 //import "hardhat/console.sol";
 import "../vaults/IFlexiVault.sol";
+import "../protected-nft/IActors.sol";
 
 interface ITokenUtils {
   function isTokenUtils() external pure returns (bytes4);
@@ -37,6 +38,22 @@ interface ITokenUtils {
   ) external view returns (bytes32);
 
   function hashEjectRequest(uint256 owningTokenId, uint256 timestamp, uint validFor) external view returns (bytes32);
+
+  function hashRecipientRequest(
+    address owner,
+    address recipient,
+    IActors.Level level,
+    uint256 timestamp,
+    uint validFor
+  ) external view returns (bytes32);
+
+  function hashBeneficiaryRequest(
+    address owner,
+    address beneficiary,
+    IActors.Status status,
+    uint256 timestamp,
+    uint validFor
+  ) external view returns (bytes32);
 
   /**
    * @dev Returns the hash of a transfer request
