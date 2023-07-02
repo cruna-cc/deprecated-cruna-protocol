@@ -2,7 +2,7 @@ require("dotenv").config();
 const hre = require("hardhat");
 const ethers = hre.ethers;
 const DeployUtils = require("./lib/DeployUtils");
-const {deployContract, amount} = require("../test/helpers");
+const {normalize} = require("../test/helpers");
 let deployUtils;
 
 async function main() {
@@ -53,10 +53,10 @@ async function main() {
   let s = 1;
   for (let i = 0; i < 3; i++) {
     let w = (i > 1 ? h1 : i ? h2 : h3).address;
-    await deployUtils.Tx(usdc.mint(w, amount("300")));
-    await deployUtils.Tx(usdt.mint(w, "300000000"));
-    await deployUtils.Tx(bulls.mint(w, amount("90000")));
-    await deployUtils.Tx(fatBelly.mint(w, amount("10000000")));
+    await deployUtils.Tx(usdc.mint(w, normalize("1000")));
+    await deployUtils.Tx(usdt.mint(w, normalize("1000", 6)));
+    await deployUtils.Tx(bulls.mint(w, normalize("90000")));
+    await deployUtils.Tx(fatBelly.mint(w, normalize("10000000")));
     await uselessWeapons.mintBatch(w, [i + 1, i + 2], [5, 12], "0x00");
     for (let k = 0; k < 10; k++) {
       await crunaVault.safeMint(0, w);
