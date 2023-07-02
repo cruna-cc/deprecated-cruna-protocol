@@ -19,7 +19,7 @@ async function main() {
   let crunaVault, flexiVault;
   let registry, wallet, proxyWallet, tokenUtils;
 
-  tokenUtils = await deployContract("TokenUtils");
+  tokenUtils = await deployUtils.deploy("TokenUtils");
 
   const _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
   crunaVault = await deployUtils.deploy("CrunaVault", _baseTokenURI, tokenUtils.address);
@@ -32,7 +32,7 @@ async function main() {
   let implementation = await deployUtils.deploy("ERC6551AccountUpgradeable");
   proxyWallet = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
 
-  flexiVault = await deployContract("FlexiVault", crunaVault.address, tokenUtils.address);
+  flexiVault = await deployUtils.deploy("FlexiVault", crunaVault.address, tokenUtils.address);
 
   await crunaVault.addVault(flexiVault.address);
   await flexiVault.init(registry.address, wallet.address, proxyWallet.address);

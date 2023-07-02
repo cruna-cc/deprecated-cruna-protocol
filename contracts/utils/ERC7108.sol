@@ -140,7 +140,7 @@ contract ERC7108 is IERC7108, ERC721 {
 
   function normalizedTokenId(uint256 tokenId) public view override returns (uint256) {
     uint256 clusterId = _binarySearch(tokenId);
-    if (clusterId == type(uint32).max) revert ClusterNotFound();
+    if (clusterId == type(uint256).max) revert ClusterNotFound();
     return tokenId - clusters[clusterId].firstTokenId + 1;
   }
 
