@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 
-skip=
+npm run clean
+
 if [[ "$2" == "localhost" ]]; then
-  skip=true
+  SKIP_CRYPTOENV=true npx hardhat run scripts/deploy-$1.js --network $2
+else
+  scripts/check-hardhat-console.js && npx hardhat run scripts/deploy-$1.js --network $2
 fi
 
-npm run clean
-scripts/check-hardhat-console.js \
-  && SKIP_CRYPTOENV=$skip TOKEN_URI=$3 npx hardhat run scripts/deploy-$1.js --network $2
