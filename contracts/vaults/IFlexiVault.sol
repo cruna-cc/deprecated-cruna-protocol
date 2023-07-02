@@ -129,4 +129,10 @@ interface IFlexiVault {
    * @param owningTokenId The id of the owning token
    */
   function reInjectEjectedAccount(uint256 owningTokenId) external;
+
+  /**
+   * @dev It fixes an account directly injected
+   * @param owningTokenId The id of the owning token
+   */
+  function fixDirectlyInjectedAccount(uint256 owningTokenId) external;
 }
