@@ -132,6 +132,8 @@ interface IFlexiVault {
 
   /**
    * @dev It fixes an account directly injected
+      Some user may transfer the ownership of a TrusteeNFT to the FlexiVault without calling the reInjectEjectedAccount function.
+      If that happens, the FlexiVault is unable to manage the TrusteeNFT, and the bound account would be lost.
    * @param owningTokenId The id of the owning token
    */
   function fixDirectlyInjectedAccount(uint256 owningTokenId) external;

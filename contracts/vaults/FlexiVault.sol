@@ -356,8 +356,9 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     emit EjectedBoundAccountReInjected(owningTokenId);
   }
 
-  // Some user may transfer the ownership of a TrusteeNFT to the FlexiVault without calling the reInjectEjectedAccount function.
-  // If that happens, the FlexiVault is unable to manage the TrusteeNFT, and the bound account would be lost.
+  /**
+   * @dev {See IFlexiVault-fixDirectlyInjectedAccount}
+   */
   function fixDirectlyInjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
     if (!_ejects[owningTokenId]) revert TheAccountHasNeverBeenEjected();
     if (trustee.ownerOf(owningTokenId) != address(this)) revert TheAccountIsNotOwnedByTheFlexiVault();
