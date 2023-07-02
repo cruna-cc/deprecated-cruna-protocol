@@ -40,6 +40,7 @@ contract CrunaVault is ProtectedERC721, IERC7108, IERC7108Enumerable {
   mapping(address => uint256[]) public clusterIdByOwners;
   uint256 public maxSize = 100000;
   uint256 private _nextClusterId;
+  mapping(uint256 => address) public clusterMinters;
 
   constructor(string memory baseUri_, address tokenUtils) ProtectedERC721("Cruna Vault", "CRUNA", tokenUtils) {
     _baseTokenURI = baseUri_;
@@ -171,42 +172,60 @@ contract CrunaVault is ProtectedERC721, IERC7108, IERC7108Enumerable {
     return balance;
   }
 
+  function supplyWithin(uint256 clusterId) external view override returns (uint256) {
+    return clusters[clusterId].nextTokenId - clusters[clusterId].firstTokenId;
+  }
+
+  // end IERC7108
+
   function safeMint(uint256 clusterId, address to) public {
     if (clusters[clusterId].owner == address(0)) revert ClusterNotFound();
-    if (clusters[clusterId].owner != msg.sender) revert NotClusterOwner();
+    if (clusterMinters[clusterId] != _msgSender() && clusters[clusterId].owner != msg.sender) revert NotClusterOwner();
     if (clusters[clusterId].nextTokenId > clusters[clusterId].firstTokenId + clusters[clusterId].size - 1) revert ClusterFull();
     _safeMint(to, clusters[clusterId].nextTokenId++);
   }
 
-  // token URI management
-
-  function tokenURI(uint256 tokenId) public view override returns (string memory) {
-    _requireMinted(tokenId);
-    uint256 clusterId = _binarySearch(tokenId);
-    string memory baseURI = clusters[clusterId].baseTokenURI;
-    tokenId -= clusters[clusterId].firstTokenId - 1;
-    return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
-  }
-
-  function _baseURI() internal view virtual override returns (string memory) {
-    return _baseTokenURI;
-  }
-
-  function updateTokenURI(string memory uri) external onlyOwner {
-    if (_baseTokenURIFrozen) {
-      revert FrozenTokenURI();
+  // set factory to 0x0 to disable a factory
+  function allowFactoryFor(address factory, uint clusterId) external {
+    if (clusters[clusterId].owner != msg.sender) revert NotClusterOwner();
+    if (factory != address(0)) {
+      clusterMinters[clusterId] = factory;
+    } else {
+      delete clusterMinters[clusterId];
     }
-    // after revealing, this allows to set up a final uri
-    _baseTokenURI = uri;
-    emit TokenURIUpdated(uri);
   }
 
-  function freezeTokenURI() external onlyOwner {
-    _baseTokenURIFrozen = true;
-    emit TokenURIFrozen();
-  }
+  // Commenting this, right now, because we go over size limit if not.
 
-  function contractURI() public view returns (string memory) {
-    return string(abi.encodePacked(_baseTokenURI, "cruna-vault"));
-  }
+  //  // token URI management
+  //
+  //  function tokenURI(uint256 tokenId) public view override returns (string memory) {
+  //    _requireMinted(tokenId);
+  //    uint256 clusterId = _binarySearch(tokenId);
+  //    string memory baseURI = clusters[clusterId].baseTokenURI;
+  //    tokenId -= clusters[clusterId].firstTokenId - 1;
+  //    return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
+  //  }
+  //
+  //  function _baseURI() internal view virtual override returns (string memory) {
+  //    return _baseTokenURI;
+  //  }
+  //
+  //  function updateTokenURI(string memory uri) external onlyOwner {
+  //    if (_baseTokenURIFrozen) {
+  //      revert FrozenTokenURI();
+  //    }
+  //    // after revealing, this allows to set up a final uri
+  //    _baseTokenURI = uri;
+  //    emit TokenURIUpdated(uri);
+  //  }
+  //
+  //  function freezeTokenURI() external onlyOwner {
+  //    _baseTokenURIFrozen = true;
+  //    emit TokenURIFrozen();
+  //  }
+  //
+  //  function contractURI() public view returns (string memory) {
+  //    return string(abi.encodePacked(_baseTokenURI, "cruna-vault"));
+  //  }
 }
