@@ -157,6 +157,10 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     _vaults.push(vault);
   }
 
+  function getVault(uint index) external view returns (address) {
+    return _vaults[index];
+  }
+
   function _countActiveProtectors(address tokensOwner_) internal view returns (uint) {
     return _countActiveActorsByRole(tokensOwner_, Role.PROTECTOR);
   }

@@ -32,7 +32,7 @@ async function main() {
   let implementation = await deployUtils.deploy("ERC6551AccountUpgradeable");
   proxyWallet = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
 
-  flexiVault = await deployContract("FlexiVault", crunaVault.address, tokenUtils.address);
+  flexiVault = await deployUtils.deploy("FlexiVault", crunaVault.address, tokenUtils.address);
 
   await crunaVault.addVault(flexiVault.address);
   await flexiVault.init(registry.address, wallet.address, proxyWallet.address);
