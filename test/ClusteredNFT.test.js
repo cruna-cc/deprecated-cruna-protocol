@@ -1,5 +1,5 @@
 const {expect} = require("chai");
-const {addr0} = require("./helpers");
+const {addr0, assertThrowsMessage} = require("./helpers");
 
 describe("ClusteredNFT", function () {
   let ClusteredNFT, clusteredNFT, owner, owner2, owner3, bob, alice, fred, john;
@@ -16,6 +16,8 @@ describe("ClusteredNFT", function () {
   });
 
   it("Deploys contracts, mints tokens and checks ownerships", async function () {
+    await expect(clusteredNFT.clusterOf(1)).revertedWith("ClusterNotFound()");
+
     await expect(
       clusteredNFT.connect(owner2).addCluster("Jolly Token", "JT", "https://jolly-token.cc/meta/", 1000, addr0)
     ).revertedWith("ZeroAddress()");
@@ -33,6 +35,13 @@ describe("ClusteredNFT", function () {
     await expect(clusteredNFT.connect(owner3).addCluster("Bud Token", "BT", "https://bud-token.cc/meta/", 5000, owner3.address))
       .to.emit(clusteredNFT, "ClusterAdded")
       .withArgs(1, "Bud Token", "BT", "https://bud-token.cc/meta/", 5000, owner3.address);
+
+    expect(await clusteredNFT.clustersCount()).equal(2);
+    expect(await clusteredNFT.nameOf(0)).equal("Jolly Token");
+    expect(await clusteredNFT.nameOf(1)).equal("Bud Token");
+    expect(await clusteredNFT.symbolOf(1)).equal("BT");
+    expect(await clusteredNFT.symbolOf(2)).equal("");
+    expect(await clusteredNFT.clusterOwner(0)).equal(owner2.address);
 
     await expect(clusteredNFT.connect(owner2).mint(0, bob.address))
       .emit(clusteredNFT, "Transfer")
@@ -55,6 +64,8 @@ describe("ClusteredNFT", function () {
     await expect(clusteredNFT.connect(owner2).mint(3, bob.address)).revertedWith("ClusterNotFound()");
 
     expect(await clusteredNFT.clusterOf(2223)).equal(1);
+    expect(await clusteredNFT.clusterOf(4400)).equal(1);
+    await expect(clusteredNFT.clusterOf(222300)).revertedWith("ClusterNotFound()");
 
     const range = await clusteredNFT.rangeOf(0);
 
@@ -65,6 +76,8 @@ describe("ClusteredNFT", function () {
     expect(await clusteredNFT.normalizedTokenId(2223)).equal(1);
     expect(await clusteredNFT.normalizedTokenId(2224)).equal(2);
     expect(await clusteredNFT.normalizedTokenId(2225)).equal(3);
+
+    await expect(clusteredNFT.normalizedTokenId(222600)).revertedWith("ClusterNotFound()");
 
     expect(await clusteredNFT.tokenURI(2224)).equal("https://bud-token.cc/meta/2");
 
@@ -87,7 +100,6 @@ describe("ClusteredNFT", function () {
     for (let i = 0, j = 1000; i < 79; i++, j += 33) {
       let v = k + j - 10;
       const result = await clusteredNFT.clusterOf(v);
-      // console.log(v, result, i + 2);
       expect(result).equal(i + 2);
       k += j - 1;
     }
@@ -99,5 +111,13 @@ describe("ClusteredNFT", function () {
     myClusters = (await clusteredNFT.clustersByOwner(owner2.address)).map((e) => e.toNumber());
     expect(myClusters.length).equal(40);
     expect(myClusters[10]).equal(21);
+
+    await expect(clusteredNFT.connect(owner2).transferClusterOwnership(0, addr0)).revertedWith("ZeroAddress()");
+
+    await expect(clusteredNFT.connect(owner3).transferClusterOwnership(0, bob.address)).revertedWith("NotClusterOwner()");
+
+    await expect(clusteredNFT.connect(owner2).transferClusterOwnership(0, fred.address))
+      .emit(clusteredNFT, "ClusterOwnershipTransferred")
+      .withArgs(0, fred.address);
   });
 });

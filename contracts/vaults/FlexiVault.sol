@@ -13,10 +13,10 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "../nft-owned/NFTOwned.sol";
 import "../protected-nft/IProtectedERC721.sol";
 import "../utils/ITokenUtils.sol";
-import "../bound-account/IERC6551Account.sol";
-import "../bound-account/IERC6551Registry.sol";
-import "../bound-account/IERC6551Account.sol";
-import "../bound-account/TrusteeNFT.sol";
+import "../ERC6551/IERC6551Account.sol";
+import "../ERC6551/IERC6551Registry.sol";
+import "../ERC6551/IERC6551Account.sol";
+import "../ERC6551/TrusteeNFT.sol";
 import "../utils/IVersioned.sol";
 import "./IFlexiVaultExtended.sol";
 import "../protected-nft/IActors.sol";
@@ -191,7 +191,6 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     address walletAddress = _accountAddresses[owningTokenId];
     IERC6551Account accountInstance = IERC6551Account(payable(walletAddress));
     if (tokenType == TokenType.ETH) {
-      // we talk of ETH
       accountInstance.executeCall(walletAddress, amount, "");
     } else if (tokenType == TokenType.ERC721) {
       accountInstance.executeCall(
@@ -208,7 +207,6 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     } else if (tokenType == TokenType.ERC20) {
       accountInstance.executeCall(asset, 0, abi.encodeWithSignature("transfer(address,uint256)", to, amount));
     } else {
-      // should never happen
       revert InvalidAsset();
     }
   }

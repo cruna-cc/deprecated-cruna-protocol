@@ -1,9 +1,17 @@
-const {expect} = require("chai");
+const chai = require("chai");
 const {deployContract, amount, getTimestamp, signPackedData, deployContractUpgradeable} = require("./helpers");
 const DeployUtils = require("../scripts/lib/DeployUtils");
-const {expectRevert} = require("@openzeppelin/test-helpers");
 
-describe("FlexiVault", function () {
+let expectCount = 0;
+
+const expect = (actual) => {
+  if (expectCount > 0) {
+    console.log(`> ${expectCount++}`);
+  }
+  return chai.expect(actual);
+};
+
+describe.only("FlexiVault", function () {
   const deployUtils = new DeployUtils(ethers);
 
   let crunaVault, flexiVault;
@@ -23,9 +31,13 @@ describe("FlexiVault", function () {
   }
 
   beforeEach(async function () {
+    expectCount = 0;
     tokenUtils = await deployContract("TokenUtils");
+    expect(await tokenUtils.version()).to.equal("1.0.0");
+
     const _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
     crunaVault = await deployContract("CrunaVault", _baseTokenURI, tokenUtils.address);
+    expect(await crunaVault.version()).to.equal("1.0.0");
     await crunaVault.addCluster("Cruna Vault V1", "CRUNA", _baseTokenURI, 100000, owner.address);
 
     registry = await deployContract("ERC6551Registry");
@@ -34,9 +46,12 @@ describe("FlexiVault", function () {
     proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
     flexiVault = await deployContract("FlexiVault", crunaVault.address, tokenUtils.address);
+    expect(await flexiVault.version()).to.equal("1.0.0");
 
     await crunaVault.addVault(flexiVault.address);
     await flexiVault.init(registry.address, wallet.address, proxyWallet.address);
+
+    await expect(crunaVault.addVault(flexiVault.address)).revertedWith("VaultAlreadyAdded()");
 
     notAToken = await deployContract("NotAToken");
 
@@ -228,6 +243,7 @@ describe("FlexiVault", function () {
   });
 
   it("should allow a transfer if a transfer initializer is pending", async function () {
+    // expectCount = 1;
     await flexiVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
@@ -248,13 +264,63 @@ describe("FlexiVault", function () {
       .emit(crunaVault, "Transfer")
       .withArgs(alice.address, bob.address, 1);
 
-    await expect(crunaVault.connect(mark).acceptProposal(bob.address, false))
+    await expect(crunaVault.connect(mark).acceptProposal(bob.address, true))
       .emit(crunaVault, "ProtectorUpdated")
+      .withArgs(bob.address, mark.address, true);
+
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith(
+      "NotPermittedWhenProtectorsAreActive()"
+    );
+
+    await expect(crunaVault.connect(bob).proposeProtector(mark.address)).revertedWith("ProtectorAlreadySetByYou()");
+  });
+
+  it("should dot allow a transfer if protectors resigns successfully", async function () {
+    // expectCount = 1;
+    await flexiVault.connect(bob).activateAccount(1, true);
+
+    // bob creates a vaults depositing a particle token
+    await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
+    await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
+    expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
+
+    await expect(crunaVault.connect(bob).proposeProtector(mark.address))
+      .emit(crunaVault, "ProtectorProposed")
+      .withArgs(bob.address, mark.address);
+
+    // like not accepting
+    await expect(crunaVault.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
+
+    await expect(crunaVault.connect(bob).proposeProtector(mark.address)).revertedWith("ProtectorAlreadySet()");
+
+    // explicitly not acceptingbin/
+
+    await expect(crunaVault.connect(mark).acceptProposal(bob.address, false))
+      .to.emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, false);
 
-    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1))
-      .emit(crunaVault, "Transfer")
-      .withArgs(bob.address, alice.address, 1);
+    await expect(crunaVault.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
+
+    // 7
+    await expect(crunaVault.connect(mark).acceptProposal(bob.address, false)).revertedWith("PendingProtectorNotFound()");
+
+    await expect(crunaVault.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
+
+    await expect(crunaVault.connect(mark).resignAsProtectorFor(mark.address)).revertedWith("NotAProtector()");
+
+    await expect(crunaVault.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
+
+    await expect(crunaVault.connect(bob).proposeProtector(mark.address))
+      .emit(crunaVault, "ProtectorProposed")
+      .withArgs(bob.address, mark.address);
+
+    await expect(crunaVault.connect(mark).acceptProposal(bob.address, true))
+      .to.emit(crunaVault, "ProtectorUpdated")
+      .withArgs(bob.address, mark.address, true);
+
+    await crunaVault.connect(mark).resignAsProtectorFor(bob.address);
+
+    await expect(crunaVault.connect(mark).resignAsProtectorFor(bob.address)).revertedWith("ResignationAlreadySubmitted()");
   });
 
   it("should not allow a transfer if a protector is active", async function () {
@@ -280,6 +346,7 @@ describe("FlexiVault", function () {
 
   it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
     await flexiVault.connect(bob).activateAccount(1, false);
+    // expectCount = 1;
 
     await expect(crunaVault.connect(bob).proposeProtector(john.address))
       .emit(crunaVault, "ProtectorProposed")
@@ -288,6 +355,8 @@ describe("FlexiVault", function () {
     await expect(crunaVault.connect(john).acceptProposal(bob.address, true))
       .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, john.address, true);
+
+    expect(await crunaVault.isProtectorFor(bob.address, john.address)).equal(true);
 
     await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith(
       "NotPermittedWhenProtectorsAreActive()"
@@ -305,7 +374,7 @@ describe("FlexiVault", function () {
     );
 
     await expect(crunaVault.connect(bob).protectedTransfer(1, fred.address, timestamp, validFor, signature)).revertedWith(
-      "ActorNotFound(0)"
+      "WrongDataOrNotSignedByProtector()"
     );
 
     await expect(crunaVault.connect(bob).protectedTransfer(1, alice.address, timestamp, validFor, signature))

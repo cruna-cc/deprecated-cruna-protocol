@@ -17,7 +17,7 @@ import "../utils/ITokenUtils.sol";
 import "./IERC6454.sol";
 import "./Actors.sol";
 
-//import "hardhat/console.sol";
+import "hardhat/console.sol";
 
 abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Actors, ERC721, ERC721Enumerable, Ownable {
   using ECDSA for bytes32;
@@ -176,7 +176,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   }
 
   function _findProtector(address tokensOwner_, address protector_) private view returns (uint, Status) {
-    (uint i, Actor storage actor) = _findActor(tokensOwner_, protector_, Role.PROTECTOR);
+    (uint i, Actor storage actor) = _getActor(tokensOwner_, protector_, Role.PROTECTOR);
     return (i, actor.status);
   }
 

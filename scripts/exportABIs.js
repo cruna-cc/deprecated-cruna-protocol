@@ -14,10 +14,10 @@ async function main() {
     ABIs.contracts[rename || name] = json.abi;
   }
   abi("CrunaVault", "contracts/implementation");
-  abi("ERC6551Registry", "contracts/bound-account");
-  abi("ERC6551Account", "contracts/bound-account");
-  abi("ERC6551AccountUpgradeable", "contracts/bound-account");
-  abi("ERC6551AccountProxy", "contracts/bound-account");
+  abi("ERC6551Registry", "contracts/ERC6551");
+  abi("ERC6551Account", "contracts/ERC6551");
+  abi("ERC6551AccountUpgradeable", "contracts/ERC6551");
+  abi("ERC6551AccountProxy", "contracts/ERC6551");
   abi("FlexiVault", "contracts/vaults");
   abi("TokenUtils", "contracts/utils");
 

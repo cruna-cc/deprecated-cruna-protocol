@@ -22,6 +22,8 @@ contract Actors is IActors {
         return (i, actors[i]);
       }
     }
+    // Caller must check _emptyActor.status
+    // If not, must call _findActor, which reverts if actor not found
     return (0, _emptyActor);
   }
 
