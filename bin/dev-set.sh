@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 
 bin/deploy.sh dev localhost
-bin/export.sh
+SKIP_COMPILE=true bin/export.sh
