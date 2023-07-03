@@ -19,10 +19,10 @@ describe("CrunaClusterFactory", function () {
   let usdc, usdt;
   let notAToken;
   // wallets
-  let owner, bob, alice;
+  let owner, bob, alice, fred;
 
   before(async function () {
-    [owner, bob, alice] = await ethers.getSigners();
+    [owner, bob, alice, fred] = await ethers.getSigners();
   });
 
   beforeEach(async function () {
@@ -73,5 +73,12 @@ describe("CrunaClusterFactory", function () {
     expect(price.toString()).to.equal("9900000000000000000");
     price = await factory.finalPrice(usdt.address);
     expect(price.toString()).to.equal("9900000");
+
+    await expect(factory.withdrawProceeds(fred.address, usdc.address, normalize("10")))
+      .emit(usdc, "Transfer")
+      .withArgs(factory.address, fred.address, normalize("10"));
+    await expect(factory.withdrawProceeds(fred.address, usdc.address, 0))
+      .emit(usdc, "Transfer")
+      .withArgs(factory.address, fred.address, amount("9.8"));
   });
 });
