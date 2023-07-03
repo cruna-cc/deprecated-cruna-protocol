@@ -13,6 +13,7 @@ async function main() {
     let json = require(source);
     ABIs.contracts[rename || name] = json.abi;
   }
+  abi("CrunaClusterFactory", "contracts/factory");
   abi("CrunaVault", "contracts/implementation");
   abi("ERC6551Registry", "contracts/ERC6551");
   abi("ERC6551Account", "contracts/ERC6551");
