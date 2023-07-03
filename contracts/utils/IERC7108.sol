@@ -86,4 +86,11 @@ interface IERC7108 {
    * @return uint256 Normalized token ID
    */
   function normalizedTokenId(uint256 tokenId) external view returns (uint256);
+
+  /**
+   * @notice Gets the supply of tokens within a cluster
+   * @param clusterId ID of the cluster
+   * @return uint256 The supply of tokens within the cluster
+   */
+  function supplyWithin(uint256 clusterId) external view returns (uint256);
 }

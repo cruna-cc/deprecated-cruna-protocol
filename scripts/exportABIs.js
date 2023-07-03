@@ -26,6 +26,9 @@ async function main() {
   abi("ERC1155", "@openzeppelin/contracts/token/ERC1155");
 
   // for dev only
+  abi("USDCoin", "contracts/mocks/fake-tokens");
+  abi("TetherUSD", "contracts/mocks/fake-tokens");
+  abi("Bulls", "contracts/mocks/fake-tokens");
   abi("Bulls", "contracts/mocks/fake-tokens");
   abi("FatBelly", "contracts/mocks/fake-tokens");
   abi("Particle", "contracts/mocks/fake-tokens");

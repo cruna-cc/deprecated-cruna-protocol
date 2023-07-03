@@ -70,6 +70,10 @@ const Helpers = {
   amount(str) {
     return this.ethers.utils.parseEther(str);
   },
+
+  normalize(amount, decimals = 18) {
+    return amount + "0".repeat(decimals);
+  },
 };
 
 module.exports = Helpers;

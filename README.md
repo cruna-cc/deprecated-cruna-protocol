@@ -82,7 +82,7 @@ These future developments further enhance the flexibility, security, and utility
 
 **1.2.6**
 
-- Integrate ERC7108 to manage clusters inside the Cruna Vault
+- Integrate ClusteredERC721 to manage clusters inside the Cruna Vault
 - Allow the user to choose between an immutable bound-account and an upgradeable one
 - Renames OwnerNFT to TrusteeNFT
 - Rename TransparentVault to FlexiVault

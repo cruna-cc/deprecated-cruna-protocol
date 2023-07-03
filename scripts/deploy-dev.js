@@ -2,7 +2,7 @@ require("dotenv").config();
 const hre = require("hardhat");
 const ethers = hre.ethers;
 const DeployUtils = require("./lib/DeployUtils");
-const {deployContract, amount} = require("../test/helpers");
+const {normalize} = require("../test/helpers");
 let deployUtils;
 
 async function main() {
@@ -17,7 +17,8 @@ async function main() {
   const [owner, h1, h2, h3, h4, h5] = await ethers.getSigners();
 
   let crunaVault, flexiVault;
-  let registry, wallet, proxyWallet, tokenUtils;
+  let registry, wallet, proxyWallet, tokenUtils, factory;
+  let usdc, usdt;
 
   tokenUtils = await deployUtils.deploy("TokenUtils");
 
@@ -25,6 +26,9 @@ async function main() {
   crunaVault = await deployUtils.deploy("CrunaVault", _baseTokenURI, tokenUtils.address);
 
   await crunaVault.addCluster("Cruna Vault V1", "CRUNA", _baseTokenURI, 100000, owner.address);
+
+  factory = await deployUtils.deployProxy("CrunaClusterFactory", crunaVault.address);
+  await crunaVault.allowFactoryFor(factory.address, 0);
 
   registry = await deployUtils.deploy("ERC6551Registry");
   wallet = await deployUtils.deploy("ERC6551Account");
@@ -37,6 +41,8 @@ async function main() {
   await crunaVault.addVault(flexiVault.address);
   await flexiVault.init(registry.address, wallet.address, proxyWallet.address);
 
+  usdc = await deployUtils.deploy("USDCoin");
+  usdt = await deployUtils.deploy("TetherUSD");
   bulls = await deployUtils.deploy("Bulls");
   fatBelly = await deployUtils.deploy("FatBelly");
   particle = await deployUtils.deploy("Particle", "https://api.particle.com/");
@@ -47,8 +53,10 @@ async function main() {
   let s = 1;
   for (let i = 0; i < 3; i++) {
     let w = (i > 1 ? h1 : i ? h2 : h3).address;
-    await deployUtils.Tx(bulls.mint(w, amount("90000")));
-    await deployUtils.Tx(fatBelly.mint(w, amount("10000000")));
+    await deployUtils.Tx(usdc.mint(w, normalize("1000")));
+    await deployUtils.Tx(usdt.mint(w, normalize("1000", 6)));
+    await deployUtils.Tx(bulls.mint(w, normalize("90000")));
+    await deployUtils.Tx(fatBelly.mint(w, normalize("10000000")));
     await uselessWeapons.mintBatch(w, [i + 1, i + 2], [5, 12], "0x00");
     for (let k = 0; k < 10; k++) {
       await crunaVault.safeMint(0, w);

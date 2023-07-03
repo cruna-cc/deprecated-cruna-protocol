@@ -11,7 +11,7 @@ const expect = (actual) => {
   return chai.expect(actual);
 };
 
-describe.only("FlexiVault", function () {
+describe("FlexiVault", function () {
   const deployUtils = new DeployUtils(ethers);
 
   let crunaVault, flexiVault;

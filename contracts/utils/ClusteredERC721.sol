@@ -12,7 +12,7 @@ import "./IERC7108.sol";
 
 // Reference implementation of ERC-7108
 
-contract ERC7108 is IERC7108, ERC721 {
+contract ClusteredERC721 is IERC7108, ERC721 {
   using Strings for uint256;
 
   error ZeroAddress();
@@ -159,7 +159,7 @@ contract ERC7108 is IERC7108, ERC721 {
     return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
   }
 
-  function getInterfaceId() external pure returns (bytes4) {
-    return type(IERC7108).interfaceId;
+  function supplyWithin(uint256 clusterId) external view override returns (uint256) {
+    return clusters[clusterId].nextTokenId - clusters[clusterId].firstTokenId;
   }
 }

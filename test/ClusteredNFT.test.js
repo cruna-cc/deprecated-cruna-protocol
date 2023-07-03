@@ -5,14 +5,12 @@ describe("ClusteredNFT", function () {
   let ClusteredNFT, clusteredNFT, owner, owner2, owner3, bob, alice, fred, john;
 
   beforeEach(async function () {
-    ClusteredNFT = await ethers.getContractFactory("ERC7108");
+    ClusteredNFT = await ethers.getContractFactory("ClusteredERC721");
 
     [owner, owner2, owner3, bob, alice, fred, john] = await ethers.getSigners();
 
     clusteredNFT = await ClusteredNFT.deploy("ClusteredNFT", "cNFT");
     await clusteredNFT.deployed();
-
-    expect(await clusteredNFT.getInterfaceId()).equal("0x4d676ad4");
   });
 
   it("Deploys contracts, mints tokens and checks ownerships", async function () {
