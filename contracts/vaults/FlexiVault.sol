@@ -6,6 +6,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -23,7 +24,7 @@ import "../protected-nft/IActors.sol";
 
 //import "hardhat/console.sol";
 
-contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, ReentrancyGuard {
+contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable, NFTOwned, ReentrancyGuard {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
 
   // modifiers
@@ -81,6 +82,10 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
    */
   function version() external pure override returns (string memory) {
     return "1.0.0";
+  }
+
+  function onERC721Received(address, address, uint256, bytes memory) external pure returns (bytes4) {
+    return this.onERC721Received.selector;
   }
 
   /**
@@ -347,6 +352,16 @@ contract FlexiVault is IFlexiVaultExtended, IVersioned, Ownable, NFTOwned, Reent
     if (!_ejects[owningTokenId]) revert NotAPreviouslyEjectedAccount();
     // the contract must be approved
     trustee.transferFrom(ownerOf(owningTokenId), address(this), owningTokenId);
+    delete _ejects[owningTokenId];
+    emit EjectedBoundAccountReInjected(owningTokenId);
+  }
+
+  /**
+   * @dev {See IFlexiVault-fixDirectlyInjectedAccount}
+   */
+  function fixDirectlyInjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
+    if (!_ejects[owningTokenId]) revert TheAccountHasNeverBeenEjected();
+    if (trustee.ownerOf(owningTokenId) != address(this)) revert TheAccountIsNotOwnedByTheFlexiVault();
     delete _ejects[owningTokenId];
     emit EjectedBoundAccountReInjected(owningTokenId);
   }

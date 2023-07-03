@@ -35,4 +35,6 @@ interface IFlexiVaultExtended is IFlexiVault {
   error OwningTokenNotProtected();
   error VaultHasBeenUpgraded();
   error InvalidTokenUtils();
+  error TheAccountHasNeverBeenEjected();
+  error TheAccountIsNotOwnedByTheFlexiVault();
 }
