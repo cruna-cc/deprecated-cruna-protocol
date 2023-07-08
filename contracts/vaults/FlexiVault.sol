@@ -151,34 +151,6 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     _registry.createAccount(account, block.chainid, address(trustee), owningTokenId, _salt, "");
   }
 
-  /**
-   * @dev {See IFlexiVault-depositAssets}
-   */
-  function depositAssets(
-    uint256 owningTokenId,
-    TokenType[] memory tokenTypes,
-    address[] memory assets,
-    uint256[] memory ids,
-    uint256[] memory amounts
-  ) external payable override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    if (assets.length != ids.length || assets.length != amounts.length || assets.length != tokenTypes.length)
-      revert InconsistentLengths();
-    for (uint256 i = 0; i < assets.length; i++) {
-      if (tokenTypes[i] == TokenType.ETH) {
-        if (msg.value == 0) revert NoETH();
-        (bool success, ) = payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
-        if (!success) revert ETHDepositFailed();
-      } else if (tokenTypes[i] == TokenType.ERC20) {
-        bool transferred = IERC20(assets[i]).transferFrom(_msgSender(), _accountAddresses[owningTokenId], amounts[i]);
-        if (!transferred) revert TransferFailed();
-      } else if (tokenTypes[i] == TokenType.ERC721) {
-        IERC721(assets[i]).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], ids[i]);
-      } else if (tokenTypes[i] == TokenType.ERC1155) {
-        IERC1155(assets[i]).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], ids[i], amounts[i], "");
-      } else revert InvalidAsset();
-    }
-  }
-
   function _getAccountBalance(uint256 owningTokenId, address asset, uint256 id) internal view returns (uint256) {
     address walletAddress = _accountAddresses[owningTokenId];
     if (asset == address(0)) {

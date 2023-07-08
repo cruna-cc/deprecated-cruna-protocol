@@ -126,8 +126,6 @@ abstract contract ProtectedERC721 is
 
   function proposeProtector(address protector_) external onlyTokensOwner {
     if (protector_ == address(0)) revert NoZeroAddress();
-    // in this contract we limit to max 2 protectors
-    if (_actorLength(_msgSender(), Role.PROTECTOR) == 2) revert TooManyProtectors();
     if (_ownersByProtector[protector_] != address(0)) {
       if (_ownersByProtector[protector_] == _msgSender()) revert ProtectorAlreadySetByYou();
       else revert AssociatedToAnotherOwner();
@@ -315,35 +313,30 @@ abstract contract ProtectedERC721 is
 
   // safe recipients
 
-  function _setSafeRecipient(address recipient, Level level) private {
-    if (level == Level.NONE) {
-      _removeActor(_msgSender(), recipient, Role.RECIPIENT);
-    } else {
-      _addActor(_msgSender(), recipient, Role.RECIPIENT, Status.ACTIVE, level);
-    }
-    emit SafeRecipientUpdated(_msgSender(), recipient, level);
-  }
-
-  function setSafeRecipient(address recipient, Level level) external override onlyTokensOwner {
-    if (_countActiveProtectors(_msgSender()) > 0) revert NotPermittedWhenProtectorsAreActive();
-    _setSafeRecipient(recipient, level);
-  }
-
-  function setProtectedSafeRecipient(
+  function setSafeRecipient(
     address recipient,
     Level level,
     uint256 timestamp,
     uint256 validFor,
     bytes calldata signature
   ) external override onlyTokensOwner {
-    validateTimestampAndSignature(
-      _msgSender(),
-      timestamp,
-      validFor,
-      _tokenUtils.hashRecipientRequest(_msgSender(), recipient, level, timestamp, validFor),
-      signature
-    );
-    _setSafeRecipient(recipient, level);
+    if (timestamp == 0) {
+      if (_countActiveProtectors(_msgSender()) > 0) revert NotPermittedWhenProtectorsAreActive();
+    } else {
+      validateTimestampAndSignature(
+        _msgSender(),
+        timestamp,
+        validFor,
+        _tokenUtils.hashRecipientRequest(_msgSender(), recipient, level, timestamp, validFor),
+        signature
+      );
+    }
+    if (level == Level.NONE) {
+      _removeActor(_msgSender(), recipient, Role.RECIPIENT);
+    } else {
+      _addActor(_msgSender(), recipient, Role.RECIPIENT, Status.ACTIVE, level);
+    }
+    emit SafeRecipientUpdated(_msgSender(), recipient, level);
   }
 
   function safeRecipientLevel(address tokenOwner_, address recipient) public view override returns (Level) {
@@ -373,35 +366,30 @@ abstract contract ProtectedERC721 is
 
   // beneficiaries
 
-  function _setBeneficiary(address beneficiary, Status status) private {
+  function setBeneficiary(
+    address beneficiary,
+    Status status,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external override onlyTokensOwner {
+    if (timestamp == 0) {
+      if (_countActiveProtectors(_msgSender()) > 0) revert NotPermittedWhenProtectorsAreActive();
+    } else {
+      validateTimestampAndSignature(
+        _msgSender(),
+        timestamp,
+        validFor,
+        _tokenUtils.hashBeneficiaryRequest(_msgSender(), beneficiary, status, timestamp, validFor),
+        signature
+      );
+    }
     if (status == Status.UNSET) {
       _removeActor(_msgSender(), beneficiary, Role.BENEFICIARY);
     } else {
       _addActor(_msgSender(), beneficiary, Role.BENEFICIARY, status, Level.NONE);
     }
     emit BeneficiaryUpdated(_msgSender(), beneficiary, status);
-  }
-
-  function setBeneficiary(address recipient, Status status) external onlyTokensOwner {
-    if (_countActiveProtectors(_msgSender()) > 0) revert NotPermittedWhenProtectorsAreActive();
-    _setBeneficiary(recipient, status);
-  }
-
-  function setProtectedBeneficiary(
-    address beneficiary,
-    Status status,
-    uint256 timestamp,
-    uint256 validFor,
-    bytes calldata signature
-  ) external onlyTokensOwner {
-    validateTimestampAndSignature(
-      _msgSender(),
-      timestamp,
-      validFor,
-      _tokenUtils.hashBeneficiaryRequest(_msgSender(), beneficiary, status, timestamp, validFor),
-      signature
-    );
-    _setBeneficiary(beneficiary, status);
   }
 
   function configureBeneficiary(uint256 quorum, uint256 proofOfLifeDurationInDays) external onlyTokensOwner {

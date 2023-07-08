@@ -147,9 +147,7 @@ interface IProtectedERC721 {
 
   // safe recipients
 
-  function setSafeRecipient(address recipient, IActors.Level level) external;
-
-  function setProtectedSafeRecipient(
+  function setSafeRecipient(
     address recipient,
     IActors.Level level,
     uint256 timestamp,
@@ -160,4 +158,12 @@ interface IProtectedERC721 {
   function safeRecipientLevel(address tokenOwner_, address recipient) external view returns (IActors.Level);
 
   function getSafeRecipients(address tokenOwner_) external view returns (IActors.Actor[] memory);
+
+  function setBeneficiary(
+    address beneficiary,
+    IActors.Status status,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external;
 }

@@ -33,24 +33,6 @@ interface IFlexiVault {
   function init(address registry, address payable boundAccount, address payable boundAccountUpgradeable) external;
 
   /**
-   * @dev Deposits multiple assets in the bound account
-   * @param owningTokenId The id of the owning token
-   * @param tokenTypes The types of the assets tokens
-   * @param assets The addresses of the assets
-   * @param ids The ids of the assets tokens
-      If the asset is an ERC20, the id is 0
-   * @param amounts The amounts of the assets tokens
-      If the asset is an ERC721, the amount is 1
-   */
-  function depositAssets(
-    uint256 owningTokenId,
-    TokenType[] memory tokenTypes,
-    address[] memory assets,
-    uint256[] memory ids,
-    uint256[] memory amounts
-  ) external payable;
-
-  /**
    * @dev Withdraws multiple assets from the bound account
    * @param owningTokenId The id of the owning token
    * @param assets The addresses of the assets

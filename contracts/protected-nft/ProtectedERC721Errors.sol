@@ -28,7 +28,6 @@ interface ProtectedERC721Errors {
   error NotTheProtector();
   error NotATokensOwner();
   error ResignationNotSubmitted();
-  error TooManyProtectors();
   error InvalidDuration();
   error NoActiveProtectors();
   error ProtectorsAlreadyLocked();
