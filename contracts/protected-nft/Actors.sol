@@ -3,9 +3,9 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "./IActors.sol";
+import {IActors} from "./IActors.sol";
 
-//import "hardhat/console.sol";
+//import {console} from "hardhat/console.sol";
 
 contract Actors is IActors {
   mapping(Role => mapping(address => Actor[])) private _actors;
@@ -15,9 +15,9 @@ contract Actors is IActors {
     return _actors[role][owner_];
   }
 
-  function _getActor(address owner_, address actor_, Role role) internal view returns (uint, Actor storage) {
+  function _getActor(address owner_, address actor_, Role role) internal view returns (uint256, Actor storage) {
     Actor[] storage actors = _actors[role][owner_];
-    for (uint i = 0; i < actors.length; i++) {
+    for (uint256 i = 0; i < actors.length; i++) {
       if (actors[i].actor == actor_) {
         return (i, actors[i]);
       }
@@ -28,8 +28,8 @@ contract Actors is IActors {
   }
 
   // similar to getActor, but reverts if actor not found
-  function _findActor(address owner_, address actor_, Role role) internal view returns (uint, Actor storage) {
-    (uint i, Actor storage actor) = _getActor(owner_, actor_, role);
+  function _findActor(address owner_, address actor_, Role role) internal view returns (uint256, Actor storage) {
+    (uint256 i, Actor storage actor) = _getActor(owner_, actor_, role);
     if (actor.status == Status.UNSET) {
       revert ActorNotFound(role);
     }
@@ -41,7 +41,7 @@ contract Actors is IActors {
     return actor.status;
   }
 
-  function _actorLength(address owner_, Role role) internal view returns (uint) {
+  function _actorLength(address owner_, Role role) internal view returns (uint256) {
     return _actors[role][owner_].length;
   }
 
@@ -56,10 +56,10 @@ contract Actors is IActors {
   }
 
   function _listActiveActors(address owner_, Role role) internal view returns (address[] memory) {
-    uint count = role == Role.PROTECTOR ? _countActiveActorsByRole(owner_, role) : _actorLength(owner_, role);
+    uint256 count = role == Role.PROTECTOR ? _countActiveActorsByRole(owner_, role) : _actorLength(owner_, role);
     address[] memory actors = new address[](count);
-    uint j = 0;
-    for (uint i = 0; i < _actors[role][owner_].length; i++) {
+    uint256 j = 0;
+    for (uint256 i = 0; i < _actors[role][owner_].length; i++) {
       if (_actors[role][owner_][i].status > Status.PENDING) {
         actors[j] = _actors[role][owner_][i].actor;
         j++;
@@ -68,9 +68,9 @@ contract Actors is IActors {
     return actors;
   }
 
-  function _countActiveActorsByRole(address owner_, Role role) internal view returns (uint) {
-    uint count = 0;
-    for (uint i = 0; i < _actors[role][owner_].length; i++) {
+  function _countActiveActorsByRole(address owner_, Role role) internal view returns (uint256) {
+    uint256 count = 0;
+    for (uint256 i = 0; i < _actors[role][owner_].length; i++) {
       if (_actors[role][owner_][i].status > Status.PENDING) {
         count++;
       }
@@ -78,20 +78,20 @@ contract Actors is IActors {
     return count;
   }
 
-  function _updateStatus(address owner_, uint i, Role role, Status status_) internal {
+  function _updateStatus(address owner_, uint256 i, Role role, Status status_) internal {
     _actors[role][owner_][i].status = status_;
   }
 
-  function _updateLevel(address owner_, uint i, Role role, Level level_) internal {
+  function _updateLevel(address owner_, uint256 i, Role role, Level level_) internal {
     _actors[role][owner_][i].level = level_;
   }
 
   function _removeActor(address owner_, address actor_, Role role) internal {
-    (uint i, ) = _findActor(owner_, actor_, role);
+    (uint256 i, ) = _findActor(owner_, actor_, role);
     _removeActorByIndex(owner_, i, role);
   }
 
-  function _removeActorByIndex(address owner_, uint i, Role role) internal {
+  function _removeActorByIndex(address owner_, uint256 i, Role role) internal {
     Actor[] storage actors = _actors[role][owner_];
     if (i < actors.length - 1) {
       actors[i] = actors[actors.length - 1];

@@ -3,10 +3,10 @@ pragma solidity ^0.8.19;
 
 // Authors: Francesco Sullo <francesco@sullo.co>
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-import "./INFTOwned.sol";
+import {INFTOwned} from "./INFTOwned.sol";
 
 contract NFTOwned is INFTOwned {
   error Unauthorized();

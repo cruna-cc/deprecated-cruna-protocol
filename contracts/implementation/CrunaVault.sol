@@ -77,19 +77,19 @@ contract CrunaVault is ProtectedERC721, IERC7108, IERC7108Enumerable {
     return clusterIdByOwners[owner];
   }
 
-  function _binarySearch(uint x) internal view returns (uint) {
+  function _binarySearch(uint256 x) internal view returns (uint256) {
     if (_nextClusterId == 0) {
-      return type(uint).max;
+      return type(uint256).max;
     }
 
-    uint start;
-    uint end = _nextClusterId - 1;
-    uint mid;
+    uint256 start;
+    uint256 end = _nextClusterId - 1;
+    uint256 mid;
 
     while (start <= end) {
       mid = start + (end - start) / 2;
-      uint first = uint(clusters[mid].firstTokenId);
-      uint next = uint(clusters[mid].firstTokenId + clusters[mid].size);
+      uint256 first = uint256(clusters[mid].firstTokenId);
+      uint256 next = uint256(clusters[mid].firstTokenId + clusters[mid].size);
       if (x >= first && x < next) {
         return mid;
       } else if (x >= next) {
@@ -106,7 +106,7 @@ contract CrunaVault is ProtectedERC721, IERC7108, IERC7108Enumerable {
     }
 
     // If we reach here, then the element was not present
-    return type(uint).max;
+    return type(uint256).max;
   }
 
   function clusterOf(uint256 tokenId) public view override returns (uint256) {
@@ -156,11 +156,11 @@ contract CrunaVault is ProtectedERC721, IERC7108, IERC7108Enumerable {
     return tokenId - clusters[clusterId].firstTokenId + 1;
   }
 
-  function balanceOfWithin(address owner, uint256 clusterId) external view override returns (uint) {
+  function balanceOfWithin(address owner, uint256 clusterId) external view override returns (uint256) {
     uint256 balance = balanceOf(owner);
     if (balance != 0) {
-      uint result = 0;
-      (uint256 start, uint end) = rangeOf(clusterId);
+      uint256 result = 0;
+      (uint256 start, uint256 end) = rangeOf(clusterId);
       for (uint256 i = 0; i < balance; i++) {
         uint256 tokenId = tokenOfOwnerByIndex(owner, i);
         if (tokenId >= start && tokenId <= end) {
@@ -186,7 +186,7 @@ contract CrunaVault is ProtectedERC721, IERC7108, IERC7108Enumerable {
   }
 
   // set factory to 0x0 to disable a factory
-  function allowFactoryFor(address factory, uint clusterId) external {
+  function allowFactoryFor(address factory, uint256 clusterId) external {
     if (clusters[clusterId].owner != msg.sender) revert NotClusterOwner();
     if (factory != address(0)) {
       clusterMinters[clusterId] = factory;

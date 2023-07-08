@@ -3,41 +3,41 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
+import {ERC721, IERC721, IERC165} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../nft-owned/NFTOwned.sol";
-import "../protected-nft/IProtectedERC721.sol";
-import "../utils/ITokenUtils.sol";
-import "../ERC6551/IERC6551Account.sol";
-import "../ERC6551/IERC6551Registry.sol";
-import "../ERC6551/IERC6551Account.sol";
-import "../ERC6551/TrusteeNFT.sol";
-import "../utils/IVersioned.sol";
-import "./IFlexiVaultExtended.sol";
-import "../protected-nft/IActors.sol";
+import {NFTOwned} from "../nft-owned/NFTOwned.sol";
+import {IProtectedERC721} from "../protected-nft/IProtectedERC721.sol";
+import {ITokenUtils} from "../utils/ITokenUtils.sol";
+import {IERC6551Account} from "../ERC6551/IERC6551Account.sol";
+import {IERC6551Registry} from "../ERC6551/IERC6551Registry.sol";
+import {IERC6551Account} from "../ERC6551/IERC6551Account.sol";
+import {TrusteeNFT} from "../ERC6551/TrusteeNFT.sol";
+import {IVersioned} from "../utils/IVersioned.sol";
+import {IFlexiVaultExtended} from "./IFlexiVaultExtended.sol";
+import {IActors} from "../protected-nft/IActors.sol";
 
-//import "hardhat/console.sol";
+//import {console} from "hardhat/console.sol";
 
 contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable, NFTOwned, ReentrancyGuard {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
 
   // modifiers
 
-  mapping(uint => bool) private _ejects;
+  mapping(uint256 => bool) private _ejects;
 
   IERC6551Registry internal _registry;
   IERC6551Account public boundAccount;
   IERC6551Account public boundAccountUpgradeable;
   ITokenUtils internal _tokenUtils;
   TrusteeNFT public trustee;
-  uint internal _salt;
-  mapping(uint => address) internal _accountAddresses;
+  uint256 internal _salt;
+  mapping(uint256 => address) internal _accountAddresses;
   bool private _initiated;
   IProtectedERC721 internal _protectedOwningToken;
 
@@ -45,7 +45,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
   // Operators are not restricted to follow an owner, as protectors do.
   // The idea is that for any tokenId there can be just a few operators
   // so we do not risk to go out of gas when checking them.
-  mapping(uint => address[]) private _operators;
+  mapping(uint256 => address[]) private _operators;
 
   modifier onlyOwningTokenOwner(uint256 owningTokenId) {
     if (ownerOf(owningTokenId) != msg.sender) {
@@ -83,7 +83,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
   constructor(address owningToken, address tokenUtils) NFTOwned(owningToken) {
     _protectedOwningToken = IProtectedERC721(owningToken);
     if (!IERC165(_owningToken).supportsInterface(type(IProtectedERC721).interfaceId)) revert OwningTokenNotProtected();
-    _salt = uint(keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken))));
+    _salt = uint256(keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken))));
     _tokenUtils = ITokenUtils(tokenUtils);
     if (_tokenUtils.isTokenUtils() != ITokenUtils.isTokenUtils.selector) revert InvalidTokenUtils();
   }
@@ -130,14 +130,14 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
   /**
    * @dev {See IFlexiVault-accountAddress}
    */
-  function accountAddress(uint owningTokenId) external view override returns (address) {
+  function accountAddress(uint256 owningTokenId) external view override returns (address) {
     return _accountAddresses[owningTokenId];
   }
 
   /**
    * @dev {See IFlexiVault-activateAccount}
    */
-  function activateAccount(uint owningTokenId, bool useUpgradeableAccount) external onlyOwningTokenOwner(owningTokenId) {
+  function activateAccount(uint256 owningTokenId, bool useUpgradeableAccount) external onlyOwningTokenOwner(owningTokenId) {
     if (!trustee.isMinter(address(this))) {
       // If the contract is no more the minter, there is a new version of the
       // vault and new users must use the new version.
@@ -197,7 +197,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
   }
 
   function _transferToken(
-    uint owningTokenId,
+    uint256 owningTokenId,
     TokenType tokenType,
     address to,
     address asset,
@@ -237,7 +237,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
   ) internal virtual {
     if (_owningToken.getApproved(owningTokenId) != address(0)) revert ForbiddenWhenOwningTokenApprovedForSale();
     if (amount == 0) revert InvalidAmount();
-    uint balance = _getAccountBalance(owningTokenId, asset, id);
+    uint256 balance = _getAccountBalance(owningTokenId, asset, id);
     if (balance < amount) revert InsufficientBalance();
     _transferToken(owningTokenId, tokenType, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
   }
@@ -246,7 +246,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
    * @dev {See IFlexiVault-withdrawAssets}
    */
   function withdrawAssets(
-    uint owningTokenId,
+    uint256 owningTokenId,
     TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
@@ -283,7 +283,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     uint256[] memory amounts,
     address[] memory beneficiaries,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes calldata signature
   )
     external
@@ -348,7 +348,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
   function protectedEjectAccount(
     uint256 owningTokenId,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes calldata signature
   ) external override {
     bytes32 hash = _tokenUtils.hashEjectRequest(owningTokenId, timestamp, validFor);
@@ -379,23 +379,23 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
 
   // operators
 
-  function getOperatorForIndexIfExists(uint owningTokenId, address operator) public view override returns (bool, uint) {
-    for (uint i = 0; i < _operators[owningTokenId].length; i++) {
+  function getOperatorForIndexIfExists(uint256 owningTokenId, address operator) public view override returns (bool, uint256) {
+    for (uint256 i = 0; i < _operators[owningTokenId].length; i++) {
       if (_operators[owningTokenId][i] == operator) return (true, i);
     }
     return (false, 0);
   }
 
-  function isOperatorFor(uint owningTokenId, address operator) public view override returns (bool) {
-    for (uint i = 0; i < _operators[owningTokenId].length; i++) {
+  function isOperatorFor(uint256 owningTokenId, address operator) public view override returns (bool) {
+    for (uint256 i = 0; i < _operators[owningTokenId].length; i++) {
       if (_operators[owningTokenId][i] == operator) return true;
     }
     return false;
   }
 
-  function setOperatorFor(uint owningTokenId, address operator, bool active) external onlyOwningTokenOwner(owningTokenId) {
+  function setOperatorFor(uint256 owningTokenId, address operator, bool active) external onlyOwningTokenOwner(owningTokenId) {
     if (operator == address(0)) revert NoZeroAddress();
-    (bool exists, uint i) = getOperatorForIndexIfExists(owningTokenId, operator);
+    (bool exists, uint256 i) = getOperatorForIndexIfExists(owningTokenId, operator);
     if (active) {
       if (exists) revert OperatorAlreadyActive();
       else _operators[owningTokenId].push(operator);
@@ -409,7 +409,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     emit OperatorUpdated(owningTokenId, operator, active);
   }
 
-  function deleteOperatorsFor(uint owningTokenId) external onlyProtected {
+  function deleteOperatorsFor(uint256 owningTokenId) external onlyProtected {
     delete _operators[owningTokenId];
   }
 }

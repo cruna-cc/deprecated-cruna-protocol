@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "../../nft-owned/NFTOwned.sol";
+import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import {INFTOwned, NFTOwned} from "../../nft-owned/NFTOwned.sol";
 
 contract MyOwnedContract is NFTOwned {
   error NotInitiated();

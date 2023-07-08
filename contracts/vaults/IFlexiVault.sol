@@ -22,7 +22,7 @@ interface IFlexiVault {
    * @param owningTokenId The id of the owning token
    * @return The address of the account
    */
-  function accountAddress(uint owningTokenId) external view returns (address);
+  function accountAddress(uint256 owningTokenId) external view returns (address);
 
   /**
    * @dev It allows to set the registry and the account proxy
@@ -62,7 +62,7 @@ interface IFlexiVault {
    * @param beneficiaries The addresses of the beneficiaries
    */
   function withdrawAssets(
-    uint owningTokenId,
+    uint256 owningTokenId,
     TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
@@ -89,7 +89,7 @@ interface IFlexiVault {
     uint256[] memory amounts,
     address[] memory beneficiaries,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes calldata signature
   ) external;
 
@@ -122,7 +122,7 @@ interface IFlexiVault {
    * @param validFor The time the request is valid for
    * @param signature The signature of the protector
    */
-  function protectedEjectAccount(uint256 owningTokenId, uint256 timestamp, uint validFor, bytes calldata signature) external;
+  function protectedEjectAccount(uint256 owningTokenId, uint256 timestamp, uint256 validFor, bytes calldata signature) external;
 
   /**
    * @dev Reinjects an ejected account
@@ -146,7 +146,7 @@ interface IFlexiVault {
   * @return (true, index) if the operator is active for the token
      or (false, 0) if the operator is not active for the token
   */
-  function getOperatorForIndexIfExists(uint tokenId, address operator) external view returns (bool, uint);
+  function getOperatorForIndexIfExists(uint256 tokenId, address operator) external view returns (bool, uint256);
 
   /**
    * @dev Check if an address is an operator for a token
@@ -154,7 +154,7 @@ interface IFlexiVault {
    * @param operator The address of the operator
    * @return true if the operator is active for the token, false otherwise
    */
-  function isOperatorFor(uint tokenId, address operator) external view returns (bool);
+  function isOperatorFor(uint256 tokenId, address operator) external view returns (bool);
 
   /**
    * @dev Sets/unsets an operator for a token
@@ -163,12 +163,12 @@ interface IFlexiVault {
    * @param operator The address of the operator
    * @param active True if the operator is active for the token, false otherwise
    */
-  function setOperatorFor(uint tokenId, address operator, bool active) external;
+  function setOperatorFor(uint256 tokenId, address operator, bool active) external;
 
   /**
    * @dev Delete the operators associated to an account
       It must be called by the CrunaVault only.
    * @param tokenId The token id
    */
-  function deleteOperatorsFor(uint tokenId) external;
+  function deleteOperatorsFor(uint256 tokenId) external;
 }

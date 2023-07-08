@@ -17,7 +17,7 @@ import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IERC6454} from "./IERC6454.sol";
 import {Actors} from "./Actors.sol";
 
-import "hardhat/console.sol";
+//import {console} from "hardhat/console.sol";
 
 abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Actors, ERC721, ERC721Enumerable, Ownable {
   using ECDSA for bytes32;
@@ -61,14 +61,14 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   mapping(address => BeneficiaryConf) private _beneficiaryConfs;
 
   modifier onlyProtectorFor(address owner_) {
-    (uint i, Status status) = _findProtector(owner_, _msgSender());
+    (uint256 i, Status status) = _findProtector(owner_, _msgSender());
     if (status < Status.ACTIVE) revert NotAProtector();
     _;
   }
 
-  modifier onlyProtectorForTokenId(uint tokenId_) {
+  modifier onlyProtectorForTokenId(uint256 tokenId_) {
     address owner_ = ownerOf(tokenId_);
-    (uint i, Status status) = _findProtector(owner_, _msgSender());
+    (uint256 i, Status status) = _findProtector(owner_, _msgSender());
     if (status < Status.ACTIVE) revert NotAProtector();
     _;
   }
@@ -98,17 +98,17 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     } catch {
       revert NotAFlexiVault();
     }
-    for (uint i = 0; i < _vaults.length; i++) {
+    for (uint256 i = 0; i < _vaults.length; i++) {
       if (_vaults[i] == vault) revert VaultAlreadyAdded();
     }
     _vaults.push(vault);
   }
 
-  function getVault(uint index) external view returns (address) {
+  function getVault(uint256 index) external view returns (address) {
     return _vaults[index];
   }
 
-  function _countActiveProtectors(address tokensOwner_) internal view returns (uint) {
+  function _countActiveProtectors(address tokensOwner_) internal view returns (uint256) {
     return _countActiveActorsByRole(tokensOwner_, Role.PROTECTOR);
   }
 
@@ -126,13 +126,13 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     emit ProtectorProposed(_msgSender(), protector_);
   }
 
-  function _findProtector(address tokensOwner_, address protector_) private view returns (uint, Status) {
-    (uint i, Actor storage actor) = _getActor(tokensOwner_, protector_, Role.PROTECTOR);
+  function _findProtector(address tokensOwner_, address protector_) private view returns (uint256, Status) {
+    (uint256 i, Actor storage actor) = _getActor(tokensOwner_, protector_, Role.PROTECTOR);
     return (i, actor.status);
   }
 
-  function _validatePendingProtector(address tokensOwner_, address protector_) private view returns (uint) {
-    (uint i, Status status) = _findProtector(tokensOwner_, protector_);
+  function _validatePendingProtector(address tokensOwner_, address protector_) private view returns (uint256) {
+    (uint256 i, Status status) = _findProtector(tokensOwner_, protector_);
     if (status == Status.PENDING) {
       return i;
     } else {
@@ -150,7 +150,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   }
 
   function acceptProposal(address tokensOwner_, bool accepted_) external {
-    uint i = _validatePendingProtector(tokensOwner_, _msgSender());
+    uint256 i = _validatePendingProtector(tokensOwner_, _msgSender());
     if (_ownersByProtector[_msgSender()] != address(0)) {
       // the transfer initializer has been associated to another owner in between the
       // set and the confirmation
@@ -166,7 +166,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   }
 
   function resignAsProtectorFor(address tokensOwner_) external {
-    (uint i, Status status) = _findProtector(tokensOwner_, _msgSender());
+    (uint256 i, Status status) = _findProtector(tokensOwner_, _msgSender());
     if (status == Status.UNSET) {
       revert NotAProtector();
     } else if (status == Status.RESIGNED) {
@@ -181,7 +181,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   }
 
   function acceptResignation(address protector_) external onlyTokensOwner {
-    (uint i, Status status) = _findProtector(_msgSender(), protector_);
+    (uint256 i, Status status) = _findProtector(_msgSender(), protector_);
     if (status == Status.RESIGNED) {
       _removeActorByIndex(_msgSender(), i, Role.PROTECTOR);
     } else {
@@ -196,10 +196,10 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   }
 
   function protectedTransfer(
-    uint tokenId,
+    uint256 tokenId,
     address to,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes calldata signature
   ) external override onlyTokenOwner(tokenId) {
     validateTimestampAndSignature(
@@ -219,7 +219,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   }
 
   function setSignatureAsUsed(bytes calldata signature) public override {
-    for (uint i = 0; i < _vaults.length; i++) {
+    for (uint256 i = 0; i < _vaults.length; i++) {
       if (_vaults[i] == _msgSender()) {
         revert NotAFlexiVault();
       }
@@ -230,17 +230,18 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   function validateTimestampAndSignature(
     address tokenOwner_,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes32 hash,
     bytes calldata signature
   ) public override {
+    // solhint-disable-next-line not-rely-on-time
     if (timestamp > block.timestamp || timestamp < block.timestamp - validFor) revert TimestampInvalidOrExpired();
     if (!signedByProtector(tokenOwner_, hash, signature)) revert WrongDataOrNotSignedByProtector();
     if (isSignatureUsed(signature)) revert SignatureAlreadyUsed();
     setSignatureAsUsed(signature);
   }
 
-  function invalidateSignatureFor(uint tokenId, bytes32 hash, bytes calldata signature) external override {
+  function invalidateSignatureFor(uint256 tokenId, bytes32 hash, bytes calldata signature) external override {
     address tokenOwner_ = ownerOf(tokenId);
     (, Status status) = _findProtector(ownerOf(tokenId), _msgSender());
     if (status < Status.ACTIVE) revert NotAProtector();
@@ -312,7 +313,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     address recipient,
     Level level,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes calldata signature
   ) external override onlyTokensOwner {
     validateTimestampAndSignature(
@@ -370,7 +371,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     address beneficiary,
     Status status,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes calldata signature
   ) external onlyTokensOwner {
     validateTimestampAndSignature(
@@ -383,10 +384,11 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     _setBeneficiary(beneficiary, status);
   }
 
-  function configureBeneficiary(uint quorum, uint proofOfLifeDurationInDays) external onlyTokensOwner {
+  function configureBeneficiary(uint256 quorum, uint256 proofOfLifeDurationInDays) external onlyTokensOwner {
     if (_countActiveProtectors(_msgSender()) > 0) revert NotPermittedWhenProtectorsAreActive();
     if (quorum == 0) revert QuorumCannotBeZero();
     if (quorum > _countActiveActorsByRole(_msgSender(), Role.BENEFICIARY)) revert QuorumCannotBeGreaterThanBeneficiaries();
+    // solhint-disable-next-line not-rely-on-time
     _beneficiaryConfs[_msgSender()] = BeneficiaryConf(quorum, proofOfLifeDurationInDays, block.timestamp);
     delete _beneficiariesRequests[_msgSender()];
   }
@@ -397,12 +399,13 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
 
   function proofOfLife() external onlyTokensOwner {
     if (_beneficiaryConfs[_msgSender()].proofOfLifeDurationInDays == 0) revert BeneficiaryNotConfigured();
+    // solhint-disable-next-line not-rely-on-time
     _beneficiaryConfs[_msgSender()].lastProofOfLife = block.timestamp;
     delete _beneficiariesRequests[_msgSender()];
   }
 
   function _hasApproved(address tokenOwner_) internal view returns (bool) {
-    for (uint i = 0; i < _beneficiariesRequests[tokenOwner_].approvers.length; i++) {
+    for (uint256 i = 0; i < _beneficiariesRequests[tokenOwner_].approvers.length; i++) {
       if (_msgSender() == _beneficiariesRequests[tokenOwner_].approvers[i]) {
         return true;
       }
@@ -417,12 +420,14 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     if (actor.status == Status.UNSET) revert NotABeneficiary();
     if (
       _beneficiaryConfs[tokenOwner_].lastProofOfLife + (_beneficiaryConfs[tokenOwner_].proofOfLifeDurationInDays * 1 hours) >
+      // solhint-disable-next-line not-rely-on-time
       block.timestamp
     ) revert NotExpiredYet();
     // the following prevents hostile beneficiaries from blocking the process not allowing them to reset the recipient
     if (_hasApproved(tokenOwner_)) revert RequestAlreadyApproved();
     // the beneficiary is proposing a new recipient
     if (_beneficiariesRequests[tokenOwner_].recipient != beneficiaryRecipient) {
+      // solhint-disable-next-line not-rely-on-time
       if (block.timestamp - _beneficiariesRequests[tokenOwner_].startedAt > 30 days) {
         // reset the request
         delete _beneficiariesRequests[tokenOwner_];
@@ -430,6 +435,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     }
     if (_beneficiariesRequests[tokenOwner_].recipient == address(0)) {
       _beneficiariesRequests[tokenOwner_].recipient = beneficiaryRecipient;
+      // solhint-disable-next-line not-rely-on-time
       _beneficiariesRequests[tokenOwner_].startedAt = block.timestamp;
       _beneficiariesRequests[tokenOwner_].approvers.push(_msgSender());
     } else if (!_hasApproved(_msgSender())) {
@@ -442,12 +448,12 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
       _beneficiariesRequests[tokenOwner_].recipient == _msgSender() &&
       _beneficiariesRequests[tokenOwner_].approvers.length >= _beneficiaryConfs[tokenOwner_].quorum
     ) {
-      uint balance = balanceOf(tokenOwner_);
-      uint[] memory tokenIds = new uint[](balance);
-      for (uint i = 0; i < balance; i++) {
+      uint256 balance = balanceOf(tokenOwner_);
+      uint256[] memory tokenIds = new uint256[](balance);
+      for (uint256 i = 0; i < balance; i++) {
         tokenIds[i] = tokenOfOwnerByIndex(tokenOwner_, i);
       }
-      for (uint i = 0; i < balance; i++) {
+      for (uint256 i = 0; i < balance; i++) {
         _safeTransfer(tokenOwner_, _msgSender(), tokenIds[i], "");
       }
       emit Inherited(tokenOwner_, _msgSender(), balance);

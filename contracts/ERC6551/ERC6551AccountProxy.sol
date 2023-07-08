@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity ^0.8.19;
 
 // from https://github.com/erc6551/reference
 
-import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
-import "@openzeppelin/contracts/proxy/Proxy.sol";
+import {ERC1967Upgrade} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
+import {Proxy} from "@openzeppelin/contracts/proxy/Proxy.sol";
 
 contract ERC6551AccountProxy is Proxy, ERC1967Upgrade {
   // solhint-disable-next-line

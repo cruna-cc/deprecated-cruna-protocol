@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "./IActors.sol";
+import {IActors} from "./IActors.sol";
 
 // erc165 interfaceId 0x8dca4bea
 interface IProtectedERC721 {
@@ -47,7 +47,7 @@ interface IProtectedERC721 {
    */
   event BeneficiaryUpdated(address indexed owner, address indexed beneficiary, IActors.Status status);
 
-  event Inherited(address indexed from, address indexed to, uint amount);
+  event Inherited(address indexed from, address indexed to, uint256 amount);
 
   error NotTheTokenOwner();
   error NotApprovable();
@@ -189,7 +189,13 @@ interface IProtectedERC721 {
    * @param timestamp The timestamp of the transfer request
    * @param signature The signature of the transfer request, signed by an active protector
    */
-  function protectedTransfer(uint tokenId, address to, uint256 timestamp, uint validFor, bytes calldata signature) external;
+  function protectedTransfer(
+    uint256 tokenId,
+    address to,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external;
 
   /**
    * @dev Checks if a signature has been used
@@ -215,7 +221,7 @@ interface IProtectedERC721 {
   function validateTimestampAndSignature(
     address tokenOwner_,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes32 hash,
     bytes calldata signature
   ) external;
@@ -226,7 +232,7 @@ interface IProtectedERC721 {
    * @param hash The signed hash
    * @param signature The signature of the transfer request
    */
-  function invalidateSignatureFor(uint tokenId, bytes32 hash, bytes calldata signature) external;
+  function invalidateSignatureFor(uint256 tokenId, bytes32 hash, bytes calldata signature) external;
 
   // safe recipients
 
@@ -236,7 +242,7 @@ interface IProtectedERC721 {
     address recipient,
     IActors.Level level,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes calldata signature
   ) external;
 
