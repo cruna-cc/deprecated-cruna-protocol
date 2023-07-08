@@ -3,72 +3,25 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
-import "@openzeppelin/contracts/utils/Strings.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
+import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import "../nft-owned/NFTOwned.sol";
-import "./IProtectedERC721.sol";
-import "../utils/IVersioned.sol";
-import "../vaults/IFlexiVault.sol";
-import "../utils/ITokenUtils.sol";
-import "./IERC6454.sol";
-import "./Actors.sol";
+import {NFTOwned} from "../nft-owned/NFTOwned.sol";
+import {IProtectedERC721} from "./IProtectedERC721.sol";
+import {IVersioned} from "../utils/IVersioned.sol";
+import {IFlexiVault} from "../vaults/IFlexiVault.sol";
+import {ITokenUtils} from "../utils/ITokenUtils.sol";
+import {IERC6454} from "./IERC6454.sol";
+import {Actors} from "./Actors.sol";
 
 import "hardhat/console.sol";
 
 abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Actors, ERC721, ERC721Enumerable, Ownable {
   using ECDSA for bytes32;
   using Strings for uint256;
-
-  error NotTheTokenOwner();
-  error NotApprovable();
-  error NotApprovableForAll();
-  error NotTheContractDeployer();
-  error TokenDoesNotExist();
-  error SenderDoesNotOwnAnyToken();
-  error ProtectorNotFound();
-  error TokenAlreadyBeingTransferred();
-  error AssociatedToAnotherOwner();
-  error ProtectorAlreadySet();
-  error ProtectorAlreadySetByYou();
-  error NotAProtector();
-  error NotOwnByRelatedOwner();
-  error NotPermittedWhenProtectorsAreActive();
-  error TokenIdTooBig();
-  error PendingProtectorNotFound();
-  error ResignationAlreadySubmitted();
-  error UnsetNotStarted();
-  error NotTheProtector();
-  error NotATokensOwner();
-  error ResignationNotSubmitted();
-  error TooManyProtectors();
-  error InvalidDuration();
-  error NoActiveProtectors();
-  error ProtectorsAlreadyLocked();
-  error ProtectorsUnlockAlreadyStarted();
-  error ProtectorsUnlockNotStarted();
-  error ProtectorsNotLocked();
-  error TimestampInvalidOrExpired();
-  error WrongDataOrNotSignedByProtector();
-  error SignatureAlreadyUsed();
-  error OperatorAlreadyActive();
-  error OperatorNotActive();
-  error NotAFlexiVault();
-  error VaultAlreadyAdded();
-  error InvalidTokenUtils();
-  error QuorumCannotBeZero();
-  error QuorumCannotBeGreaterThanBeneficiaries();
-  error BeneficiaryNotConfigured();
-  error NotExpiredYet();
-  error BeneficiaryAlreadyRequested();
-  error InconsistentRecipient();
-  error NotABeneficiary();
-  error RequestAlreadyApproved();
-  error NotTheRecipient();
-  error Unauthorized();
 
   ITokenUtils internal _tokenUtils;
 
@@ -81,12 +34,6 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
   mapping(address => address) private _ownersByProtector;
 
   mapping(address => Status) private _lockedProtectorsFor;
-
-  // The operators that can manage a specific tokenId.
-  // Operators are not restricted to follow an owner, as protectors do.
-  // The idea is that for any tokenId there can be just a few operators
-  // so we do not risk to go out of gas when checking them.
-  mapping(uint => address[]) private _operators;
 
   // the tokens currently being transferred when a second wallet is set
   //  mapping(uint256 => ControlledTransfer) private _controlledTransfers;
@@ -330,42 +277,6 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     }
   }
 
-  // operators
-
-  function getOperatorForIndexIfExists(uint tokenId, address operator) public view override returns (bool, uint) {
-    for (uint i = 0; i < _operators[tokenId].length; i++) {
-      if (_operators[tokenId][i] == operator) return (true, i);
-    }
-    return (false, 0);
-  }
-
-  function isOperatorFor(uint tokenId, address operator) public view override returns (bool) {
-    for (uint i = 0; i < _operators[tokenId].length; i++) {
-      if (_operators[tokenId][i] == operator) return true;
-    }
-    return false;
-  }
-
-  function setOperatorFor(uint tokenId, address operator, bool active) external onlyTokenOwner(tokenId) {
-    if (operator == address(0)) revert NoZeroAddress();
-    (bool exists, uint i) = getOperatorForIndexIfExists(tokenId, operator);
-    if (active) {
-      if (exists) revert OperatorAlreadyActive();
-      else _operators[tokenId].push(operator);
-    } else {
-      if (!exists) revert OperatorNotActive();
-      else if (i != _operators[tokenId].length - 1) {
-        _operators[tokenId][i] = _operators[tokenId][_operators[tokenId].length - 1];
-      }
-      _operators[tokenId].pop();
-    }
-    emit OperatorUpdated(tokenId, operator, active);
-  }
-
-  function isOwnerOrOperator(uint tokenId, address ownerOrOperator) external view override returns (bool) {
-    return ownerOf(tokenId) == ownerOrOperator || isOperatorFor(tokenId, ownerOrOperator);
-  }
-
   function _beforeTokenTransfer(
     address from,
     address to,
@@ -373,7 +284,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     uint256 batchSize
   ) internal virtual override(ERC721, ERC721Enumerable) {
     if (!isTransferable(tokenId, from, to)) revert NotPermittedWhenProtectorsAreActive();
-    delete _operators[tokenId];
+    //    _vaults
     super._beforeTokenTransfer(from, to, tokenId, batchSize);
   }
 
@@ -505,11 +416,11 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     (, Actor storage actor) = _getActor(tokenOwner_, _msgSender(), Role.BENEFICIARY);
     if (actor.status == Status.UNSET) revert NotABeneficiary();
     if (
-      _beneficiaryConfs[tokenOwner_].lastProofOfLife + (_beneficiaryConfs[tokenOwner_].proofOfLifeDurationInDays * 3600) >
+      _beneficiaryConfs[tokenOwner_].lastProofOfLife + (_beneficiaryConfs[tokenOwner_].proofOfLifeDurationInDays * 1 hours) >
       block.timestamp
     ) revert NotExpiredYet();
     // the following prevents hostile beneficiaries from blocking the process not allowing them to reset the recipient
-    if (_hasApproved(_msgSender())) revert RequestAlreadyApproved();
+    if (_hasApproved(tokenOwner_)) revert RequestAlreadyApproved();
     // the beneficiary is proposing a new recipient
     if (_beneficiariesRequests[tokenOwner_].recipient != beneficiaryRecipient) {
       if (block.timestamp - _beneficiariesRequests[tokenOwner_].startedAt > 30 days) {
@@ -540,6 +451,7 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
         _safeTransfer(tokenOwner_, _msgSender(), tokenIds[i], "");
       }
       emit Inherited(tokenOwner_, _msgSender(), balance);
+      delete _beneficiariesRequests[tokenOwner_];
     } else revert Unauthorized();
   }
 }

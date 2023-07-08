@@ -137,4 +137,38 @@ interface IFlexiVault {
    * @param owningTokenId The id of the owning token
    */
   function fixDirectlyInjectedAccount(uint256 owningTokenId) external;
+
+  /**
+* @dev Checks if an operator is active for a token
+     returning also its index in the array
+  * @param tokenId The token id
+  * @param operator The address of the operator
+  * @return (true, index) if the operator is active for the token
+     or (false, 0) if the operator is not active for the token
+  */
+  function getOperatorForIndexIfExists(uint tokenId, address operator) external view returns (bool, uint);
+
+  /**
+   * @dev Check if an address is an operator for a token
+   * @param tokenId The token id
+   * @param operator The address of the operator
+   * @return true if the operator is active for the token, false otherwise
+   */
+  function isOperatorFor(uint tokenId, address operator) external view returns (bool);
+
+  /**
+   * @dev Sets/unsets an operator for a token
+   * @notice The function MUST be executed by the owner
+   * @param tokenId The token id
+   * @param operator The address of the operator
+   * @param active True if the operator is active for the token, false otherwise
+   */
+  function setOperatorFor(uint tokenId, address operator, bool active) external;
+
+  /**
+   * @dev Delete the operators associated to an account
+      It must be called by the CrunaVault only.
+   * @param tokenId The token id
+   */
+  function deleteOperatorsFor(uint tokenId) external;
 }

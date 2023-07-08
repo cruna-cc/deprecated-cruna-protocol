@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.0;
+pragma solidity 0.8.19;
 
 // from https://github.com/erc6551/reference
 
-import "@openzeppelin/contracts/utils/Create2.sol";
-import "./ERC6551BytecodeLib.sol";
+import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
+import {ERC6551BytecodeLib} from "./ERC6551BytecodeLib.sol";
 
 library ERC6551AccountLib {
   function computeAddress(

@@ -1,5 +1,6 @@
 {
   "rules": {
+    "avoid-suicide": "error",
     "no-unused-vars": "error",
     "private-vars-leading-underscore": "error",
     "const-name-snakecase": "error",

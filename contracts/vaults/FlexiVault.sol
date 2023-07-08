@@ -41,6 +41,12 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
   bool private _initiated;
   IProtectedERC721 internal _protectedOwningToken;
 
+  // The operators that can manage a specific tokenId.
+  // Operators are not restricted to follow an owner, as protectors do.
+  // The idea is that for any tokenId there can be just a few operators
+  // so we do not risk to go out of gas when checking them.
+  mapping(uint => address[]) private _operators;
+
   modifier onlyOwningTokenOwner(uint256 owningTokenId) {
     if (ownerOf(owningTokenId) != msg.sender) {
       revert NotTheOwningTokenOwner();
@@ -49,9 +55,14 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
   }
 
   modifier onlyOwningTokenOwnerOrOperator(uint256 owningTokenId) {
-    if (!_protectedOwningToken.isOwnerOrOperator(owningTokenId, _msgSender())) {
+    if (ownerOf(owningTokenId) != msg.sender && !isOperatorFor(owningTokenId, msg.sender)) {
       revert NotTheOwningTokenOwnerOrOperatorFor();
     }
+    _;
+  }
+
+  modifier onlyProtected() {
+    if (_msgSender() != address(_protectedOwningToken)) revert OnlyProtectedOwningToken();
     _;
   }
 
@@ -366,5 +377,39 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     emit EjectedBoundAccountReInjected(owningTokenId);
   }
 
-  uint256[50] private __gap;
+  // operators
+
+  function getOperatorForIndexIfExists(uint owningTokenId, address operator) public view override returns (bool, uint) {
+    for (uint i = 0; i < _operators[owningTokenId].length; i++) {
+      if (_operators[owningTokenId][i] == operator) return (true, i);
+    }
+    return (false, 0);
+  }
+
+  function isOperatorFor(uint owningTokenId, address operator) public view override returns (bool) {
+    for (uint i = 0; i < _operators[owningTokenId].length; i++) {
+      if (_operators[owningTokenId][i] == operator) return true;
+    }
+    return false;
+  }
+
+  function setOperatorFor(uint owningTokenId, address operator, bool active) external onlyOwningTokenOwner(owningTokenId) {
+    if (operator == address(0)) revert NoZeroAddress();
+    (bool exists, uint i) = getOperatorForIndexIfExists(owningTokenId, operator);
+    if (active) {
+      if (exists) revert OperatorAlreadyActive();
+      else _operators[owningTokenId].push(operator);
+    } else {
+      if (!exists) revert OperatorNotActive();
+      else if (i != _operators[owningTokenId].length - 1) {
+        _operators[owningTokenId][i] = _operators[owningTokenId][_operators[owningTokenId].length - 1];
+      }
+      _operators[owningTokenId].pop();
+    }
+    emit OperatorUpdated(owningTokenId, operator, active);
+  }
+
+  function deleteOperatorsFor(uint owningTokenId) external onlyProtected {
+    delete _operators[owningTokenId];
+  }
 }

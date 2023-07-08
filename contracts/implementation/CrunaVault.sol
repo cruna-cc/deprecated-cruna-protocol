@@ -1,10 +1,10 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "../protected-nft/ProtectedERC721.sol";
-import "../utils/IERC7108.sol";
-import "../utils/IERC7108Enumerable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol" as Ownable;
+import {ProtectedERC721, Strings} from "../protected-nft/ProtectedERC721.sol";
+import {IERC7108} from "../utils/IERC7108.sol";
+import {IERC7108Enumerable} from "../utils/IERC7108Enumerable.sol";
 
 // reference implementation of a Cruna Vault
 contract CrunaVault is ProtectedERC721, IERC7108, IERC7108Enumerable {

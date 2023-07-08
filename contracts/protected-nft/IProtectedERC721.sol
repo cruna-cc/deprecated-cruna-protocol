@@ -33,11 +33,6 @@ interface IProtectedERC721 {
   event ProtectorsUnlockInitiated(address indexed tokensOwner);
 
   /**
-   * @dev Emitted when an operator is set/unset for a tokenId
-   */
-  event OperatorUpdated(uint indexed tokenId, address indexed operator, bool status);
-
-  /**
    * @dev Emitted when the process to update a protector starts
    */
   event ProtectorUpdateStarted(address indexed owner, address indexed protector, bool status);
@@ -53,6 +48,53 @@ interface IProtectedERC721 {
   event BeneficiaryUpdated(address indexed owner, address indexed beneficiary, IActors.Status status);
 
   event Inherited(address indexed from, address indexed to, uint amount);
+
+  error NotTheTokenOwner();
+  error NotApprovable();
+  error NotApprovableForAll();
+  error NotTheContractDeployer();
+  error TokenDoesNotExist();
+  error SenderDoesNotOwnAnyToken();
+  error ProtectorNotFound();
+  error TokenAlreadyBeingTransferred();
+  error AssociatedToAnotherOwner();
+  error ProtectorAlreadySet();
+  error ProtectorAlreadySetByYou();
+  error NotAProtector();
+  error NotOwnByRelatedOwner();
+  error NotPermittedWhenProtectorsAreActive();
+  error TokenIdTooBig();
+  error PendingProtectorNotFound();
+  error ResignationAlreadySubmitted();
+  error UnsetNotStarted();
+  error NotTheProtector();
+  error NotATokensOwner();
+  error ResignationNotSubmitted();
+  error TooManyProtectors();
+  error InvalidDuration();
+  error NoActiveProtectors();
+  error ProtectorsAlreadyLocked();
+  error ProtectorsUnlockAlreadyStarted();
+  error ProtectorsUnlockNotStarted();
+  error ProtectorsNotLocked();
+  error TimestampInvalidOrExpired();
+  error WrongDataOrNotSignedByProtector();
+  error SignatureAlreadyUsed();
+  error OperatorAlreadyActive();
+  error OperatorNotActive();
+  error NotAFlexiVault();
+  error VaultAlreadyAdded();
+  error InvalidTokenUtils();
+  error QuorumCannotBeZero();
+  error QuorumCannotBeGreaterThanBeneficiaries();
+  error BeneficiaryNotConfigured();
+  error NotExpiredYet();
+  error BeneficiaryAlreadyRequested();
+  error InconsistentRecipient();
+  error NotABeneficiary();
+  error RequestAlreadyApproved();
+  error NotTheRecipient();
+  error Unauthorized();
 
   /**
   * @dev Return the protectors set for the tokensOwner
@@ -185,43 +227,6 @@ interface IProtectedERC721 {
    * @param signature The signature of the transfer request
    */
   function invalidateSignatureFor(uint tokenId, bytes32 hash, bytes calldata signature) external;
-
-  // operators
-
-  /**
-  * @dev Checks if an operator is active for a token
-     returning also its index in the array
-  * @param tokenId The token id
-  * @param operator The address of the operator
-  * @return (true, index) if the operator is active for the token
-     or (false, 0) if the operator is not active for the token
-  */
-  function getOperatorForIndexIfExists(uint tokenId, address operator) external view returns (bool, uint);
-
-  /**
-   * @dev Check if an address is an operator for a token
-   * @param tokenId The token id
-   * @param operator The address of the operator
-   * @return true if the operator is active for the token, false otherwise
-   */
-  function isOperatorFor(uint tokenId, address operator) external view returns (bool);
-
-  /**
-   * @dev Sets/unsets an operator for a token
-   * @notice The function MUST be executed by the owner
-   * @param tokenId The token id
-   * @param operator The address of the operator
-   * @param active True if the operator is active for the token, false otherwise
-   */
-  function setOperatorFor(uint tokenId, address operator, bool active) external;
-
-  /**
-   * @dev Checks if an address is an owner or operator for a token
-   * @param tokenId The token id
-   * @param ownerOrOperator The address of the owner or operator
-   * @return true if the address is an owner or operator for the token, false otherwise
-   */
-  function isOwnerOrOperator(uint tokenId, address ownerOrOperator) external view returns (bool);
 
   // safe recipients
 

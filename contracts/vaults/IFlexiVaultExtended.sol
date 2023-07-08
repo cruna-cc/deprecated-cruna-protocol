@@ -9,6 +9,11 @@ interface IFlexiVaultExtended is IFlexiVault {
   event BoundAccountEjected(uint256 indexed owningTokenId);
   event EjectedBoundAccountReInjected(uint256 indexed owningTokenId);
 
+  /**
+   * @dev Emitted when an operator is set/unset for a tokenId
+   */
+  event OperatorUpdated(uint indexed tokenId, address indexed operator, bool status);
+
   error ForbiddenWhenOwningTokenApprovedForSale();
   error InconsistentLengths();
   error InsufficientBalance();
@@ -37,4 +42,8 @@ interface IFlexiVaultExtended is IFlexiVault {
   error InvalidTokenUtils();
   error TheAccountHasNeverBeenEjected();
   error TheAccountIsNotOwnedByTheFlexiVault();
+  error OperatorAlreadyActive();
+  error OperatorNotActive();
+  error OnlyProtectedOwningToken();
+  error NoZeroAddress();
 }
