@@ -16,6 +16,7 @@ import {IActors} from "../protected-nft/IActors.sol";
 
 library TokenUtils {
   error TheERC721IsAProtector();
+  error TimestampZero();
 
   function isERC721(address asset) public view returns (bool) {
     try IERC165(asset).supportsInterface(type(IProtectedERC721).interfaceId) returns (bool result) {
@@ -100,6 +101,7 @@ library TokenUtils {
     uint256 timestamp,
     uint256 validFor
   ) external view returns (bytes32) {
+    if (timestamp == 0) revert TimestampZero();
     return
       keccak256(
         abi.encode(

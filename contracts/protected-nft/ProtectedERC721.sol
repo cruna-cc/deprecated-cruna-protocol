@@ -11,6 +11,8 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
 import {NFTOwned} from "../nft-owned/NFTOwned.sol";
 import {IProtectedERC721} from "./IProtectedERC721.sol";
+import {ProtectedERC721Errors} from "./ProtectedERC721Errors.sol";
+import {ProtectedERC721Events} from "./ProtectedERC721Events.sol";
 import {IVersioned} from "../utils/IVersioned.sol";
 import {IFlexiVault} from "../vaults/IFlexiVault.sol";
 import {ITokenUtils} from "../utils/ITokenUtils.sol";
@@ -19,7 +21,17 @@ import {Actors} from "./Actors.sol";
 
 //import {console} from "hardhat/console.sol";
 
-abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Actors, ERC721, ERC721Enumerable, Ownable {
+abstract contract ProtectedERC721 is
+  IProtectedERC721,
+  ProtectedERC721Events,
+  ProtectedERC721Errors,
+  IERC6454,
+  IVersioned,
+  Actors,
+  ERC721,
+  ERC721Enumerable,
+  Ownable
+{
   using ECDSA for bytes32;
   using Strings for uint256;
 
@@ -278,14 +290,22 @@ abstract contract ProtectedERC721 is IProtectedERC721, IERC6454, IVersioned, Act
     }
   }
 
+  function _cleanOperators(uint256 tokenId) internal {
+    for (uint256 i = 0; i < _vaults.length; i++) {
+      if (_vaults[i] != address(0)) {
+        IFlexiVault(_vaults[i]).removeOperatorsFor(tokenId);
+      }
+    }
+  }
+
   function _beforeTokenTransfer(
     address from,
     address to,
     uint256 tokenId,
     uint256 batchSize
   ) internal virtual override(ERC721, ERC721Enumerable) {
-    if (!isTransferable(tokenId, from, to)) revert NotPermittedWhenProtectorsAreActive();
-    //    _vaults
+    if (!isTransferable(tokenId, from, to)) revert NotTransferable();
+    _cleanOperators(tokenId);
     super._beforeTokenTransfer(from, to, tokenId, batchSize);
   }
 

@@ -242,6 +242,12 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     _transferToken(owningTokenId, tokenType, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
   }
 
+  function _hasProtectorButNotSafeRecipient(uint256 owningTokenId, address recipient) internal view returns (bool) {
+    return
+      _protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0 &&
+      _protectedOwningToken.safeRecipientLevel(ownerOf(owningTokenId), recipient) == IActors.Level.NONE;
+  }
+
   /**
    * @dev {See IFlexiVault-withdrawAssets}
    */
@@ -251,37 +257,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts,
-    address[] memory beneficiaries
-  )
-    external
-    override
-    onlyOwningTokenOwnerOrOperator(owningTokenId)
-    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
-    nonReentrant
-  {
-    bool hasProtectors = _protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0;
-    if (assets.length != ids.length || assets.length != amounts.length) revert InconsistentLengths();
-    for (uint256 i = 0; i < assets.length; i++) {
-      if (
-        hasProtectors &&
-        _protectedOwningToken.safeRecipientLevel(ownerOf(owningTokenId), beneficiaries[i]) == IActors.Level.NONE
-      ) {
-        revert NotAllowedWhenProtector();
-      }
-      _withdrawAsset(owningTokenId, tokenTypes[i], assets[i], ids[i], amounts[i], beneficiaries[i]);
-    }
-  }
-
-  /**
-   * @dev {See IFlexiVault-protectedWithdrawAssets}
-   */
-  function protectedWithdrawAssets(
-    uint256 owningTokenId,
-    TokenType[] memory tokenTypes,
-    address[] memory assets,
-    uint256[] memory ids,
-    uint256[] memory amounts,
-    address[] memory beneficiaries,
+    address[] memory recipients,
     uint256 timestamp,
     uint256 validFor,
     bytes calldata signature
@@ -292,21 +268,28 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
     nonReentrant
   {
-    if (assets.length != ids.length || assets.length != amounts.length || assets.length != beneficiaries.length)
+    if (assets.length != ids.length || assets.length != amounts.length || assets.length != recipients.length)
       revert InconsistentLengths();
-    bytes32 hash = _tokenUtils.hashWithdrawsRequest(
-      owningTokenId,
-      tokenTypes,
-      assets,
-      ids,
-      amounts,
-      beneficiaries,
-      timestamp,
-      validFor
-    );
-    _protectedOwningToken.validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
+    // timestamp != 0 means calling it with a signature
+    if (timestamp != 0) {
+      bytes32 hash = _tokenUtils.hashWithdrawsRequest(
+        owningTokenId,
+        tokenTypes,
+        assets,
+        ids,
+        amounts,
+        recipients,
+        timestamp,
+        validFor
+      );
+      _protectedOwningToken.validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
+    }
     for (uint256 i = 0; i < assets.length; i++) {
-      _withdrawAsset(owningTokenId, tokenTypes[i], assets[i], ids[i], amounts[i], beneficiaries[i]);
+      // calling without a signature, then checking protectors and safe recipient level
+      if (timestamp == 0 && _hasProtectorButNotSafeRecipient(owningTokenId, recipients[i])) {
+        revert NotAllowedWhenProtector();
+      }
+      _withdrawAsset(owningTokenId, tokenTypes[i], assets[i], ids[i], amounts[i], recipients[i]);
     }
   }
 
@@ -409,7 +392,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     emit OperatorUpdated(owningTokenId, operator, active);
   }
 
-  function deleteOperatorsFor(uint256 owningTokenId) external onlyProtected {
+  function removeOperatorsFor(uint256 owningTokenId) external onlyProtected {
     delete _operators[owningTokenId];
   }
 }

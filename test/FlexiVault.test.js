@@ -132,10 +132,9 @@ describe("FlexiVault", function () {
 
     expect(await stupidMonk.balanceOf(fred.address)).equal(0);
 
-    await expect(flexiVault.connect(alice).withdrawAssets(1, [2], [stupidMonk.address], [1], [1], [fred.address])).emit(
-      stupidMonk,
-      "Transfer"
-    );
+    await expect(
+      flexiVault.connect(alice).withdrawAssets(1, [2], [stupidMonk.address], [1], [1], [fred.address], 0, 0, 0)
+    ).emit(stupidMonk, "Transfer");
 
     expect(await stupidMonk.balanceOf(fred.address)).equal(1);
   });
@@ -268,9 +267,7 @@ describe("FlexiVault", function () {
       .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
-    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith(
-      "NotPermittedWhenProtectorsAreActive()"
-    );
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
 
     await expect(crunaVault.connect(bob).proposeProtector(mark.address)).revertedWith("ProtectorAlreadySetByYou()");
   });
@@ -339,9 +336,7 @@ describe("FlexiVault", function () {
       .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
-    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith(
-      "NotPermittedWhenProtectorsAreActive()"
-    );
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
   });
 
   it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
@@ -358,9 +353,7 @@ describe("FlexiVault", function () {
 
     expect(await crunaVault.isProtectorFor(bob.address, john.address)).equal(true);
 
-    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith(
-      "NotPermittedWhenProtectorsAreActive()"
-    );
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
 
     const timestamp = (await getTimestamp()) - 100;
     const validFor = 3600;
@@ -438,9 +431,7 @@ describe("FlexiVault", function () {
       .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
-    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith(
-      "NotPermittedWhenProtectorsAreActive()"
-    );
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
   });
 
   it("should allow withdrawals when protectors are active if safe recipient", async function () {
@@ -465,7 +456,7 @@ describe("FlexiVault", function () {
 
     let account = await flexiVault.accountAddress(1);
 
-    await expect(flexiVault.connect(bob).withdrawAssets(1, [2], [particle.address], [2], [1], [alice.address]))
+    await expect(flexiVault.connect(bob).withdrawAssets(1, [2], [particle.address], [2], [1], [alice.address], 0, 0, 0))
       .emit(particle, "Transfer")
       .withArgs(account, alice.address, 2);
   });

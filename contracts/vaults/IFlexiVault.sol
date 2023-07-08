@@ -59,7 +59,10 @@ interface IFlexiVault {
       If the asset is an ERC20, the id is 0
    * @param amounts The amounts of the assets tokens
       If the asset is an ERC721, the amount is 1
-   * @param beneficiaries The addresses of the beneficiaries
+   * @param recipients The addresses of the recipients
+   * @param timestamp The timestamp of the request
+   * @param validFor The time the request is valid for
+   * @param signature The signature of the request
    */
   function withdrawAssets(
     uint256 owningTokenId,
@@ -67,27 +70,7 @@ interface IFlexiVault {
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts,
-    address[] memory beneficiaries
-  ) external;
-
-  /**
-   * @dev Withdraws multiple assets from the bound account when a protector is active
-   * @param owningTokenId The id of the owning token
-   * @param assets The addresses of the assets
-   * @param ids The ids of the assets tokens
-   * @param amounts The amounts of the assets tokens
-   * @param beneficiaries The addresses of the beneficiaries
-   * @param timestamp The timestamp of the request
-   * @param validFor The time the request is valid for
-   * @param signature The signature of the protector
-   */
-  function protectedWithdrawAssets(
-    uint256 owningTokenId,
-    TokenType[] memory tokenTypes,
-    address[] memory assets,
-    uint256[] memory ids,
-    uint256[] memory amounts,
-    address[] memory beneficiaries,
+    address[] memory recipients,
     uint256 timestamp,
     uint256 validFor,
     bytes calldata signature
@@ -170,5 +153,5 @@ interface IFlexiVault {
       It must be called by the CrunaVault only.
    * @param tokenId The token id
    */
-  function deleteOperatorsFor(uint256 tokenId) external;
+  function removeOperatorsFor(uint256 tokenId) external;
 }
