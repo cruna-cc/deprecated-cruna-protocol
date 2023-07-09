@@ -4,13 +4,9 @@ requirePath(".env");
 requirePath("export/deployed.json");
 
 require("dotenv").config();
-if (!process.env.SKIP_CRYPTOENV && process.env.NODE_ENV !== "test") {
-  require("@secrez/cryptoenv").parse();
-}
+require("@secrez/cryptoenv").parse(() => process.env.NODE_ENV !== "test" && !process.env.SKIP_CRYPTOENV);
 
-const testEnv = require("./testEnv.json");
-
-const env = Object.assign(process, testEnv);
+const {env} = process;
 
 require("@nomiclabs/hardhat-waffle");
 require("@nomiclabs/hardhat-etherscan");

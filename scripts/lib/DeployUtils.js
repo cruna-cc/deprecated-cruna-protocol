@@ -7,6 +7,7 @@ let deployedJson = require("../../export/deployed.json");
 const oZChainName = {
   1: "mainnet",
   5: "goerli",
+  137: "polygon",
   43113: "avalanche-fuji",
   80001: "polygon-mumbai",
 };
@@ -16,6 +17,7 @@ const chainName = {
   5: "goerli",
   56: "bsc",
   97: "bsc_testnet",
+  137: "polygon",
   1337: "localhost",
   31337: "hardhat",
   80001: "mumbai",
