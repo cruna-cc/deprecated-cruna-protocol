@@ -119,8 +119,10 @@ describe("FlexiVault", function () {
       .emit(crunaVault, "Transfer")
       .withArgs(ethers.constants.AddressZero, bob.address, 1);
 
-    await crunaVault.safeMint(0, bob.address);
+    const uri = await crunaVault.tokenURI(1);
+    expect(uri).to.equal("https://meta.cruna.cc/vault/v1/1");
 
+    await crunaVault.safeMint(0, bob.address);
     await crunaVault.safeMint(0, bob.address);
     await crunaVault.safeMint(0, bob.address);
     await crunaVault.safeMint(0, alice.address);
@@ -162,7 +164,7 @@ describe("FlexiVault", function () {
   // it("should revert if not activated", async function () {
   //   // bob creates a vaults depositing a particle token
   //   await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
-  //   await expect(depositAssets(bob, 1, [2], [particle], [2], [1])).revertedWith("NotActivated()");
+  //   // await expect(depositAssets(bob, 1, [2], [particle], [2], [1])).revertedWith("NotActivated()");
   // });
   //
   it("should create a vaults and add more assets to it", async function () {

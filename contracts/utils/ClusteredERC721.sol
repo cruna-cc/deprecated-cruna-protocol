@@ -159,6 +159,7 @@ contract ClusteredERC721 is IERC7108, ERC721 {
     return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
   }
 
+  // TODO add to EIP-7108
   function supplyWithin(uint256 clusterId) external view override returns (uint256) {
     return clusters[clusterId].nextTokenId - clusters[clusterId].firstTokenId;
   }

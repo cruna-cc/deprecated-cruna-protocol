@@ -10,11 +10,11 @@ import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import {IProtectedERC721} from "../protected-nft/IProtectedERC721.sol";
 import {IFlexiVault} from "../vaults/IFlexiVault.sol";
-import {IActors} from "../protected-nft/IActors.sol";
+import {IActors, ITokenUtils} from "./ITokenUtils.sol";
 
 //import {console} from "hardhat/console.sol";
 
-library TokenUtils {
+contract TokenUtils is ITokenUtils {
   error TheERC721IsAProtector();
   error TimestampZero();
 
@@ -29,7 +29,7 @@ library TokenUtils {
   }
 
   // It should work fine with ERC20 and ERC777
-  function isERC20(address asset) public view returns (bool) {
+  function isERC20(address asset) public view override returns (bool) {
     if (!isERC721(asset)) {
       // we exclude ERC721 because totalSupply can be also returned
       // by enumerable ERC721
@@ -40,7 +40,7 @@ library TokenUtils {
     return false;
   }
 
-  function isERC1155(address asset) public view returns (bool) {
+  function isERC1155(address asset) public view override returns (bool) {
     // will revert if asset does not implement IERC165
     try IERC165(asset).supportsInterface(type(IERC1155).interfaceId) returns (bool result) {
       return result;
@@ -52,7 +52,7 @@ library TokenUtils {
     return "1.0.0";
   }
 
-  function isTokenUtils() external pure returns (bytes4) {
+  function isTokenUtils() external pure override returns (bytes4) {
     return TokenUtils.isTokenUtils.selector;
   }
 
@@ -64,7 +64,7 @@ library TokenUtils {
     address beneficiary,
     uint256 timestamp,
     uint256 validFor
-  ) external view returns (bytes32) {
+  ) external view override returns (bytes32) {
     if (timestamp == 0) revert TimestampZero();
     return
       keccak256(
@@ -78,7 +78,7 @@ library TokenUtils {
     IActors.Level level,
     uint256 timestamp,
     uint256 validFor
-  ) external view returns (bytes32) {
+  ) external view override returns (bytes32) {
     if (timestamp == 0) revert TimestampZero();
     return keccak256(abi.encode("\x19\x01", block.chainid, address(this), owner, recipient, level, timestamp, validFor));
   }
@@ -89,7 +89,7 @@ library TokenUtils {
     IActors.Status status,
     uint256 timestamp,
     uint256 validFor
-  ) external view returns (bytes32) {
+  ) external view override returns (bytes32) {
     if (timestamp == 0) revert TimestampZero();
     return keccak256(abi.encode("\x19\x01", block.chainid, address(this), owner, beneficiary, status, timestamp, validFor));
   }
@@ -103,7 +103,7 @@ library TokenUtils {
     address[] memory beneficiaries,
     uint256 timestamp,
     uint256 validFor
-  ) external view returns (bytes32) {
+  ) external view override returns (bytes32) {
     if (timestamp == 0) revert TimestampZero();
     return
       keccak256(
@@ -123,12 +123,21 @@ library TokenUtils {
       );
   }
 
-  function hashEjectRequest(uint256 owningTokenId, uint256 timestamp, uint256 validFor) external view returns (bytes32) {
+  function hashEjectRequest(
+    uint256 owningTokenId,
+    uint256 timestamp,
+    uint256 validFor
+  ) external view override returns (bytes32) {
     if (timestamp == 0) revert TimestampZero();
     return keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), owningTokenId, timestamp, validFor));
   }
 
-  function hashTransferRequest(uint256 tokenId, address to, uint256 timestamp, uint256 validFor) public view returns (bytes32) {
+  function hashTransferRequest(
+    uint256 tokenId,
+    address to,
+    uint256 timestamp,
+    uint256 validFor
+  ) public view override returns (bytes32) {
     if (timestamp == 0) revert TimestampZero();
     return keccak256(abi.encode("\x19\x01", block.chainid, address(this), tokenId, to, timestamp, validFor));
   }

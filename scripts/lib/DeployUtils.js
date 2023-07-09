@@ -10,6 +10,7 @@ const oZChainName = {
   137: "polygon",
   43113: "avalanche-fuji",
   80001: "polygon-mumbai",
+  44787: "celo-alfajores",
 };
 
 const chainName = {

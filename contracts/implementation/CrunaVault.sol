@@ -195,17 +195,14 @@ contract CrunaVault is ProtectedERC721, IERC7108, IERC7108Enumerable {
     }
   }
 
-  // Commenting this, right now, because we go over size limit if not.
+  function tokenURI(uint256 tokenId) public view override returns (string memory) {
+    _requireMinted(tokenId);
+    uint256 clusterId = _binarySearch(tokenId);
+    string memory baseURI = clusters[clusterId].baseTokenURI;
+    tokenId -= clusters[clusterId].firstTokenId - 1;
+    return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
+  }
 
-  //  // token URI management
-  //
-  //  function tokenURI(uint256 tokenId) public view override returns (string memory) {
-  //    _requireMinted(tokenId);
-  //    uint256 clusterId = _binarySearch(tokenId);
-  //    string memory baseURI = clusters[clusterId].baseTokenURI;
-  //    tokenId -= clusters[clusterId].firstTokenId - 1;
-  //    return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
-  //  }
   //
   //  function _baseURI() internal view virtual override returns (string memory) {
   //    return _baseTokenURI;
@@ -225,7 +222,7 @@ contract CrunaVault is ProtectedERC721, IERC7108, IERC7108Enumerable {
   //    emit TokenURIFrozen();
   //  }
   //
-  //  function contractURI() public view returns (string memory) {
-  //    return string(abi.encodePacked(_baseTokenURI, "cruna-vault"));
-  //  }
+  function contractURI() public view returns (string memory) {
+    return string(abi.encodePacked(_baseTokenURI, "cruna-vault"));
+  }
 }

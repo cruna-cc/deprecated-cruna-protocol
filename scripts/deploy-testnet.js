@@ -21,50 +21,80 @@ async function main() {
 
   const [owner] = await ethers.getSigners();
 
-  const [h1, h2, h3] =
-    `0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC0x90F79bf6EB2c4f870365E785982E1f101E93b906`.split(
-      ","
-    );
+  // const [h1, h2, h3] =
+  //   `0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC0x90F79bf6EB2c4f870365E785982E1f101E93b906`.split(
+  //     ","
+  //   );
 
   let crunaVault, flexiVault;
   let registry, wallet, proxyWallet, tokenUtils, factory;
   let usdc, usdt;
 
-  // tokenUtils = await deployUtils.deploy("TokenUtils");
-
   const _baseTokenURI = "https://meta-cruna-cc.s3.us-west-1.amazonaws.com/v1/";
-  // crunaVault = await deployUtils.deploy("CrunaVault", _baseTokenURI, tokenUtils.address);
 
-  // await crunaVault.addCluster("Cruna Vault V1", "CRUNA", _baseTokenURI, 100000, owner.address);
+  // tokenUtils = await deployUtils.deploy("TokenUtils");
+  tokenUtils = await deployUtils.attach("TokenUtils");
 
-  // factory = await deployUtils.deployProxy("CrunaClusterFactory", crunaVault.address);
+  // let usdc0 = await deployUtils.attach("USDCoin");
+  // let usdt0 = await deployUtils.attach("TetherUSD");
+  //
+  // // await deployUtils.Tx(usdc0.mint("0x207D075666327D8285feB943738578F75cA5A4F0", normalize("1000")));
+  // // await deployUtils.Tx(usdt0.mint("0x207D075666327D8285feB943738578F75cA5A4F0", normalize("1000", 6)));
+  //
+  // await deployUtils.Tx(usdc0.mint("0x888De0501cDBd7f88654Eb22f9517a6c93bf014B", normalize("1000")));
+  // await deployUtils.Tx(usdt0.mint("0x888De0501cDBd7f88654Eb22f9517a6c93bf014B", normalize("1000", 6)));
+  //
+  // await deployUtils.Tx(usdc0.mint("0x4Af1958a7292eE5CeD5E71070E6e14dcEacE1349", normalize("1000")));
+  // await deployUtils.Tx(usdt0.mint("0x4Af1958a7292eE5CeD5E71070E6e14dcEacE1349", normalize("1000", 6)));
+  //
+  // process.exit();
+
+  crunaVault = await deployUtils.deploy("CrunaVault", _baseTokenURI, tokenUtils.address);
+  await deployUtils.Tx(
+    crunaVault.addCluster("Cruna Vault V1", "CRUNA", _baseTokenURI, 100000, owner.address),
+    "Adding cluster"
+  );
+  factory = await deployUtils.deployProxy("CrunaClusterFactory", crunaVault.address);
 
   tokenUtils = await deployUtils.attach("TokenUtils");
-  crunaVault = await deployUtils.attach("CrunaVault");
+  // crunaVault = await deployUtils.attach("CrunaVault");
 
   for (let k = 0; k < 3; k++) {
     await deployUtils.Tx(
       crunaVault.safeMint(0, "0x207D075666327D8285feB943738578F75cA5A4F0"),
       "minting for 0x207D075666327D8285feB943738578F75cA5A4F0"
     );
-    await deployUtils.Tx(crunaVault.safeMint(0, deployer.address), "minting for deployer");
+    await deployUtils.Tx(
+      crunaVault.safeMint(0, "0x888De0501cDBd7f88654Eb22f9517a6c93bf014B"),
+      "minting for 0x888De0501cDBd7f88654Eb22f9517a6c93bf014B"
+    );
+    await deployUtils.Tx(
+      crunaVault.safeMint(0, "0x4Af1958a7292eE5CeD5E71070E6e14dcEacE1349"),
+      "minting for 0x4Af1958a7292eE5CeD5E71070E6e14dcEacE1349"
+    );
   }
 
-  process.exit();
+  // process.exit();
 
-  factory = await deployUtils.attach("CrunaClusterFactory");
+  // factory = await deployUtils.attach("CrunaClusterFactory");
 
   await deployUtils.Tx(crunaVault.allowFactoryFor(factory.address, 0), "Allowing factory");
 
-  registry = await deployUtils.deploy("ERC6551Registry");
-  wallet = await deployUtils.deploy("ERC6551Account");
-  let implementation = await deployUtils.deploy("ERC6551AccountUpgradeable");
-  proxyWallet = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
+  // registry = await deployUtils.deploy("ERC6551Registry");
+  // wallet = await deployUtils.deploy("ERC6551Account");
+  // let implementation = await deployUtils.deploy("ERC6551AccountUpgradeable");
+  // proxyWallet = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
+  //
+  registry = await deployUtils.attach("ERC6551Registry");
+  wallet = await deployUtils.attach("ERC6551Account");
+  proxyWallet = await deployUtils.attach("ERC6551AccountProxy");
 
   flexiVault = await deployUtils.deploy("FlexiVault", crunaVault.address, tokenUtils.address);
 
-  await crunaVault.addVault(flexiVault.address);
-  await flexiVault.init(registry.address, wallet.address, proxyWallet.address);
+  await deployUtils.Tx(crunaVault.addVault(flexiVault.address), "Adding vault");
+  await deployUtils.Tx(flexiVault.init(registry.address, wallet.address, proxyWallet.address), "Initializing vault");
+
+  return;
 
   usdc = await deployUtils.deploy("USDCoin");
   usdt = await deployUtils.deploy("TetherUSD");
