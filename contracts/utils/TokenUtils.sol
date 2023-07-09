@@ -65,6 +65,7 @@ library TokenUtils {
     uint256 timestamp,
     uint256 validFor
   ) external view returns (bytes32) {
+    if (timestamp == 0) revert TimestampZero();
     return
       keccak256(
         abi.encode("\x19\x01", block.chainid, address(this), owningTokenId, asset, id, amount, beneficiary, timestamp, validFor)
@@ -78,6 +79,7 @@ library TokenUtils {
     uint256 timestamp,
     uint256 validFor
   ) external view returns (bytes32) {
+    if (timestamp == 0) revert TimestampZero();
     return keccak256(abi.encode("\x19\x01", block.chainid, address(this), owner, recipient, level, timestamp, validFor));
   }
 
@@ -88,6 +90,7 @@ library TokenUtils {
     uint256 timestamp,
     uint256 validFor
   ) external view returns (bytes32) {
+    if (timestamp == 0) revert TimestampZero();
     return keccak256(abi.encode("\x19\x01", block.chainid, address(this), owner, beneficiary, status, timestamp, validFor));
   }
 
@@ -121,10 +124,12 @@ library TokenUtils {
   }
 
   function hashEjectRequest(uint256 owningTokenId, uint256 timestamp, uint256 validFor) external view returns (bytes32) {
+    if (timestamp == 0) revert TimestampZero();
     return keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), owningTokenId, timestamp, validFor));
   }
 
   function hashTransferRequest(uint256 tokenId, address to, uint256 timestamp, uint256 validFor) public view returns (bytes32) {
+    if (timestamp == 0) revert TimestampZero();
     return keccak256(abi.encode("\x19\x01", block.chainid, address(this), tokenId, to, timestamp, validFor));
   }
 }
