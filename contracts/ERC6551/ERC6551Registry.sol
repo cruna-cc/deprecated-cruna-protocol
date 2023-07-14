@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.19;
 
 // from https://github.com/erc6551/reference
 
-import "@openzeppelin/contracts/utils/Create2.sol";
-import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
+import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-import "./IERC6551Registry.sol";
-import "./lib/ERC6551BytecodeLib.sol";
+import {IERC6551Registry} from "./IERC6551Registry.sol";
+import {ERC6551BytecodeLib} from "./lib/ERC6551BytecodeLib.sol";
 
-//import "hardhat/console.sol";
+//import {console} from "hardhat/console.sol";
 
 contract ERC6551Registry is IERC6551Registry, IERC165 {
   error InitializationFailed();
@@ -33,6 +33,7 @@ contract ERC6551Registry is IERC6551Registry, IERC165 {
     _account = Create2.deploy(0, bytes32(salt), code);
 
     if (initData.length != 0) {
+      // solhint-disable-next-line avoid-low-level-calls
       (bool success, ) = _account.call(initData);
       if (!success) revert InitializationFailed();
     }

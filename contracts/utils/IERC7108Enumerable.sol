@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.19;
 
 // Authors: Francesco Sullo <francesco@sullo.co>
 
@@ -18,5 +18,5 @@ interface IERC7108Enumerable {
    * @param clusterId ID of the cluster
    * @return uint256 Balance of tokens within the cluster
    */
-  function balanceOfWithin(address owner, uint256 clusterId) external view returns (uint);
+  function balanceOfWithin(address owner, uint256 clusterId) external view returns (uint256);
 }

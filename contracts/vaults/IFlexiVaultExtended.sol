@@ -3,11 +3,16 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "./IFlexiVault.sol";
+import {IFlexiVault} from "./IFlexiVault.sol";
 
 interface IFlexiVaultExtended is IFlexiVault {
   event BoundAccountEjected(uint256 indexed owningTokenId);
   event EjectedBoundAccountReInjected(uint256 indexed owningTokenId);
+
+  /**
+   * @dev Emitted when an operator is set/unset for a tokenId
+   */
+  event OperatorUpdated(uint256 indexed tokenId, address indexed operator, bool status);
 
   error ForbiddenWhenOwningTokenApprovedForSale();
   error InconsistentLengths();
@@ -37,4 +42,8 @@ interface IFlexiVaultExtended is IFlexiVault {
   error InvalidTokenUtils();
   error TheAccountHasNeverBeenEjected();
   error TheAccountIsNotOwnedByTheFlexiVault();
+  error OperatorAlreadyActive();
+  error OperatorNotActive();
+  error OnlyProtectedOwningToken();
+  error NoZeroAddress();
 }

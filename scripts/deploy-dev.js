@@ -22,7 +22,7 @@ async function main() {
 
   tokenUtils = await deployUtils.deploy("TokenUtils");
 
-  const _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
+  const _baseTokenURI = "https://meta-cruna-cc.s3.us-west-1.amazonaws.com/v1/";
   crunaVault = await deployUtils.deploy("CrunaVault", _baseTokenURI, tokenUtils.address);
 
   await crunaVault.addCluster("Cruna Vault V1", "CRUNA", _baseTokenURI, 100000, owner.address);

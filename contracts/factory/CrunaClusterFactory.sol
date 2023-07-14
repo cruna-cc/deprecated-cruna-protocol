@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity ^0.8.19;
 
 // Author : Francesco Sullo < francesco@superpower.io>
 // (c) Superpower Labs Inc.
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 
-import "../implementation/CrunaVault.sol";
-import "../utils/UUPSUpgradableTemplate.sol";
-import "../protected-nft/IProtectedERC721.sol";
+import {CrunaVault} from "../implementation/CrunaVault.sol";
+import {UUPSUpgradableTemplate} from "../utils/UUPSUpgradableTemplate.sol";
+import {IProtectedERC721} from "../protected-nft/IProtectedERC721.sol";
 
-import "./ICrunaClusterFactory.sol";
+import {ICrunaClusterFactory} from "./ICrunaClusterFactory.sol";
 
-import "hardhat/console.sol";
+//import {console} from "hardhat/console.sol";
 
 contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
   CrunaVault public vault;
-  uint public price;
+  uint256 public price;
   mapping(address => bool) public stableCoins;
-  mapping(address => uint) public proceedsBalances;
+  mapping(address => uint256) public proceedsBalances;
 
   function initialize(address vault_) public initializer {
     __UUPSUpgradableTemplate_init();
@@ -28,7 +28,7 @@ contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
   }
 
   // @notice The price is in points, so that 1 point = 0.01 USD
-  function setPrice(uint price_) external onlyOwner {
+  function setPrice(uint256 price_) external onlyOwner {
     // it is owner's responsibility to set a reasonable price
     price = price_;
     emit PriceSet(price);
@@ -58,7 +58,7 @@ contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
     if (payment > ERC20(stableCoin).balanceOf(_msgSender())) revert InsufficientFunds();
     proceedsBalances[stableCoin] += payment;
     if (!ERC20(stableCoin).transferFrom(_msgSender(), address(this), payment)) revert TransferFailed();
-    for (uint i = 0; i < amount; i++) {
+    for (uint256 i = 0; i < amount; i++) {
       vault.safeMint(0, _msgSender());
     }
   }

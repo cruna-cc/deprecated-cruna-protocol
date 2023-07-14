@@ -3,57 +3,10 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import "./IActors.sol";
+import {IActors} from "./IActors.sol";
 
 // erc165 interfaceId 0x8dca4bea
 interface IProtectedERC721 {
-  /**
-   * @dev Emitted when a protector is proposed for an tokensOwner
-   */
-  event ProtectorProposed(address indexed tokensOwner, address indexed protector);
-
-  /**
-   * @dev Emitted when a protector resigns
-   */
-  event ProtectorResigned(address indexed tokensOwner, address indexed protector);
-
-  /**
-   * @dev Emitted when a protector is set for an tokensOwner
-   */
-  event ProtectorUpdated(address indexed tokensOwner, address indexed protector, bool status);
-
-  /**
-   * @dev Emitted when the number of protectors is locked or unlocked
-   */
-  event ProtectorsLocked(address indexed tokensOwner, bool locked);
-
-  /**
-   * @dev Emitted when the process to unlock the protectors is initiated by one protector
-   */
-  event ProtectorsUnlockInitiated(address indexed tokensOwner);
-
-  /**
-   * @dev Emitted when an operator is set/unset for a tokenId
-   */
-  event OperatorUpdated(uint indexed tokenId, address indexed operator, bool status);
-
-  /**
-   * @dev Emitted when the process to update a protector starts
-   */
-  event ProtectorUpdateStarted(address indexed owner, address indexed protector, bool status);
-
-  /**
-   * @dev Emitted when the level of an allowed recipient is updated
-   */
-  event SafeRecipientUpdated(address indexed owner, address indexed recipient, IActors.Level level);
-
-  /**
-   * @dev Emitted when a beneficiary is updated
-   */
-  event BeneficiaryUpdated(address indexed owner, address indexed beneficiary, IActors.Status status);
-
-  event Inherited(address indexed from, address indexed to, uint amount);
-
   /**
   * @dev Return the protectors set for the tokensOwner
   * @notice It is not the specific tokenId that is protected, is all the tokens owned by
@@ -147,7 +100,13 @@ interface IProtectedERC721 {
    * @param timestamp The timestamp of the transfer request
    * @param signature The signature of the transfer request, signed by an active protector
    */
-  function protectedTransfer(uint tokenId, address to, uint256 timestamp, uint validFor, bytes calldata signature) external;
+  function protectedTransfer(
+    uint256 tokenId,
+    address to,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external;
 
   /**
    * @dev Checks if a signature has been used
@@ -173,7 +132,7 @@ interface IProtectedERC721 {
   function validateTimestampAndSignature(
     address tokenOwner_,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes32 hash,
     bytes calldata signature
   ) external;
@@ -184,58 +143,27 @@ interface IProtectedERC721 {
    * @param hash The signed hash
    * @param signature The signature of the transfer request
    */
-  function invalidateSignatureFor(uint tokenId, bytes32 hash, bytes calldata signature) external;
-
-  // operators
-
-  /**
-  * @dev Checks if an operator is active for a token
-     returning also its index in the array
-  * @param tokenId The token id
-  * @param operator The address of the operator
-  * @return (true, index) if the operator is active for the token
-     or (false, 0) if the operator is not active for the token
-  */
-  function getOperatorForIndexIfExists(uint tokenId, address operator) external view returns (bool, uint);
-
-  /**
-   * @dev Check if an address is an operator for a token
-   * @param tokenId The token id
-   * @param operator The address of the operator
-   * @return true if the operator is active for the token, false otherwise
-   */
-  function isOperatorFor(uint tokenId, address operator) external view returns (bool);
-
-  /**
-   * @dev Sets/unsets an operator for a token
-   * @notice The function MUST be executed by the owner
-   * @param tokenId The token id
-   * @param operator The address of the operator
-   * @param active True if the operator is active for the token, false otherwise
-   */
-  function setOperatorFor(uint tokenId, address operator, bool active) external;
-
-  /**
-   * @dev Checks if an address is an owner or operator for a token
-   * @param tokenId The token id
-   * @param ownerOrOperator The address of the owner or operator
-   * @return true if the address is an owner or operator for the token, false otherwise
-   */
-  function isOwnerOrOperator(uint tokenId, address ownerOrOperator) external view returns (bool);
+  function invalidateSignatureFor(uint256 tokenId, bytes32 hash, bytes calldata signature) external;
 
   // safe recipients
 
-  function setSafeRecipient(address recipient, IActors.Level level) external;
-
-  function setProtectedSafeRecipient(
+  function setSafeRecipient(
     address recipient,
     IActors.Level level,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes calldata signature
   ) external;
 
   function safeRecipientLevel(address tokenOwner_, address recipient) external view returns (IActors.Level);
 
   function getSafeRecipients(address tokenOwner_) external view returns (IActors.Actor[] memory);
+
+  function setBeneficiary(
+    address beneficiary,
+    IActors.Status status,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external;
 }

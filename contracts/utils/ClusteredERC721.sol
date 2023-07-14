@@ -3,12 +3,12 @@ pragma solidity ^0.8.19;
 
 // Authors: Francesco Sullo <francesco@sullo.co>
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/utils/Address.sol";
-import "./IERC7108.sol";
+import {ERC721, Strings} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {IERC7108} from "./IERC7108.sol";
 
-//import "hardhat/console.sol";
+//import {console} from "hardhat/console.sol";
 
 // Reference implementation of ERC-7108
 
@@ -71,19 +71,19 @@ contract ClusteredERC721 is IERC7108, ERC721 {
     return clusterIdByOwners[owner];
   }
 
-  function _binarySearch(uint x) internal view returns (uint) {
+  function _binarySearch(uint256 x) internal view returns (uint256) {
     if (_nextClusterId == 0) {
-      return type(uint).max;
+      return type(uint256).max;
     }
 
-    uint start;
-    uint end = _nextClusterId - 1;
-    uint mid;
+    uint256 start;
+    uint256 end = _nextClusterId - 1;
+    uint256 mid;
 
     while (start <= end) {
       mid = start + (end - start) / 2;
-      uint first = uint(clusters[mid].firstTokenId);
-      uint next = uint(clusters[mid].firstTokenId + clusters[mid].size);
+      uint256 first = uint256(clusters[mid].firstTokenId);
+      uint256 next = uint256(clusters[mid].firstTokenId + clusters[mid].size);
       if (x >= first && x < next) {
         return mid;
       } else if (x >= next) {
@@ -100,7 +100,7 @@ contract ClusteredERC721 is IERC7108, ERC721 {
     }
 
     // If we reach here, then the element was not present
-    return type(uint).max;
+    return type(uint256).max;
   }
 
   function clusterOf(uint256 tokenId) public view override returns (uint256) {
@@ -159,6 +159,7 @@ contract ClusteredERC721 is IERC7108, ERC721 {
     return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
   }
 
+  // TODO add to EIP-7108
   function supplyWithin(uint256 clusterId) external view override returns (uint256) {
     return clusters[clusterId].nextTokenId - clusters[clusterId].firstTokenId;
   }

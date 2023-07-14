@@ -22,7 +22,7 @@ interface IFlexiVault {
    * @param owningTokenId The id of the owning token
    * @return The address of the account
    */
-  function accountAddress(uint owningTokenId) external view returns (address);
+  function accountAddress(uint256 owningTokenId) external view returns (address);
 
   /**
    * @dev It allows to set the registry and the account proxy
@@ -33,24 +33,6 @@ interface IFlexiVault {
   function init(address registry, address payable boundAccount, address payable boundAccountUpgradeable) external;
 
   /**
-   * @dev Deposits multiple assets in the bound account
-   * @param owningTokenId The id of the owning token
-   * @param tokenTypes The types of the assets tokens
-   * @param assets The addresses of the assets
-   * @param ids The ids of the assets tokens
-      If the asset is an ERC20, the id is 0
-   * @param amounts The amounts of the assets tokens
-      If the asset is an ERC721, the amount is 1
-   */
-  function depositAssets(
-    uint256 owningTokenId,
-    TokenType[] memory tokenTypes,
-    address[] memory assets,
-    uint256[] memory ids,
-    uint256[] memory amounts
-  ) external payable;
-
-  /**
    * @dev Withdraws multiple assets from the bound account
    * @param owningTokenId The id of the owning token
    * @param assets The addresses of the assets
@@ -59,37 +41,20 @@ interface IFlexiVault {
       If the asset is an ERC20, the id is 0
    * @param amounts The amounts of the assets tokens
       If the asset is an ERC721, the amount is 1
-   * @param beneficiaries The addresses of the beneficiaries
-   */
-  function withdrawAssets(
-    uint owningTokenId,
-    TokenType[] memory tokenTypes,
-    address[] memory assets,
-    uint256[] memory ids,
-    uint256[] memory amounts,
-    address[] memory beneficiaries
-  ) external;
-
-  /**
-   * @dev Withdraws multiple assets from the bound account when a protector is active
-   * @param owningTokenId The id of the owning token
-   * @param assets The addresses of the assets
-   * @param ids The ids of the assets tokens
-   * @param amounts The amounts of the assets tokens
-   * @param beneficiaries The addresses of the beneficiaries
+   * @param recipients The addresses of the recipients
    * @param timestamp The timestamp of the request
    * @param validFor The time the request is valid for
-   * @param signature The signature of the protector
+   * @param signature The signature of the request
    */
-  function protectedWithdrawAssets(
+  function withdrawAssets(
     uint256 owningTokenId,
     TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts,
-    address[] memory beneficiaries,
+    address[] memory recipients,
     uint256 timestamp,
-    uint validFor,
+    uint256 validFor,
     bytes calldata signature
   ) external;
 
@@ -122,7 +87,7 @@ interface IFlexiVault {
    * @param validFor The time the request is valid for
    * @param signature The signature of the protector
    */
-  function protectedEjectAccount(uint256 owningTokenId, uint256 timestamp, uint validFor, bytes calldata signature) external;
+  function protectedEjectAccount(uint256 owningTokenId, uint256 timestamp, uint256 validFor, bytes calldata signature) external;
 
   /**
    * @dev Reinjects an ejected account
@@ -137,4 +102,38 @@ interface IFlexiVault {
    * @param owningTokenId The id of the owning token
    */
   function fixDirectlyInjectedAccount(uint256 owningTokenId) external;
+
+  /**
+* @dev Checks if an operator is active for a token
+     returning also its index in the array
+  * @param tokenId The token id
+  * @param operator The address of the operator
+  * @return (true, index) if the operator is active for the token
+     or (false, 0) if the operator is not active for the token
+  */
+  function getOperatorForIndexIfExists(uint256 tokenId, address operator) external view returns (bool, uint256);
+
+  /**
+   * @dev Check if an address is an operator for a token
+   * @param tokenId The token id
+   * @param operator The address of the operator
+   * @return true if the operator is active for the token, false otherwise
+   */
+  function isOperatorFor(uint256 tokenId, address operator) external view returns (bool);
+
+  /**
+   * @dev Sets/unsets an operator for a token
+   * @notice The function MUST be executed by the owner
+   * @param tokenId The token id
+   * @param operator The address of the operator
+   * @param active True if the operator is active for the token, false otherwise
+   */
+  function setOperatorFor(uint256 tokenId, address operator, bool active) external;
+
+  /**
+   * @dev Delete the operators associated to an account
+      It must be called by the CrunaVault only.
+   * @param tokenId The token id
+   */
+  function removeOperatorsFor(uint256 tokenId) external;
 }
