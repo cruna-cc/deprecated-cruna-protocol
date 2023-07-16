@@ -52,27 +52,47 @@ describe("CrunaClusterFactory", function () {
     await expect(factory.setStableCoin(usdt.address, true)).emit(factory, "StableCoinSet").withArgs(usdt.address, true);
   });
 
-  async function buyVault(token, amount, buyer) {
-    let price = await factory.finalPrice(token.address);
+  async function buyVault(token, amount, buyer, promoCode = "") {
+    let price = await factory.finalPrice(token.address, promoCode);
     await token.connect(buyer).approve(factory.address, price.mul(amount));
 
-    await expect(factory.connect(buyer).buyVaults(token.address, amount))
+    await expect(factory.connect(buyer).buyVaults(token.address, amount, promoCode))
       .emit(crunaVault, "Transfer")
       .withArgs(addr0, buyer.address, 1)
       .emit(crunaVault, "Transfer")
       .withArgs(addr0, buyer.address, 2)
       .emit(token, "Transfer")
-      .withArgs(buyer.address, factory.address, price.mul(amount).toString());
+      .withArgs(buyer.address, factory.address, price.mul(amount));
   }
 
   it("should allow bob and alice to purchase some vaults", async function () {
     await buyVault(usdc, 2, bob);
     await buyVault(usdt, 2, alice);
 
-    let price = await factory.finalPrice(usdc.address);
+    let price = await factory.finalPrice(usdc.address, "");
     expect(price.toString()).to.equal("9900000000000000000");
-    price = await factory.finalPrice(usdt.address);
+    price = await factory.finalPrice(usdt.address, "");
     expect(price.toString()).to.equal("9900000");
+
+    await expect(factory.withdrawProceeds(fred.address, usdc.address, normalize("10")))
+      .emit(usdc, "Transfer")
+      .withArgs(factory.address, fred.address, normalize("10"));
+    await expect(factory.withdrawProceeds(fred.address, usdc.address, 0))
+      .emit(usdc, "Transfer")
+      .withArgs(factory.address, fred.address, amount("9.8"));
+  });
+
+  it("should allow bob and alice to purchase some vaults with a promoCode", async function () {
+    const promoCode = "TheRoundTable".toLowerCase();
+    await factory.setPromoCode(promoCode, 10);
+
+    await buyVault(usdc, 2, bob);
+    await buyVault(usdt, 2, alice, promoCode);
+
+    let price = await factory.finalPrice(usdc.address, "");
+    expect(price.toString()).to.equal("9900000000000000000");
+    price = await factory.finalPrice(usdt.address, promoCode);
+    expect(price.toString()).to.equal("8910000");
 
     await expect(factory.withdrawProceeds(fred.address, usdc.address, normalize("10")))
       .emit(usdc, "Transfer")
