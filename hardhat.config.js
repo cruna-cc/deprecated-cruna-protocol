@@ -63,7 +63,7 @@ module.exports = {
       accounts: [env.FOR_TESTNET],
     },
     mumbai: {
-      url: "https://matic-mumbai.chainstacklabs.com",
+      url: "https://rpc-mumbai.maticvigil.com",
       chainId: 80001,
       // gasPrice: 20000000000,
       gasLimit: 6000000,

@@ -20,6 +20,7 @@ contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
   uint256 public price;
   mapping(address => bool) public stableCoins;
   mapping(address => uint256) public proceedsBalances;
+  mapping(bytes32 => uint) private _promoCodes;
 
   function initialize(address vault_) public initializer {
     __UUPSUpgradableTemplate_init();
@@ -28,13 +29,13 @@ contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
   }
 
   // @notice The price is in points, so that 1 point = 0.01 USD
-  function setPrice(uint256 price_) external onlyOwner {
+  function setPrice(uint256 price_) external override onlyOwner {
     // it is owner's responsibility to set a reasonable price
     price = price_;
     emit PriceSet(price);
   }
 
-  function setStableCoin(address stableCoin, bool active) external onlyOwner {
+  function setStableCoin(address stableCoin, bool active) external override onlyOwner {
     if (active) {
       // this should revert if the stableCoin is not an ERC20
       if (ERC20(stableCoin).decimals() < 6) revert UnsupportedStableCoin();
@@ -48,22 +49,68 @@ contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
     }
   }
 
-  function finalPrice(address stableCoin) public view returns (uint256) {
-    if (!stableCoins[stableCoin]) revert UnsupportedStableCoin();
-    return (price * (10 ** ERC20(stableCoin).decimals())) / 100;
-  }
-
-  function buyVaults(address stableCoin, uint256 amount) external {
-    uint256 payment = finalPrice(stableCoin) * amount;
-    if (payment > ERC20(stableCoin).balanceOf(_msgSender())) revert InsufficientFunds();
-    proceedsBalances[stableCoin] += payment;
-    if (!ERC20(stableCoin).transferFrom(_msgSender(), address(this), payment)) revert TransferFailed();
-    for (uint256 i = 0; i < amount; i++) {
-      vault.safeMint(0, _msgSender());
+  function setPromoCode(string memory promoCode, uint discount) external override onlyOwner {
+    bytes32 promoCodeHash = keccak256(abi.encodePacked(promoCode));
+    if (discount > 0) {
+      _promoCodes[promoCodeHash] = discount;
+    } else if (_promoCodes[promoCodeHash] > 0) {
+      delete _promoCodes[promoCodeHash];
     }
   }
 
-  function withdrawProceeds(address beneficiary, address stableCoin, uint256 amount) public onlyOwner {
+  function finalPrice(address stableCoin, string memory promoCode) public view override returns (uint256) {
+    return (getPrice(promoCode) * (10 ** ERC20(stableCoin).decimals())) / 100;
+  }
+
+  function getPrice(string memory promoCode) public view override returns (uint256) {
+    uint _price = price;
+    if (bytes(promoCode).length > 0) {
+      bytes32 promoCodeHash = keccak256(abi.encodePacked(promoCode));
+      if (_promoCodes[promoCodeHash] > 0) {
+        _price -= (_price * _promoCodes[promoCodeHash]) / 100;
+      }
+    }
+    return _price;
+  }
+
+  function buyVaults(address stableCoin, uint256 amount, string memory promoCode) external override {
+    uint256 payment = finalPrice(stableCoin, promoCode) * amount;
+    if (payment > ERC20(stableCoin).balanceOf(_msgSender())) revert InsufficientFunds();
+    proceedsBalances[stableCoin] += payment;
+    for (uint256 i = 0; i < amount; i++) {
+      vault.safeMint(0, _msgSender());
+    }
+    if (!ERC20(stableCoin).transferFrom(_msgSender(), address(this), payment)) revert TransferFailed();
+  }
+
+  function buyVaultsBatch(
+    address stableCoin,
+    address[] memory tos,
+    uint256[] memory amounts,
+    string memory promoCode
+  ) external override {
+    if (tos.length != amounts.length) revert InvalidArguments();
+    uint amount = 0;
+    for (uint256 i = 0; i < tos.length; i++) {
+      if (tos[i] == address(0)) {
+        revert NoZeroAddress();
+      }
+      amount += amounts[i];
+    }
+    uint256 payment = finalPrice(stableCoin, promoCode) * amount;
+    if (payment > ERC20(stableCoin).balanceOf(_msgSender())) revert InsufficientFunds();
+    proceedsBalances[stableCoin] += payment;
+    for (uint256 i = 0; i < tos.length; i++) {
+      if (amounts[i] != 0) {
+        for (uint256 j = 0; j < amounts[i]; j++) {
+          vault.safeMint(0, tos[i]);
+        }
+      }
+    }
+    if (!ERC20(stableCoin).transferFrom(_msgSender(), address(this), payment)) revert TransferFailed();
+  }
+
+  function withdrawProceeds(address beneficiary, address stableCoin, uint256 amount) external override onlyOwner {
     if (amount == 0) {
       amount = proceedsBalances[stableCoin];
     }
