@@ -8,6 +8,7 @@ interface IActors {
   error InvalidRole();
   error ActorNotFound(Role role);
   error ActorAlreadyAdded();
+  error TooManyActors();
 
   enum Status {
     UNSET,

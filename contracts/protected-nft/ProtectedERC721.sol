@@ -433,7 +433,7 @@ abstract contract ProtectedERC721 is
     ) revert NotExpiredYet();
     // the following prevents hostile beneficiaries from blocking the process not allowing them to reset the recipient
     if (_hasApproved(tokenOwner_)) revert RequestAlreadyApproved();
-    // the beneficiary is proposing a new recipient
+    // a beneficiary is proposing a new recipient
     if (_beneficiariesRequests[tokenOwner_].recipient != beneficiaryRecipient) {
       // solhint-disable-next-line not-rely-on-time
       if (block.timestamp - _beneficiariesRequests[tokenOwner_].startedAt > 30 days) {

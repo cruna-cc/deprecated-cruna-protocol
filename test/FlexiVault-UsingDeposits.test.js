@@ -101,7 +101,7 @@ describe("FlexiVault Using internal Deposits", function () {
     await uselessWeapons.mintBatch(john.address, [3, 4], [10, 1], "0x00");
   });
 
-  it.only("should revert if not activated", async function () {
+  it("should revert if not activated", async function () {
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
     await expect(flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1])).revertedWith("NotActivated()");
@@ -134,10 +134,9 @@ describe("FlexiVault Using internal Deposits", function () {
 
     expect(await stupidMonk.balanceOf(fred.address)).equal(0);
 
-    await expect(flexiVault.connect(alice).withdrawAssets(1, [2], [stupidMonk.address], [1], [1], [fred.address])).emit(
-      stupidMonk,
-      "Transfer"
-    );
+    await expect(
+      flexiVault.connect(alice).withdrawAssets(1, [2], [stupidMonk.address], [1], [1], [fred.address], 0, 0, 0)
+    ).emit(stupidMonk, "Transfer");
 
     expect(await stupidMonk.balanceOf(fred.address)).equal(1);
   });
@@ -270,9 +269,7 @@ describe("FlexiVault Using internal Deposits", function () {
       .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
-    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith(
-      "NotPermittedWhenProtectorsAreActive()"
-    );
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
 
     await expect(crunaVault.connect(bob).proposeProtector(mark.address)).revertedWith("ProtectorAlreadySetByYou()");
   });
@@ -341,9 +338,7 @@ describe("FlexiVault Using internal Deposits", function () {
       .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
-    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith(
-      "NotPermittedWhenProtectorsAreActive()"
-    );
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
   });
 
   it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
@@ -360,9 +355,7 @@ describe("FlexiVault Using internal Deposits", function () {
 
     expect(await crunaVault.isProtectorFor(bob.address, john.address)).equal(true);
 
-    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith(
-      "NotPermittedWhenProtectorsAreActive()"
-    );
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
 
     const timestamp = (await getTimestamp()) - 100;
     const validFor = 3600;
@@ -397,9 +390,10 @@ describe("FlexiVault Using internal Deposits", function () {
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVault.address, true);
     await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
+
     expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 2))
+    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 2, 0, 0, 0))
       .emit(crunaVault, "SafeRecipientUpdated")
       .withArgs(bob.address, alice.address, 2);
 
@@ -411,7 +405,7 @@ describe("FlexiVault Using internal Deposits", function () {
       .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
-    await expect(crunaVault.connect(bob).setSafeRecipient(fred.address, 2)).revertedWith(
+    await expect(crunaVault.connect(bob).setSafeRecipient(fred.address, 2, 0, 0, 0)).revertedWith(
       "NotPermittedWhenProtectorsAreActive()"
     );
 
@@ -428,7 +422,7 @@ describe("FlexiVault Using internal Deposits", function () {
     await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
     expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 1))
+    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 1, 0, 0, 0))
       .emit(crunaVault, "SafeRecipientUpdated")
       .withArgs(bob.address, alice.address, 1);
 
@@ -440,9 +434,7 @@ describe("FlexiVault Using internal Deposits", function () {
       .emit(crunaVault, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
-    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith(
-      "NotPermittedWhenProtectorsAreActive()"
-    );
+    await expect(transferNft(crunaVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
   });
 
   it("should allow withdrawals when protectors are active if safe recipient", async function () {
@@ -453,7 +445,7 @@ describe("FlexiVault Using internal Deposits", function () {
     await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
     expect((await flexiVault.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 1))
+    await expect(crunaVault.connect(bob).setSafeRecipient(alice.address, 1, 0, 0, 0))
       .emit(crunaVault, "SafeRecipientUpdated")
       .withArgs(bob.address, alice.address, 1);
 
@@ -467,7 +459,7 @@ describe("FlexiVault Using internal Deposits", function () {
 
     let account = await flexiVault.accountAddress(1);
 
-    await expect(flexiVault.connect(bob).withdrawAssets(1, [2], [particle.address], [2], [1], [alice.address]))
+    await expect(flexiVault.connect(bob).withdrawAssets(1, [2], [particle.address], [2], [1], [alice.address], 0, 0, 0))
       .emit(particle, "Transfer")
       .withArgs(account, alice.address, 2);
   });

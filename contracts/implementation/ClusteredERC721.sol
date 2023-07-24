@@ -3,16 +3,19 @@ pragma solidity ^0.8.19;
 
 // Authors: Francesco Sullo <francesco@sullo.co>
 
-import {ERC721, Strings} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
-import {IERC7108} from "./IERC7108.sol";
+import {IERC7108Enumerable} from "../utils//IERC7108Enumerable.sol";
+import {IERC7108} from "../utils/IERC7108.sol";
+import {IERC4906} from "../utils/IERC4906.sol";
+
+import {ProtectedERC721, Strings} from "../protected-nft/ProtectedERC721.sol";
 
 //import {console} from "hardhat/console.sol";
 
 // Reference implementation of ERC-7108
 
-contract ClusteredERC721 is IERC7108, ERC721 {
+contract ClusteredERC721 is IERC7108, IERC7108Enumerable, IERC4906, ProtectedERC721 {
   using Strings for uint256;
 
   error ZeroAddress();
@@ -33,20 +36,19 @@ contract ClusteredERC721 is IERC7108, ERC721 {
 
   mapping(uint256 => Cluster) public clusters;
   mapping(address => uint256[]) public clusterIdByOwners;
-  uint256 public maxSize = 10000;
-
+  uint256 public maxSize = 100000;
   uint256 private _nextClusterId;
+  mapping(uint256 => address) public clusterMinters;
 
-  constructor(string memory name, string memory symbol) ERC721(name, symbol) {}
+  constructor(string memory name, string memory symbol, address tokenUtils) ProtectedERC721(name, symbol, tokenUtils) {}
 
-  // in this implementation anyone can create a new collection
   function addCluster(
     string memory name,
     string memory symbol,
     string memory baseTokenURI,
     uint256 size,
     address clusterOwner_
-  ) public override {
+  ) public override onlyOwner {
     if (clusterOwner_ == address(0)) revert ZeroAddress();
     if (size > maxSize) revert SizeTooLarge();
     uint256 lastTokenIdInClusters;
@@ -103,6 +105,14 @@ contract ClusteredERC721 is IERC7108, ERC721 {
     return type(uint256).max;
   }
 
+  function supportsInterface(bytes4 interfaceId) public view virtual override(ProtectedERC721) returns (bool) {
+    return
+      interfaceId == type(IERC4906).interfaceId ||
+      interfaceId == type(IERC7108).interfaceId ||
+      interfaceId == type(IERC7108Enumerable).interfaceId ||
+      super.supportsInterface(interfaceId);
+  }
+
   function clusterOf(uint256 tokenId) public view override returns (uint256) {
     uint256 clusterId = _binarySearch(tokenId);
     if (clusterId == type(uint256).max) revert ClusterNotFound();
@@ -157,6 +167,22 @@ contract ClusteredERC721 is IERC7108, ERC721 {
     string memory baseURI = clusters[clusterId].baseTokenURI;
     tokenId -= clusters[clusterId].firstTokenId - 1;
     return bytes(baseURI).length > 0 ? string(abi.encodePacked(baseURI, tokenId.toString())) : "";
+  }
+
+  function balanceOfWithin(address owner, uint256 clusterId) external view override returns (uint) {
+    uint256 balance = balanceOf(owner);
+    if (balance != 0) {
+      uint result = 0;
+      (uint256 start, uint end) = rangeOf(clusterId);
+      for (uint256 i = 0; i < balance; i++) {
+        uint256 tokenId = tokenOfOwnerByIndex(owner, i);
+        if (tokenId >= start && tokenId <= end) {
+          result++;
+        }
+      }
+      balance = result;
+    }
+    return balance;
   }
 
   // TODO add to EIP-7108

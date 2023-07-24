@@ -17,6 +17,7 @@ contract Actors is IActors {
 
   function _getActor(address owner_, address actor_, Role role) internal view returns (uint256, Actor storage) {
     Actor[] storage actors = _actors[role][owner_];
+    // This may go out of gas if there are too many actors
     for (uint256 i = 0; i < actors.length; i++) {
       if (actors[i].actor == actor_) {
         return (i, actors[i]);
@@ -101,6 +102,10 @@ contract Actors is IActors {
 
   function _addActor(address owner_, address actor_, Role role, Status status_, Level level) internal {
     if (actor_ == address(0)) revert NoZeroAddress();
+    // We allow to add up to 16 actors per role per owner to avoid the risk of going out of gas
+    // looping the array. Most likely, the user will set between 1 and 7 actors per role, so,
+    // it should be fine
+    if (_actors[role][owner_].length > 15) revert TooManyActors();
     Status status = _actorStatus(owner_, actor_, role);
     if (status != Status.UNSET) revert ActorAlreadyAdded();
     _actors[role][owner_].push(Actor(actor_, status_, level));
