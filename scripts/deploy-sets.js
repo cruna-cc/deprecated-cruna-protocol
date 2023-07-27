@@ -57,12 +57,9 @@ async function main() {
     // await deployUtils.Tx(usdc.mint(address, normalize("1000")));
     // await deployUtils.Tx(usdt.mint(address, normalize("1000", 6)));
     await deployUtils.Tx(crunaVault.safeMint(0, address), "minting for " + address);
-    await deployUtils.Tx(crunaVault.safeMint(0, address), "minting for " + address);
-    await deployUtils.Tx(crunaVault.safeMint(0, address), "minting for " + address);
   }
 
-  console.log(`
-
+  console.log(`  
 All deployed. Look at export/deployed.json for the deployed addresses.
 `);
 }
