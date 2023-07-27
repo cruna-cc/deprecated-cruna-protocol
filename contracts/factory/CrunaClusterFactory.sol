@@ -18,9 +18,14 @@ import {ICrunaClusterFactory} from "./ICrunaClusterFactory.sol";
 contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
   CrunaVault public vault;
   uint256 public price;
+
   mapping(address => bool) public stableCoins;
+
+  // TODO this variable can be remove when going to production. I am leaving it here now so. I can upgrade the contract during development
   mapping(address => uint256) public proceedsBalances;
   mapping(bytes32 => uint) private _promoCodes;
+
+  address[] private _stableCoins;
 
   function initialize(address vault_) public initializer {
     __UUPSUpgradableTemplate_init();
@@ -41,10 +46,18 @@ contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
       if (ERC20(stableCoin).decimals() < 6) revert UnsupportedStableCoin();
       if (!stableCoins[stableCoin]) {
         stableCoins[stableCoin] = true;
+        _stableCoins.push(stableCoin);
         emit StableCoinSet(stableCoin, active);
       }
     } else if (stableCoins[stableCoin]) {
       delete stableCoins[stableCoin];
+      for (uint256 i = 0; i < _stableCoins.length; i++) {
+        if (_stableCoins[i] == stableCoin) {
+          _stableCoins[i] = _stableCoins[_stableCoins.length - 1];
+          _stableCoins.pop();
+          break;
+        }
+      }
       emit StableCoinSet(stableCoin, active);
     }
   }
@@ -117,5 +130,9 @@ contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
     if (amount > proceedsBalances[stableCoin]) revert InsufficientFunds();
     proceedsBalances[stableCoin] -= amount;
     if (!ERC20(stableCoin).transfer(beneficiary, amount)) revert TransferFailed();
+  }
+
+  function getStableCoins() external view returns (address[] memory) {
+    return _stableCoins;
   }
 }

@@ -26,6 +26,8 @@ contract ERC6551Account is IERC165, IERC721Receiver, IERC1155Receiver, IERC6551A
   // Padding for initializable values
   uint256 private _nonce;
 
+  receive() external payable {}
+
   function supportsInterface(bytes4 interfaceId) external pure returns (bool) {
     return (interfaceId == type(IERC6551Account).interfaceId ||
       interfaceId == type(IERC1155Receiver).interfaceId ||
@@ -97,9 +99,9 @@ contract ERC6551Account is IERC165, IERC721Receiver, IERC1155Receiver, IERC6551A
    * @dev {See IERC6551Account-owner}
    */
   function owner() public view override returns (address) {
-    (uint256 chainId, address contractAddress, uint256 tokenId) = ERC6551AccountLib.token();
+    (uint256 chainId, address tokenContract, uint256 tokenId) = this.token();
     if (chainId != block.chainid) return address(0);
-    return IERC721(contractAddress).ownerOf(tokenId);
+    return IERC721(tokenContract).ownerOf(tokenId);
   }
 
   /**
@@ -112,22 +114,23 @@ contract ERC6551Account is IERC165, IERC721Receiver, IERC1155Receiver, IERC6551A
   /**
    * @dev {See IERC6551Account-owner}
    */
-  function executeCall(
-    address _target,
-    uint256 _value,
-    bytes calldata _data
-  ) external payable override returns (bytes memory _result) {
-    require(owner() == msg.sender, "Caller is not owner");
-    ++_nonce;
-    bool success;
-    // solhint-disable-next-line avoid-low-level-calls
-    (success, _result) = _target.call{value: _value}(_data);
-    require(success, string(_result));
-    emit TransactionExecuted(_target, _value, _data);
-    return _result;
-  }
+  function executeCall(address to, uint256 value, bytes calldata data) external payable returns (bytes memory result) {
+    require(msg.sender == owner(), "Not token owner");
 
-  receive() external payable {}
+    ++_nonce;
+
+    emit TransactionExecuted(to, value, data);
+
+    bool success;
+    (success, result) = to.call{value: value}(data);
+
+    if (!success) {
+      // solhint-disable-next-line no-inline-assembly
+      assembly {
+        revert(add(result, 32), mload(result))
+      }
+    }
+  }
 
   function isValidSignature(bytes32 hash, bytes memory signature) external view returns (bytes4 magicValue) {
     bool isValid = SignatureChecker.isValidSignatureNow(owner(), hash, signature);

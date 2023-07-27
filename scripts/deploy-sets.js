@@ -36,10 +36,21 @@ async function main() {
   proxyWallet = await deployUtils.attach("ERC6551AccountProxy");
   flexiVault = await deployUtils.attach("FlexiVault");
 
-  const [h1, h2, h3] =
-    `0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC,0x90F79bf6EB2c4f870365E785982E1f101E93b906`.split(
-      ","
-    );
+  const [h1, h2, h3] = [
+    "0x888De0501cDBd7f88654Eb22f9517a6c93bf014B",
+    "0x4Af1958a7292eE5CeD5E71070E6e14dcEacE1349",
+    "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743",
+  ];
+
+  // await deployUtils.Tx(crunaVault.safeMint(0, "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743"), "minting for " + "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743");
+  // await deployUtils.Tx(crunaVault.safeMint(0, "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743"), "minting for " + "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743");
+  // await deployUtils.Tx(crunaVault.safeMint(0, "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743"), "minting for " + "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743");
+  //
+
+  // await deployUtils.Tx(usdc.mint("0x34923658675B99B2DB634cB2BC0cA8d25EdEC743", normalize("5000")));
+  // await deployUtils.Tx(usdt.mint("0x34923658675B99B2DB634cB2BC0cA8d25EdEC743", normalize("10000", 6)));
+
+  // return;
 
   for (let i = 0; i < 3; i++) {
     let address = i === 0 ? h1 : i === 1 ? h2 : h3;
@@ -48,8 +59,7 @@ async function main() {
     await deployUtils.Tx(crunaVault.safeMint(0, address), "minting for " + address);
   }
 
-  console.log(`
-  
+  console.log(`  
 All deployed. Look at export/deployed.json for the deployed addresses.
 `);
 }

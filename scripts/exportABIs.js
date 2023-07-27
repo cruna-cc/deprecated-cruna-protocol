@@ -24,6 +24,7 @@ async function main() {
 
   abi("ERC20", "@openzeppelin/contracts/token/ERC20");
   abi("ERC721", "@openzeppelin/contracts/token/ERC721");
+  abi("ERC721Enumerable", "@openzeppelin/contracts/token/ERC721/extensions");
   abi("ERC1155", "@openzeppelin/contracts/token/ERC1155");
 
   // for dev only
