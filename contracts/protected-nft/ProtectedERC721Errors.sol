@@ -53,4 +53,6 @@ interface ProtectedERC721Errors {
   error NotTheRecipient();
   error Unauthorized();
   error NotTransferable();
+  error NotTheActorManager();
+  error InvalidActorsManager();
 }

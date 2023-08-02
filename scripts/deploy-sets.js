@@ -42,18 +42,12 @@ async function main() {
     "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743",
   ];
 
-  // await deployUtils.Tx(crunaVault.safeMint(0, "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743"), "minting for " + "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743");
-  // await deployUtils.Tx(crunaVault.safeMint(0, "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743"), "minting for " + "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743");
-  // await deployUtils.Tx(crunaVault.safeMint(0, "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743"), "minting for " + "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743");
-  //
-
-  // await deployUtils.Tx(usdc.mint("0x34923658675B99B2DB634cB2BC0cA8d25EdEC743", normalize("5000")));
-  // await deployUtils.Tx(usdt.mint("0x34923658675B99B2DB634cB2BC0cA8d25EdEC743", normalize("10000", 6)));
-
-  // return;
-
   for (let i = 0; i < 3; i++) {
     let address = i === 0 ? h1 : i === 1 ? h2 : h3;
+    for (let k = 0; k < 3; k++) {
+      await deployUtils.Tx(crunaVault.safeMint(0, address), "minting for " + address);
+    }
+
     // await deployUtils.Tx(usdc.mint(address, normalize("1000")));
     // await deployUtils.Tx(usdt.mint(address, normalize("1000", 6)));
     await deployUtils.Tx(crunaVault.safeMint(0, address), "minting for " + address);

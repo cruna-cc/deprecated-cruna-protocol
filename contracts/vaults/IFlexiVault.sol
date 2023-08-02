@@ -11,6 +11,11 @@ interface IFlexiVault {
     ERC1155
   }
 
+  enum AccountStatus {
+    INACTIVE,
+    ACTIVE
+  }
+
   /**
    * @dev It checks if the contract is a Transparent Vault
    * @return bytes4(keccak256('isFlexiVault()')) if the contract is a Transparent Vault
@@ -95,17 +100,11 @@ interface IFlexiVault {
   /**
    * @dev Ejects a bound account
    * @param owningTokenId The id of the owning token
-   */
-  function ejectAccount(uint256 owningTokenId) external;
-
-  /**
-   * @dev Ejects a bound account when a protector is active
-   * @param owningTokenId The id of the owning token
    * @param timestamp The timestamp of the request
    * @param validFor The time the request is valid for
-   * @param signature The signature of the protector
+   * @param signature The signature of the request
    */
-  function protectedEjectAccount(uint256 owningTokenId, uint256 timestamp, uint256 validFor, bytes calldata signature) external;
+  function ejectAccount(uint256 owningTokenId, uint256 timestamp, uint256 validFor, bytes calldata signature) external;
 
   /**
    * @dev Reinjects an ejected account

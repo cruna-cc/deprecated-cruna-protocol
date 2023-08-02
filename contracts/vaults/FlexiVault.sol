@@ -14,10 +14,10 @@ import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {NFTOwned} from "../nft-owned/NFTOwned.sol";
 import {IProtectedERC721} from "../protected-nft/IProtectedERC721.sol";
 import {ITokenUtils} from "../utils/ITokenUtils.sol";
-import {IERC6551Account} from "../ERC6551/IERC6551Account.sol";
-import {IERC6551Registry} from "../ERC6551/IERC6551Registry.sol";
-import {IERC6551Account} from "../ERC6551/IERC6551Account.sol";
-import {TrusteeNFT} from "../ERC6551/TrusteeNFT.sol";
+import {IERC6551Account} from "../ERC6551/interfaces/IERC6551Account.sol";
+import {IERC6551Registry} from "../ERC6551/interfaces/IERC6551Registry.sol";
+import {IERC6551Account} from "../ERC6551/interfaces/IERC6551Account.sol";
+import {TrusteeNFT, ITrusteeNFT} from "../ERC6551/TrusteeNFT.sol";
 import {IVersioned} from "../utils/IVersioned.sol";
 import {IFlexiVaultExtended} from "./IFlexiVaultExtended.sol";
 import {IActors} from "../protected-nft/IActors.sol";
@@ -29,8 +29,6 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
 
   // modifiers
 
-  mapping(uint256 => bool) private _ejects;
-
   IERC6551Registry internal _registry;
   IERC6551Account public boundAccount;
   IERC6551Account public boundAccountUpgradeable;
@@ -38,14 +36,15 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
   TrusteeNFT public trustee;
   uint256 internal _salt;
   mapping(uint256 => address) internal _accountAddresses;
-  bool private _initiated;
+  bool internal _initiated;
   IProtectedERC721 internal _protectedOwningToken;
+  mapping(uint256 => AccountStatus) internal _accountStatuses;
 
   // The operators that can manage a specific tokenId.
   // Operators are not restricted to follow an owner, as protectors do.
   // The idea is that for any tokenId there can be just a few operators
   // so we do not risk to go out of gas when checking them.
-  mapping(uint256 => address[]) private _operators;
+  mapping(uint256 => address[]) internal _operators;
 
   modifier onlyOwningTokenOwner(uint256 owningTokenId) {
     if (ownerOf(owningTokenId) != msg.sender) {
@@ -73,7 +72,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
 
   modifier onlyIfActiveAndOwningTokenNotApproved(uint256 owningTokenId) {
     if (_accountAddresses[owningTokenId] == address(0)) revert NotActivated();
-    if (_ejects[owningTokenId]) revert AccountHasBeenEjected();
+    if (trustee.ownerOf(owningTokenId) != address(this)) revert AccountHasBeenEjected();
     // if the owningToken is approved for sale, the vaults cannot be modified to avoid scams
     if (_owningToken.getApproved(owningTokenId) != address(0)) revert ForbiddenWhenOwningTokenApprovedForSale();
     _;
@@ -91,7 +90,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
   /**
    * @dev {See IVersioned-version}
    */
-  function version() external pure override returns (string memory) {
+  function version() external pure virtual override returns (string memory) {
     return "1.0.0";
   }
 
@@ -106,7 +105,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     address registry,
     address payable boundAccount_,
     address payable boundAccountUpgradeable_
-  ) external override onlyOwner {
+  ) external virtual override onlyOwner {
     if (_initiated) revert AlreadyInitiated();
     if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
     if (!IERC165(boundAccount_).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
@@ -137,7 +136,10 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
   /**
    * @dev {See IFlexiVault-activateAccount}
    */
-  function activateAccount(uint256 owningTokenId, bool useUpgradeableAccount) external onlyOwningTokenOwner(owningTokenId) {
+  function activateAccount(
+    uint256 owningTokenId,
+    bool useUpgradeableAccount
+  ) external virtual onlyOwningTokenOwner(owningTokenId) {
     if (!trustee.isMinter(address(this))) {
       // If the contract is no more the minter, there is a new version of the
       // vault and new users must use the new version.
@@ -149,6 +151,8 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     trustee.mint(address(this), owningTokenId);
     _accountAddresses[owningTokenId] = walletAddress;
     _registry.createAccount(account, block.chainid, address(trustee), owningTokenId, _salt, "");
+    _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
+    emit BoundAccountActivated(owningTokenId, walletAddress);
   }
 
   /**
@@ -207,21 +211,23 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     address walletAddress = _accountAddresses[owningTokenId];
     IERC6551Account accountInstance = IERC6551Account(payable(walletAddress));
     if (tokenType == TokenType.ETH) {
-      accountInstance.executeCall(walletAddress, amount, "");
+      accountInstance.execute(walletAddress, amount, "", 0);
     } else if (tokenType == TokenType.ERC721) {
-      accountInstance.executeCall(
+      accountInstance.execute(
         asset,
         0,
-        abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", walletAddress, to, id)
+        abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", walletAddress, to, id),
+        0
       );
     } else if (tokenType == TokenType.ERC1155) {
-      accountInstance.executeCall(
+      accountInstance.execute(
         asset,
         0,
-        abi.encodeWithSignature("safeTransferFrom(address,address,uint256,uint256,bytes)", walletAddress, to, id, amount, "")
+        abi.encodeWithSignature("safeTransferFrom(address,address,uint256,uint256,bytes)", walletAddress, to, id, amount, ""),
+        0
       );
     } else if (tokenType == TokenType.ERC20) {
-      accountInstance.executeCall(asset, 0, abi.encodeWithSignature("transfer(address,uint256)", to, amount));
+      accountInstance.execute(asset, 0, abi.encodeWithSignature("transfer(address,uint256)", to, amount), 0);
     } else {
       revert InvalidAsset();
     }
@@ -283,6 +289,7 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
         validFor
       );
       _protectedOwningToken.validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
+      _protectedOwningToken.setSignatureAsUsed(signature);
     }
     for (uint256 i = 0; i < assets.length; i++) {
       // calling without a signature, then checking protectors and safe recipient level
@@ -308,45 +315,35 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     return amounts;
   }
 
-  function _ejectAccount(
-    uint256 owningTokenId
-  ) internal onlyOwningTokenOwner(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    if (_ejects[owningTokenId]) revert AccountAlreadyEjected();
-    trustee.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
-    _ejects[owningTokenId] = true;
-    emit BoundAccountEjected(owningTokenId);
-  }
-
   /**
    * @dev {See IFlexiVault-ejectAccount}
    */
-  function ejectAccount(uint256 owningTokenId) external override {
-    if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
-    _ejectAccount(owningTokenId);
-  }
-
-  /**
-   * @dev {See IFlexiVault-protectedEjectAccount}
-   */
-  function protectedEjectAccount(
+  function ejectAccount(
     uint256 owningTokenId,
     uint256 timestamp,
     uint256 validFor,
     bytes calldata signature
   ) external override {
-    bytes32 hash = _tokenUtils.hashEjectRequest(owningTokenId, timestamp, validFor);
-    _protectedOwningToken.validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
-    _ejectAccount(owningTokenId);
+    if (trustee.ownerOf(owningTokenId) != address(this)) revert AccountAlreadyEjected();
+    if (timestamp != 0) {
+      bytes32 hash = _tokenUtils.hashEjectRequest(owningTokenId, timestamp, validFor);
+      _protectedOwningToken.validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
+      _protectedOwningToken.setSignatureAsUsed(signature);
+    } else if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
+    trustee.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
+    // we are ejecting a previously reInjected account
+    delete _accountStatuses[owningTokenId]; // equal to = AccountStatus.INACTIVE;
+    emit BoundAccountEjected(owningTokenId);
   }
 
   /**
    * @dev {See IFlexiVault-reInjectEjectedAccount}
    */
   function reInjectEjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
-    if (!_ejects[owningTokenId]) revert NotAPreviouslyEjectedAccount();
+    if (trustee.ownerOf(owningTokenId) == address(this)) revert NotAPreviouslyEjectedAccount();
     // the contract must be approved
     trustee.transferFrom(ownerOf(owningTokenId), address(this), owningTokenId);
-    delete _ejects[owningTokenId];
+    _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
     emit EjectedBoundAccountReInjected(owningTokenId);
   }
 
@@ -354,9 +351,12 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
    * @dev {See IFlexiVault-fixDirectlyInjectedAccount}
    */
   function fixDirectlyInjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
-    if (!_ejects[owningTokenId]) revert TheAccountHasNeverBeenEjected();
-    if (trustee.ownerOf(owningTokenId) != address(this)) revert TheAccountIsNotOwnedByTheFlexiVault();
-    delete _ejects[owningTokenId];
+    if (trustee.ownerOf(owningTokenId) == address(this)) {
+      if (_accountStatuses[owningTokenId] == AccountStatus.ACTIVE) revert NotAPreviouslyEjectedAccount();
+      else {
+        _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
+      }
+    } else revert TheAccountIsNotOwnedByTheFlexiVault();
     emit EjectedBoundAccountReInjected(owningTokenId);
   }
 

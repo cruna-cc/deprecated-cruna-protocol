@@ -15,7 +15,7 @@ import {ProtectedERC721, Strings} from "../protected-nft/ProtectedERC721.sol";
 
 // Reference implementation of ERC-7108
 
-contract ClusteredERC721 is IERC7108, IERC7108Enumerable, IERC4906, ProtectedERC721 {
+abstract contract ClusteredERC721 is IERC7108, IERC7108Enumerable, IERC4906, ProtectedERC721 {
   using Strings for uint256;
 
   error ZeroAddress();
@@ -40,7 +40,12 @@ contract ClusteredERC721 is IERC7108, IERC7108Enumerable, IERC4906, ProtectedERC
   uint256 private _nextClusterId;
   mapping(uint256 => address) public clusterMinters;
 
-  constructor(string memory name, string memory symbol, address tokenUtils) ProtectedERC721(name, symbol, tokenUtils) {}
+  constructor(
+    string memory name,
+    string memory symbol,
+    address tokenUtils,
+    address actorsManager
+  ) ProtectedERC721(name, symbol, tokenUtils, actorsManager) {}
 
   function addCluster(
     string memory name,
@@ -188,5 +193,22 @@ contract ClusteredERC721 is IERC7108, IERC7108Enumerable, IERC4906, ProtectedERC
   // TODO add to EIP-7108
   function supplyWithin(uint256 clusterId) external view override returns (uint256) {
     return clusters[clusterId].nextTokenId - clusters[clusterId].firstTokenId;
+  }
+
+  function safeMint(uint256 clusterId, address to) public {
+    if (clusters[clusterId].owner == address(0)) revert ClusterNotFound();
+    if (clusterMinters[clusterId] != _msgSender() && clusters[clusterId].owner != msg.sender) revert NotClusterOwner();
+    if (clusters[clusterId].nextTokenId > clusters[clusterId].firstTokenId + clusters[clusterId].size - 1) revert ClusterFull();
+    _safeMint(to, clusters[clusterId].nextTokenId++);
+  }
+
+  // set factory to 0x0 to disable a factory
+  function allowFactoryFor(address factory, uint256 clusterId) external {
+    if (clusters[clusterId].owner != msg.sender) revert NotClusterOwner();
+    if (factory != address(0)) {
+      clusterMinters[clusterId] = factory;
+    } else {
+      delete clusterMinters[clusterId];
+    }
   }
 }

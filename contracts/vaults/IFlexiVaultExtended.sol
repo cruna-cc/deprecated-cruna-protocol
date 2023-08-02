@@ -8,6 +8,7 @@ import {IFlexiVault} from "./IFlexiVault.sol";
 interface IFlexiVaultExtended is IFlexiVault {
   event BoundAccountEjected(uint256 indexed owningTokenId);
   event EjectedBoundAccountReInjected(uint256 indexed owningTokenId);
+  event BoundAccountActivated(uint256 indexed owningTokenId, address indexed account);
 
   /**
    * @dev Emitted when an operator is set/unset for a tokenId
@@ -46,4 +47,5 @@ interface IFlexiVaultExtended is IFlexiVault {
   error OperatorNotActive();
   error OnlyProtectedOwningToken();
   error NoZeroAddress();
+  error InvalidTrustee();
 }
