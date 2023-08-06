@@ -3,9 +3,9 @@ pragma solidity ^0.8.19;
 
 // Author: Francesco Sullo <francesco@sullo.co>
 
-import {IFlexiVault} from "./IFlexiVault.sol";
+import {IFlexiVaultManager} from "./IFlexiVaultManager.sol";
 
-interface IFlexiVaultExtended is IFlexiVault {
+interface IFlexiVaultManagerExtended is IFlexiVaultManager {
   event BoundAccountEjected(uint256 indexed owningTokenId);
   event EjectedBoundAccountReInjected(uint256 indexed owningTokenId);
   event BoundAccountActivated(uint256 indexed owningTokenId, address indexed account);
@@ -42,7 +42,7 @@ interface IFlexiVaultExtended is IFlexiVault {
   error VaultHasBeenUpgraded();
   error InvalidTokenUtils();
   error TheAccountHasNeverBeenEjected();
-  error TheAccountIsNotOwnedByTheFlexiVault();
+  error TheAccountIsNotOwnedByTheFlexiVaultManager();
   error OperatorAlreadyActive();
   error OperatorNotActive();
   error OnlyProtectedOwningToken();

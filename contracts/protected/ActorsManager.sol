@@ -10,8 +10,8 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {NFTOwned} from "../nft-owned/NFTOwned.sol";
-import {IProtectedERC721Full} from "./IProtectedERC721Full.sol";
+import {FlexiVault} from "../vaults/FlexiVault.sol";
+import {IProtectedERC721} from "./IProtectedERC721.sol";
 import {ProtectedERC721Errors} from "./ProtectedERC721Errors.sol";
 import {ProtectedERC721Events} from "./ProtectedERC721Events.sol";
 import {IVersioned} from "../utils/IVersioned.sol";
@@ -19,7 +19,7 @@ import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IERC6454} from "./IERC6454.sol";
 import {Actors, IActors} from "./Actors.sol";
 import {IActorsManager} from "./IActorsManager.sol";
-import {CrunaVault} from "../implementation/CrunaVault.sol";
+import {FlexiVault} from "../vaults/FlexiVault.sol";
 
 //import {console} from "hardhat/console.sol";
 
@@ -28,7 +28,7 @@ contract ActorsManager is IActorsManager, Actors, Ownable, ERC165 {
   using Strings for uint256;
 
   ITokenUtils internal _tokenUtils;
-  CrunaVault internal _crunaVault;
+  FlexiVault internal _crunaVault;
 
   // the address of a second wallet required to validate the transfer of a token
   // the user can set up to 2 protectors
@@ -71,9 +71,9 @@ contract ActorsManager is IActorsManager, Actors, Ownable, ERC165 {
     _;
   }
 
-  function init(address protectedERC721) external onlyOwner {
-    if (!IERC165(protectedERC721).supportsInterface(type(IProtectedERC721Full).interfaceId)) revert InvalidProtectedERC721();
-    _crunaVault = CrunaVault(protectedERC721);
+  function init(address crunaVault) external onlyOwner {
+    if (!IERC165(crunaVault).supportsInterface(type(IProtectedERC721).interfaceId)) revert InvalidProtectedERC721();
+    _crunaVault = FlexiVault(crunaVault);
     if (address(_crunaVault.actorsManager()) != address(this)) revert NotTheBondedProtectedERC721();
     _tokenUtils = ITokenUtils(_crunaVault.tokenUtils());
   }
@@ -117,7 +117,7 @@ contract ActorsManager is IActorsManager, Actors, Ownable, ERC165 {
     return status > Status.PENDING;
   }
 
-  function protectorsFor(address tokensOwner_) external view override returns (address[] memory) {
+  function hasProtectors(address tokensOwner_) external view override returns (address[] memory) {
     return _listActiveActors(tokensOwner_, Role.PROTECTOR);
   }
 
@@ -177,7 +177,7 @@ contract ActorsManager is IActorsManager, Actors, Ownable, ERC165 {
     uint256 validFor,
     bytes32 hash,
     bytes calldata signature
-  ) public override {
+  ) public view override {
     // solhint-disable-next-line not-rely-on-time
     if (timestamp > block.timestamp || timestamp < block.timestamp - validFor) revert TimestampInvalidOrExpired();
     if (!signedByProtector(tokenOwner_, hash, signature)) revert WrongDataOrNotSignedByProtector();

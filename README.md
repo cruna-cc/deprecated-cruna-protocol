@@ -30,13 +30,13 @@ The Flexi Vault is an application designed to securely store and protect assets 
 
 Since the Cruna Vault is a ProtectedERC721, the Flexi Vault inherits its security features. When the owner of the NFT has designated a Protector, any asset movement from the Flexi Vault to external wallets or other vaults not owned by the same owner necessitates a signature from the Protector, enhancing the security of asset transfers.
 
-On deployment, the Flexi Vault initiates a TrusteeNFT, a distinct NFT designed to manage smart contract wallets using [ERC6551](https://eips.ethereum.org/EIPS/eip-6551) bound accounts. Any tokenId of the TrusteeNFT is initially owned by the Flexi Vault and, by extension, by the Vault's owner.
+On deployment, the Flexi Vault initiates a Trustee, a distinct NFT designed to manage smart contract wallets using [ERC6551](https://eips.ethereum.org/EIPS/eip-6551) bound accounts. Any tokenId of the Trustee is initially owned by the Flexi Vault and, by extension, by the Vault's owner.
 
-The owner reserves the right to eject their TrusteeNFT at any moment, facilitating the transfer of an ID ownership from the Flexi Vault to the Cruna Vault's owner. This action can be reversed in the future, thereby reactivating the vault and resuming asset management.
+The owner reserves the right to eject their Trustee at any moment, facilitating the transfer of an ID ownership from the Flexi Vault to the Cruna Vault's owner. This action can be reversed in the future, thereby reactivating the vault and resuming asset management.
 
-### 3. TrusteeNFT, Smart Contracts, and Vault Migration
+### 3. Trustee, Smart Contracts, and Vault Migration
 
-The TrusteeNFT, as an integral part of the Cruna Vault, is designed to offer flexibility in managing smart contract wallets. It can be ejected and re-injected into the vault, enabling migration between different versions of the vault. This feature is crucial considering that all smart contracts used in the Cruna Core Protocol are immutable, barring the exception of the ERC6551 bound account.
+The Trustee, as an integral part of the Cruna Vault, is designed to offer flexibility in managing smart contract wallets. It can be ejected and re-injected into the vault, enabling migration between different versions of the vault. This feature is crucial considering that all smart contracts used in the Cruna Core Protocol are immutable, barring the exception of the ERC6551 bound account.
 
 During the activation of the vault, users have the option to select either an immutable or an upgradeable account. The latter can be particularly beneficial if new asset standards are introduced in the future, ensuring the ability to receive these assets within the vault.
 
@@ -45,8 +45,8 @@ During the activation of the vault, users have the option to select either an im
 The process of upgrading a Cruna Vault to a new version is straightforward, although it requires careful steps due to the immutable nature of smart contracts.
 
 1. **Deployment of the New Contract**: The first step involves deploying the new contract for the upgraded Cruna Vault (V2).
-2. **Eject the TrusteeNFT from the Old Vault**: The owner must then eject the TrusteeNFT from the current vault (V1). This action transfers the ownership of the TrusteeNFT ID from the Flexi Vault to the owner of the Cruna Vault.
-3. **Re-Inject the TrusteeNFT into the New Vault**: The final step is to re-inject the ejected TrusteeNFT into the new vault (V2). This effectively transfers the management of the assets from the old vault to the new one.
+2. **Eject the Trustee from the Old Vault**: The owner must then eject the Trustee from the current vault (V1). This action transfers the ownership of the Trustee ID from the Flexi Vault to the owner of the Cruna Vault.
+3. **Re-Inject the Trustee into the New Vault**: The final step is to re-inject the ejected Trustee into the new vault (V2). This effectively transfers the management of the assets from the old vault to the new one.
 
 Through this migration process, users can seamlessly transition to newer versions of the Cruna Vault, ensuring they can take advantage of new features and improved security measures while maintaining the control and security of their assets.
 
@@ -84,7 +84,7 @@ These future developments further enhance the flexibility, security, and utility
 
 - Integrate ClusteredERC721 to manage clusters inside the Cruna Vault
 - Allow the user to choose between an immutable bound-account and an upgradeable one
-- Renames OwnerNFT to TrusteeNFT
+- Renames OwnerNFT to Trustee
 - Rename TransparentVault to FlexiVault
 
 **1.2.5**

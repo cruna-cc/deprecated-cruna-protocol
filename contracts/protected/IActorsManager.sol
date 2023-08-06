@@ -82,8 +82,7 @@ interface IActorsManager {
   error SignatureAlreadyUsed();
   error OperatorAlreadyActive();
   error OperatorNotActive();
-  error NotAFlexiVault();
-  error VaultAlreadyAdded();
+  error NotTheVaultManager();
   error InvalidTokenUtils();
   error QuorumCannotBeZero();
   error QuorumCannotBeGreaterThanBeneficiaries();
@@ -125,7 +124,7 @@ interface IActorsManager {
      The contract can implement intermediate statuses, like "pending" and "resigned", but the interface
      only requires a list of the "active" protectors
   */
-  function protectorsFor(address tokensOwner_) external view returns (address[] memory);
+  function hasProtectors(address tokensOwner_) external view returns (address[] memory);
 
   /**
    * @dev Check if an address is a protector for an tokensOwner
@@ -219,7 +218,7 @@ interface IActorsManager {
     uint256 validFor,
     bytes32 hash,
     bytes calldata signature
-  ) external;
+  ) external view;
 
   function invalidateSignatureFor(uint256 tokenId, bytes32 hash, bytes calldata signature) external;
 

@@ -14,12 +14,12 @@ async function main() {
     ABIs.contracts[rename || name] = json.abi;
   }
   abi("CrunaClusterFactory", "contracts/factory");
-  abi("CrunaVault", "contracts/implementation");
+  abi("FlexiVault", "contracts/implementation");
   abi("ERC6551Registry", "contracts/ERC6551");
   abi("ERC6551Account", "contracts/ERC6551");
   abi("ERC6551AccountUpgradeable", "contracts/ERC6551");
   abi("ERC6551AccountProxy", "contracts/ERC6551");
-  abi("FlexiVault", "contracts/vaults");
+  abi("FlexiVaultManager", "contracts/vaults");
   abi("TokenUtils", "contracts/utils");
 
   abi("ERC20", "@openzeppelin/contracts/token/ERC20");

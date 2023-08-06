@@ -11,10 +11,11 @@ const expect = (actual) => {
   return chai.expect(actual);
 };
 
-describe("CrunaClusterFactory", function () {
+describe("VaultFactory", function () {
   const deployUtils = new DeployUtils(ethers);
 
-  let crunaVault, factory, tokenUtils;
+  let flexiVault, flexiVaultManager, factory;
+  let registry, wallet, proxyWallet, tokenUtils, actorsManager;
   // mocks
   let usdc, usdt;
   let notAToken;
@@ -30,14 +31,30 @@ describe("CrunaClusterFactory", function () {
     tokenUtils = await deployContract("TokenUtils");
     expect(await tokenUtils.version()).to.equal("1.0.0");
 
+    actorsManager = await deployContract("ActorsManager");
+
     const _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
-    crunaVault = await deployContract("CrunaVault", _baseTokenURI, tokenUtils.address);
-    expect(await crunaVault.version()).to.equal("1.0.0");
-    await crunaVault.addCluster("Cruna Vault V1", "CRUNA", _baseTokenURI, 100000, owner.address);
+    flexiVault = await deployContract("FlexiVaultMock", _baseTokenURI, tokenUtils.address, actorsManager.address);
+    expect(await flexiVault.version()).to.equal("1.0.0");
 
-    factory = await deployContractUpgradeable("CrunaClusterFactory", [crunaVault.address]);
+    await actorsManager.init(flexiVault.address);
 
-    await crunaVault.allowFactoryFor(factory.address, 0);
+    registry = await deployContract("ERC6551Registry");
+    wallet = await deployContract("ERC6551Account");
+    let implementation = await deployContract("ERC6551AccountUpgradeable");
+    proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
+
+    flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address, tokenUtils.address, 100000);
+    expect(await flexiVaultManager.version()).to.equal("1.0.0");
+
+    await flexiVault.initVault(flexiVaultManager.address);
+    await flexiVaultManager.init(registry.address, wallet.address, proxyWallet.address);
+
+    await expect(flexiVault.initVault(flexiVaultManager.address)).revertedWith("VaultAlreadySet()");
+
+    factory = await deployContractUpgradeable("VaultFactory", [flexiVault.address]);
+
+    await flexiVault.setFactory(factory.address);
 
     usdc = await deployContract("USDCoin");
     usdt = await deployContract("TetherUSD");
@@ -57,9 +74,9 @@ describe("CrunaClusterFactory", function () {
     await token.connect(buyer).approve(factory.address, price.mul(amount));
 
     await expect(factory.connect(buyer).buyVaults(token.address, amount, promoCode))
-      .emit(crunaVault, "Transfer")
+      .emit(flexiVault, "Transfer")
       .withArgs(addr0, buyer.address, 1)
-      .emit(crunaVault, "Transfer")
+      .emit(flexiVault, "Transfer")
       .withArgs(addr0, buyer.address, 2)
       .emit(token, "Transfer")
       .withArgs(buyer.address, factory.address, price.mul(amount));

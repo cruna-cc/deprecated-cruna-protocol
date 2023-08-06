@@ -24,6 +24,4 @@ interface IProtectedERC721 {
   ) external;
 
   function managedTransfer(uint256 tokenId, address to) external;
-
-  function isProtectorFor(address tokensOwner_, address protector_) external view returns (bool);
 }

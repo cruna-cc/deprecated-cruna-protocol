@@ -50,7 +50,7 @@ describe("Bound-account Integration", function () {
 
     expect(await particle.balanceOf(wallet.address)).to.equal(1);
 
-    expect(await wallet.owner()).to.equal(bob.address);
+    expect(await wallet.accountOwner()).to.equal(bob.address);
     expect(await particle.ownerOf(tokenId3)).to.equal(wallet.address);
 
     const safeTransferFromABI = [
@@ -96,7 +96,7 @@ describe("Bound-account Integration", function () {
 
     expect(await particle.balanceOf(wallet.address)).to.equal(1);
 
-    expect(await wallet.owner()).to.equal(bob.address);
+    expect(await wallet.accountOwner()).to.equal(bob.address);
     expect(await particle.ownerOf(tokenId3)).to.equal(wallet.address);
 
     const safeTransferFromABI = [

@@ -9,14 +9,13 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {NFTOwned} from "../nft-owned/NFTOwned.sol";
 import {IProtectedERC721} from "./IProtectedERC721.sol";
 import {ProtectedERC721Errors} from "./ProtectedERC721Errors.sol";
 import {ProtectedERC721Events} from "./ProtectedERC721Events.sol";
 import {IVersioned} from "../utils/IVersioned.sol";
 import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IERC6454} from "./IERC6454.sol";
-import {Actors} from "./Actors.sol";
+import {Actors, IActors} from "./Actors.sol";
 import {ActorsManager, IActorsManager} from "./ActorsManager.sol";
 
 //import {console} from "hardhat/console.sol";
@@ -136,9 +135,5 @@ abstract contract ProtectedERC721 is
         _approvedTransfers[tokenId] ||
         actorsManager.safeRecipientLevel(ownerOf(tokenId), to) == Level.HIGH;
     }
-  }
-
-  function isProtectorFor(address tokensOwner_, address protector_) external view override returns (bool) {
-    return actorsManager.isProtectorFor(tokensOwner_, protector_);
   }
 }

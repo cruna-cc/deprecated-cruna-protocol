@@ -26,7 +26,7 @@ async function main() {
   //     ","
   //   );
 
-  let crunaVault, flexiVault;
+  let flexiVault, flexiVaultManager;
   let registry, wallet, proxyWallet, tokenUtils, factory;
   let usdc, usdt;
 
@@ -37,8 +37,8 @@ async function main() {
 
   usdc = await deployUtils.attach("USDCoin");
   usdt = await deployUtils.attach("TetherUSD");
-  crunaVault = await deployUtils.attach("CrunaVault");
-  factory = await deployUtils.deployProxy("CrunaClusterFactory", crunaVault.address);
+  flexiVault = await deployUtils.attach("FlexiVault");
+  factory = await deployUtils.deployProxy("CrunaClusterFactory", flexiVault.address);
 
   console.log(`
   

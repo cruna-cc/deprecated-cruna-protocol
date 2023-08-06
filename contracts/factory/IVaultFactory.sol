@@ -5,7 +5,7 @@ pragma solidity ^0.8.19;
 // (c) Superpower Labs Inc.
 
 // Version one manages just our first cluster
-interface ICrunaClusterFactory {
+interface IVaultFactory {
   /**
    * @dev Emitted when a price is set
    * @param price the new price
