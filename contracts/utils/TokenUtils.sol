@@ -48,7 +48,7 @@ contract TokenUtils is ITokenUtils {
     return false;
   }
 
-  function version() external pure returns (string memory) {
+  function version() external pure virtual returns (string memory) {
     return "1.0.0";
   }
 

@@ -5,48 +5,54 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {IFlexiVaultManager} from "../vaults/IFlexiVaultManager.sol";
 import {ITrustee} from "./ITrustee.sol";
 
 // @dev The NFTs owning the bound account are all minted from this contract.
 // The minter must be an active FlexiVaultManager.sol
 // The NFT can be ejected from the FlexiVaultManager.sol and transferred to the owner
 contract Trustee is ITrustee, ERC721, Ownable {
-  event MinterSet(address indexed minter, bool active);
-  error NotAMinter();
-  error MinterNotAFlexiVaultManager();
+  error TokenIdOutOfRange();
+  error Forbidden();
 
-  mapping(address => bool) private _minters;
+  address public minter;
+  mapping(uint => address) private _boundAccounts;
 
-  constructor() ERC721("Trustee", "oNFT") {}
-
-  // the minter must be an
-  function setMinter(address minter, bool active) public onlyOwner {
-    if (active) {
-      try IFlexiVaultManager(minter).isFlexiVaultManager() returns (bytes4 result) {
-        if (result != IFlexiVaultManager.isFlexiVaultManager.selector) revert MinterNotAFlexiVaultManager();
-      } catch {
-        revert MinterNotAFlexiVaultManager();
-      }
-      _minters[minter] = true;
-    } else if (_minters[minter]) delete _minters[minter];
-    emit MinterSet(minter, active);
+  constructor() ERC721("Cruna Trustee", "CRUNA_T1") {
+    minter = msg.sender;
   }
 
-  function isMinter(address minter) public view returns (bool) {
-    return _minters[minter];
+  function version() external pure virtual returns (string memory) {
+    return "1.0.0";
   }
 
-  function mint(address to, uint256 tokenId) public {
-    if (!isMinter(_msgSender())) revert NotAMinter();
+  function mint(address to, uint256 tokenId, address accountAddress) public virtual {
+    if (msg.sender != minter) revert Forbidden();
+    if (tokenId < firstTokenId() || tokenId > lastTokenId()) revert TokenIdOutOfRange();
+    _boundAccounts[tokenId] = accountAddress;
     _mint(to, tokenId);
   }
 
-  function isTrustee() external pure override returns (bytes4) {
-    return Trustee.isTrustee.selector;
+  function isTrustee() external pure virtual override returns (bytes4) {
+    return ITrustee.isTrustee.selector;
   }
 
-  function supportsInterface(bytes4 interfaceId) public view override(ERC721) returns (bool) {
-    return (interfaceId == type(ITrustee).interfaceId) || super.supportsInterface(interfaceId);
+  function _baseURI() internal view virtual override returns (string memory) {
+    return "https://meta.cruna.io/trustee/v1/";
+  }
+
+  function contractURI() public view virtual returns (string memory) {
+    return "https://meta.cruna.io/trustee/v1/info";
+  }
+
+  function firstTokenId() public pure virtual override returns (uint) {
+    return 1;
+  }
+
+  function lastTokenId() public pure virtual override returns (uint) {
+    return 100000;
+  }
+
+  function boundAccount(uint tokenId) external view virtual override returns (address) {
+    return _boundAccounts[tokenId];
   }
 }

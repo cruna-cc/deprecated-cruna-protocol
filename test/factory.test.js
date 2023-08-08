@@ -33,8 +33,8 @@ describe("VaultFactory", function () {
 
     actorsManager = await deployContract("ActorsManager");
 
-    const _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
-    flexiVault = await deployContract("FlexiVaultMock", _baseTokenURI, tokenUtils.address, actorsManager.address);
+    const _baseTokenURI = "https://meta.cruna.cc/flexy-vault/v1/";
+    flexiVault = await deployContract("FlexiVaultMock", tokenUtils.address, actorsManager.address);
     expect(await flexiVault.version()).to.equal("1.0.0");
 
     await actorsManager.init(flexiVault.address);
@@ -44,13 +44,13 @@ describe("VaultFactory", function () {
     let implementation = await deployContract("ERC6551AccountUpgradeable");
     proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
-    flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address, tokenUtils.address, 100000);
+    flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address, tokenUtils.address);
     expect(await flexiVaultManager.version()).to.equal("1.0.0");
 
-    await flexiVault.initVault(flexiVaultManager.address);
     await flexiVaultManager.init(registry.address, wallet.address, proxyWallet.address);
+    await flexiVault.initVault(flexiVaultManager.address);
 
-    await expect(flexiVault.initVault(flexiVaultManager.address)).revertedWith("VaultAlreadySet()");
+    await expect(flexiVault.initVault(flexiVaultManager.address)).revertedWith("VaultManagerAlreadySet()");
 
     factory = await deployContractUpgradeable("VaultFactory", [flexiVault.address]);
 

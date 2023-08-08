@@ -5,17 +5,17 @@ import "@openzeppelin/contracts/access/Ownable.sol" as Ownable;
 import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC4906} from "../utils/IERC4906.sol";
-
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ProtectedERC721, Strings} from "../protected/ProtectedERC721.sol";
 import {FlexiVaultManager} from "../vaults/FlexiVaultManager.sol";
 import {IFlexiVault} from "./IFlexiVault.sol";
-import {Counters} from "@openzeppelin/contracts/utils/Counters.sol";
+import {Trustee} from "../ERC6551/Trustee.sol";
+
+//import "hardhat/console.sol";
 
 // reference implementation of a Cruna Vault
-contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721 {
+contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
   using Strings for uint256;
-  using Counters for Counters.Counter;
-  Counters.Counter private _tokenIdCounter;
 
   event TokenURIFrozen();
   event TokenURIUpdated(string uri);
@@ -23,43 +23,65 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721 {
   error NotAMinter();
   error ZeroAddress();
   error CapReached();
-  error VaultAlreadySet();
+  error VaultManagerAlreadySet();
+  error VaultManagerNotInitiated();
+  error NotImplemented();
+  error ForbiddenWhenTokenApprovedForSale();
+  error TheAccountIsNotOwnedByTheFlexiVault();
+  error AccountAlreadyEjected();
+  error NotAllowedWhenProtector();
+  error NotAPreviouslyEjectedAccount();
+  error NotActivated();
+  error TrusteeNotFound();
+  error TokenIdDoesNotExist();
 
-  string private _baseTokenURI;
-  bool private _baseTokenURIFrozen;
   FlexiVaultManager public vaultManager;
   address public factoryAddress;
 
+  uint public nextTokenId;
+  uint public lastTokenId;
+  Trustee public trustee;
+
+  modifier onlyIfActiveAndTokenNotApproved(uint256 tokenId) {
+    if (vaultManager.accountAddress(tokenId) == address(0)) revert NotActivated();
+    if (trustee.ownerOf(tokenId) != address(vaultManager)) revert TrusteeNotFound();
+    // if the owningToken is approved for sale, the vaults cannot be modified to avoid scams
+    if (getApproved(tokenId) != address(0)) revert ForbiddenWhenTokenApprovedForSale();
+    _;
+  }
+
   constructor(
-    string memory baseUri_,
     address tokenUtils,
     address actorsManager
-  ) ProtectedERC721("Cruna Flexi Vault V1", "CRUNA", tokenUtils, actorsManager) {
-    _baseTokenURI = baseUri_;
-  }
+  ) ProtectedERC721("Cruna Flexi Vault V1", "CRUNA_FV1", tokenUtils, actorsManager) {}
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(ProtectedERC721) returns (bool) {
     return interfaceId == type(IERC4906).interfaceId || super.supportsInterface(interfaceId);
   }
 
-  function initVault(address flexiVaultManager) external override onlyOwner {
-    if (address(vaultManager) != address(0)) revert VaultAlreadySet();
+  function initVault(address flexiVaultManager) public virtual override onlyOwner {
+    // must be called after than the vaultManager has been initiated
+    if (address(vaultManager) != address(0)) revert VaultManagerAlreadySet();
     if (FlexiVaultManager(flexiVaultManager).isFlexiVaultManager() != FlexiVaultManager.isFlexiVaultManager.selector)
       revert NotTheVaultManager();
     vaultManager = FlexiVaultManager(flexiVaultManager);
+    trustee = Trustee(vaultManager.trustee());
+    if (address(trustee) == address(0)) revert VaultManagerNotInitiated();
+    nextTokenId = trustee.firstTokenId();
+    lastTokenId = trustee.lastTokenId();
   }
 
   // set factory to 0x0 to disable a factory
-  function setFactory(address factory) external onlyOwner {
+  function setFactory(address factory) external virtual override onlyOwner {
     if (factory == address(0)) revert ZeroAddress();
     factoryAddress = factory;
   }
 
-  function version() external pure returns (string memory) {
+  function version() external pure virtual returns (string memory) {
     return "1.0.0";
   }
 
-  function setSignatureAsUsed(bytes calldata signature) public override {
+  function setSignatureAsUsed(bytes calldata signature) public virtual override {
     if (_msgSender() != address(vaultManager)) revert NotTheVaultManager();
     actorsManager.setSignatureAsUsed(signature);
   }
@@ -69,36 +91,106 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721 {
   }
 
   function _baseURI() internal view virtual override returns (string memory) {
-    return _baseTokenURI;
+    return "https://meta.cruna.cc/flexy-vault/v1/";
   }
 
-  function updateTokenURI(string memory uri) external override onlyOwner {
-    if (_baseTokenURIFrozen) {
-      revert FrozenTokenURI();
-    }
-    // after revealing, this allows to set up a final uri
-    _baseTokenURI = uri;
-    emit TokenURIUpdated(uri);
+  function contractURI() public view virtual returns (string memory) {
+    return "https://meta.cruna.cc/flexy-vault/v1/info";
   }
 
-  function freezeTokenURI() external override onlyOwner {
-    _baseTokenURIFrozen = true;
-    emit TokenURIFrozen();
-  }
-
-  function contractURI() public view override returns (string memory) {
-    return string(abi.encodePacked(_baseTokenURI, "info"));
-  }
-
-  function safeMint(address to) public {
+  function safeMint(address to) public virtual override {
     if (_msgSender() != factoryAddress) revert NotAMinter();
     _mintNow(to);
   }
 
+  function mintFromTrustee(uint) external virtual override {
+    revert NotImplemented(); // not enabled in version 1
+  }
+
   function _mintNow(address to) internal {
-    _tokenIdCounter.increment();
-    uint tokenId = _tokenIdCounter.current();
-    if (tokenId > vaultManager.maxTokenId()) revert CapReached();
-    _safeMint(to, tokenId);
+    if (nextTokenId > lastTokenId) revert CapReached();
+    _safeMint(to, nextTokenId++);
+  }
+
+  /**
+   * @dev {See FlexiVaultManager.sol-ejectAccount}
+   */
+  function ejectAccount(
+    uint256 tokenId,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external virtual override onlyTokenOwner(tokenId) {
+    // it reverts if called before initiating the vault
+    if (trustee.ownerOf(tokenId) != address(vaultManager)) revert AccountAlreadyEjected();
+    if (getApproved(tokenId) != address(0)) revert ForbiddenWhenTokenApprovedForSale();
+    if (timestamp != 0) {
+      bytes32 hash = tokenUtils.hashEjectRequest(tokenId, timestamp, validFor);
+      actorsManager.validateTimestampAndSignature(ownerOf(tokenId), timestamp, validFor, hash, signature);
+      setSignatureAsUsed(signature);
+    } else if (actorsManager.hasProtectors(ownerOf(tokenId)).length > 0) revert NotAllowedWhenProtector();
+    vaultManager.ejectAccount(tokenId);
+  }
+
+  /**
+   * @dev {See FlexiVaultManager.sol-reInjectEjectedAccount}
+   */
+  function reInjectEjectedAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) {
+    // it reverts if called before initiating the vault, or with non-existing token
+    if (trustee.ownerOf(tokenId) == address(vaultManager)) revert NotAPreviouslyEjectedAccount();
+    // the contract must be approved
+    trustee.transferFrom(_msgSender(), address(vaultManager), tokenId);
+    vaultManager.reInjectEjectedAccount(tokenId);
+  }
+
+  /**
+   * @dev {See FlexiVaultManager.sol-fixDirectlyInjectedAccount}
+   */
+  function fixDirectlyInjectedAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) {
+    if (!_exists(tokenId)) revert TokenIdDoesNotExist();
+    vaultManager.fixDirectlyInjectedAccount(tokenId);
+  }
+
+  // Activation
+
+  function activateAccount(uint256 tokenId, bool useUpgradeableAccount) external virtual override onlyTokenOwner(tokenId) {
+    vaultManager.activateAccount(tokenId, useUpgradeableAccount);
+  }
+
+  // deposits
+
+  function depositAssets(
+    uint256 tokenId,
+    FlexiVaultManager.TokenType[] memory tokenTypes,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts
+  ) external payable override nonReentrant onlyIfActiveAndTokenNotApproved(tokenId) {
+    vaultManager.depositAssets{value: msg.value}(tokenId, tokenTypes, assets, ids, amounts, _msgSender());
+  }
+
+  function withdrawAssets(
+    uint256 tokenId,
+    FlexiVaultManager.TokenType[] memory tokenTypes,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory recipients,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external override onlyIfActiveAndTokenNotApproved(tokenId) nonReentrant {
+    vaultManager.withdrawAssets(
+      tokenId,
+      tokenTypes,
+      assets,
+      ids,
+      amounts,
+      recipients,
+      timestamp,
+      validFor,
+      signature,
+      _msgSender()
+    );
   }
 }

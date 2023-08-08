@@ -48,4 +48,7 @@ interface IFlexiVaultManagerExtended is IFlexiVaultManager {
   error OnlyProtectedOwningToken();
   error NoZeroAddress();
   error InvalidTrustee();
+  error OnlyVault();
+  error NotImplemented();
+  error InvalidAccountAddress();
 }

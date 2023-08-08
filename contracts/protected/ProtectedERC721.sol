@@ -53,6 +53,7 @@ abstract contract ProtectedERC721 is
   }
 
   modifier onlyTokenOwner(uint256 tokenId) {
+    //    console.log(_ownerOf(tokenId), _msgSender());
     if (ownerOf(tokenId) != _msgSender()) revert NotTheTokenOwner();
     _;
   }

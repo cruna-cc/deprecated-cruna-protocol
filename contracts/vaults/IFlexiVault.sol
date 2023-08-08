@@ -9,9 +9,39 @@ interface IFlexiVault {
 
   function setSignatureAsUsed(bytes calldata signature) external;
 
-  function updateTokenURI(string memory uri) external;
+  function setFactory(address factory) external;
 
-  function freezeTokenURI() external;
+  function safeMint(address to) external;
 
-  function contractURI() external view returns (string memory);
+  function mintFromTrustee(uint tokenId) external;
+
+  function ejectAccount(uint256 tokenId, uint256 timestamp, uint256 validFor, bytes calldata signature) external;
+
+  function reInjectEjectedAccount(uint256 tokenId) external;
+
+  function fixDirectlyInjectedAccount(uint256 tokenId) external;
+
+  function activateAccount(uint256 tokenId, bool useUpgradeableAccount) external;
+
+  // deposits
+
+  function depositAssets(
+    uint256 tokenId,
+    IFlexiVaultManager.TokenType[] memory tokenTypes,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts
+  ) external payable;
+
+  function withdrawAssets(
+    uint256 tokenId,
+    IFlexiVaultManager.TokenType[] memory tokenTypes,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory recipients,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external;
 }

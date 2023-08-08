@@ -97,8 +97,8 @@ describe("FlexiVaultManager", function () {
 
     actorsManager = await deployContract("ActorsManager");
 
-    const _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
-    flexiVault = await deployContract("FlexiVaultMock", _baseTokenURI, tokenUtils.address, actorsManager.address);
+    const _baseTokenURI = "https://meta.cruna.cc/flexy-vault/v1/";
+    flexiVault = await deployContract("FlexiVaultMock", tokenUtils.address, actorsManager.address);
     expect(await flexiVault.version()).to.equal("1.0.0");
 
     await actorsManager.init(flexiVault.address);
@@ -108,13 +108,13 @@ describe("FlexiVaultManager", function () {
     let implementation = await deployContract("ERC6551AccountUpgradeable");
     proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
-    flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address, tokenUtils.address, 100000);
+    flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address, tokenUtils.address);
     expect(await flexiVaultManager.version()).to.equal("1.0.0");
 
-    await flexiVault.initVault(flexiVaultManager.address);
     await flexiVaultManager.init(registry.address, wallet.address, proxyWallet.address);
+    await flexiVault.initVault(flexiVaultManager.address);
 
-    await expect(flexiVault.initVault(flexiVaultManager.address)).revertedWith("VaultAlreadySet()");
+    await expect(flexiVault.initVault(flexiVaultManager.address)).revertedWith("VaultManagerAlreadySet()");
 
     notAToken = await deployContract("NotAToken");
 
@@ -123,7 +123,7 @@ describe("FlexiVaultManager", function () {
       .withArgs(ethers.constants.AddressZero, bob.address, 1);
 
     const uri = await flexiVault.tokenURI(1);
-    expect(uri).to.equal("https://meta.cruna.cc/vault/v1/1");
+    expect(uri).to.equal("https://meta.cruna.cc/flexy-vault/v1/1");
 
     await flexiVault.safeMint0(bob.address);
     await flexiVault.safeMint0(bob.address);
@@ -171,7 +171,7 @@ describe("FlexiVaultManager", function () {
   // });
   //
   it("should create a vaults and add more assets to it", async function () {
-    await flexiVaultManager.connect(bob).activateAccount(1, false);
+    await flexiVault.connect(bob).activateAccount(1, false);
 
     // bob creates a vaults depositing a particle token
     // await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -200,14 +200,14 @@ describe("FlexiVaultManager", function () {
     expect(await stupidMonk.balanceOf(fred.address)).equal(0);
 
     await expect(
-      flexiVaultManager.connect(alice).withdrawAssets(1, [2], [stupidMonk.address], [1], [1], [fred.address], 0, 0, 0)
+      flexiVault.connect(alice).withdrawAssets(1, [2], [stupidMonk.address], [1], [1], [fred.address], 0, 0, 0)
     ).emit(stupidMonk, "Transfer");
 
     expect(await stupidMonk.balanceOf(fred.address)).equal(1);
   });
 
   it("should create a vaults and add generic assets in batch call", async function () {
-    await flexiVaultManager.connect(bob).activateAccount(1, false);
+    await flexiVault.connect(bob).activateAccount(1, false);
 
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
     await stupidMonk.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -228,7 +228,7 @@ describe("FlexiVaultManager", function () {
   });
 
   // it("should revert if wrong token types", async function () {
-  //   await flexiVaultManager.connect(bob).activateAccount(1, false);
+  //   await flexiVault.connect(bob).activateAccount(1, false);
   //
   //   await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
   //   await stupidMonk.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -250,7 +250,7 @@ describe("FlexiVaultManager", function () {
   // });
 
   it("should create a vaults and deposit Ether ", async function () {
-    await flexiVaultManager.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
     await depositAssets(bob, 1, [0], [bob], [0], [0], {value: amount("1000")});
     expect((await flexiVaultManager.amountOf(1, [ethers.constants.AddressZero], [0]))[0]).equal(amount("1000"));
@@ -261,7 +261,7 @@ describe("FlexiVaultManager", function () {
   });
 
   it("should create a vaults, add assets to it, then eject and reinject again", async function () {
-    await flexiVaultManager.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
     await uselessWeapons.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -278,19 +278,17 @@ describe("FlexiVaultManager", function () {
 
     expect(await trustee.ownerOf(1)).equal(flexiVaultManager.address);
 
-    await expect(flexiVaultManager.connect(bob).reInjectEjectedAccount(1)).revertedWith("NotAPreviouslyEjectedAccount()");
+    await expect(flexiVault.connect(bob).reInjectEjectedAccount(1)).revertedWith("NotAPreviouslyEjectedAccount()");
 
-    await expect(flexiVaultManager.connect(bob).ejectAccount(1, 0, 0, []))
-      .emit(flexiVaultManager, "BoundAccountEjected")
-      .withArgs(1);
+    await expect(flexiVault.connect(bob).ejectAccount(1, 0, 0, [])).emit(flexiVaultManager, "BoundAccountEjected").withArgs(1);
 
     expect(await trustee.ownerOf(1)).equal(bob.address);
 
-    await expect(flexiVaultManager.connect(bob).ejectAccount(1, 0, 0, [])).revertedWith("AccountAlreadyEjected()");
+    await expect(flexiVault.connect(bob).ejectAccount(1, 0, 0, [])).revertedWith("AccountAlreadyEjected()");
 
-    await trustee.connect(bob).approve(flexiVaultManager.address, 1);
+    await trustee.connect(bob).approve(flexiVault.address, 1);
 
-    await expect(flexiVaultManager.connect(bob).reInjectEjectedAccount(1))
+    await expect(flexiVault.connect(bob).reInjectEjectedAccount(1))
       .emit(flexiVaultManager, "EjectedBoundAccountReInjected")
       .withArgs(1);
 
@@ -305,7 +303,7 @@ describe("FlexiVaultManager", function () {
 
   it("should allow a transfer if a transfer initializer is pending", async function () {
     // expectCount = 1;
-    await flexiVaultManager.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -336,7 +334,7 @@ describe("FlexiVaultManager", function () {
 
   it("should dot allow a transfer if protectors resigns successfully", async function () {
     // expectCount = 1;
-    await flexiVaultManager.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -383,7 +381,7 @@ describe("FlexiVaultManager", function () {
   });
 
   it("should not allow a transfer if a protector is active", async function () {
-    await flexiVaultManager.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -402,7 +400,7 @@ describe("FlexiVaultManager", function () {
   });
 
   it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
-    await flexiVaultManager.connect(bob).activateAccount(1, false);
+    await flexiVault.connect(bob).activateAccount(1, false);
     // expectCount = 1;
 
     await expect(actorsManager.connect(bob).proposeProtector(john.address))
@@ -445,7 +443,7 @@ describe("FlexiVaultManager", function () {
   });
 
   it("should allow a transfer to a safe recipient level HIGH even if a protector is active", async function () {
-    await flexiVaultManager.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -474,7 +472,7 @@ describe("FlexiVaultManager", function () {
   });
 
   it("should not allow a transfer to a safe recipient level MEDIUM if a protector is active", async function () {
-    await flexiVaultManager.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -497,7 +495,7 @@ describe("FlexiVaultManager", function () {
   });
 
   it("should allow withdrawals when protectors are active if safe recipient", async function () {
-    await flexiVaultManager.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1, true);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -518,7 +516,7 @@ describe("FlexiVaultManager", function () {
 
     let account = await flexiVaultManager.accountAddress(1);
 
-    await expect(flexiVaultManager.connect(bob).withdrawAssets(1, [2], [particle.address], [2], [1], [alice.address], 0, 0, 0))
+    await expect(flexiVault.connect(bob).withdrawAssets(1, [2], [particle.address], [2], [1], [alice.address], 0, 0, 0))
       .emit(particle, "Transfer")
       .withArgs(account, alice.address, 2);
   });

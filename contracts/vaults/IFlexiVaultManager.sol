@@ -46,13 +46,15 @@ interface IFlexiVaultManager {
       If the asset is an ERC20, the id is 0
    * @param amounts The amounts of the assets tokens
       If the asset is an ERC721, the amount is 1
+   * @param sender The sender of the tx
    */
   function depositAssets(
     uint256 owningTokenId,
     TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
-    uint256[] memory amounts
+    uint256[] memory amounts,
+    address sender
   ) external payable;
 
   /**
@@ -68,6 +70,7 @@ interface IFlexiVaultManager {
    * @param timestamp The timestamp of the request
    * @param validFor The time the request is valid for
    * @param signature The signature of the request
+   * @param sender The sender of the request received by the vault
    */
   function withdrawAssets(
     uint256 owningTokenId,
@@ -78,8 +81,9 @@ interface IFlexiVaultManager {
     address[] memory recipients,
     uint256 timestamp,
     uint256 validFor,
-    bytes calldata signature
-  ) external;
+    bytes calldata signature,
+    address sender
+  ) external; // onlyVault
 
   /**
    * @dev It returns the amount of a set of assets in the bound account
@@ -98,22 +102,19 @@ interface IFlexiVaultManager {
   ) external view returns (uint256[] memory);
 
   /**
-   * @dev Ejects a bound account
+   * @dev Ejects a bound account (called by the vault)
    * @param owningTokenId The id of the owning token
-   * @param timestamp The timestamp of the request
-   * @param validFor The time the request is valid for
-   * @param signature The signature of the request
    */
-  function ejectAccount(uint256 owningTokenId, uint256 timestamp, uint256 validFor, bytes calldata signature) external;
+  function ejectAccount(uint256 owningTokenId) external;
 
   /**
-   * @dev Reinjects an ejected account
+   * @dev Reinjects an ejected account (called by the vault)
    * @param owningTokenId The id of the owning token
    */
   function reInjectEjectedAccount(uint256 owningTokenId) external;
 
   /**
-   * @dev It fixes an account directly injected
+   * @dev It fixes an account directly injected (called by the vault)
       Some user may transfer the ownership of a Trustee.sol to the FlexiVaultManager.sol without calling the reInjectEjectedAccount function.
       If that happens, the FlexiVaultManager.sol is unable to manage the Trustee.sol, and the bound account would be lost.
    * @param owningTokenId The id of the owning token
@@ -153,4 +154,6 @@ interface IFlexiVaultManager {
    * @param tokenId The token id
    */
   function removeOperatorsFor(uint256 tokenId) external;
+
+  function setPreviousTrustees(address[] calldata previous_) external;
 }
