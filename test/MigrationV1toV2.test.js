@@ -202,7 +202,7 @@ describe("Migration V1 to V2", function () {
     await flexiVault2.safeMint0(alice.address);
   });
 
-  it.only("should create a vaults, add assets to it, then eject and inject in V2", async function () {
+  it("should create a vaults, add assets to it, then eject and inject in V2", async function () {
     await flexiVault.connect(bob).activateAccount(1, true);
 
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
