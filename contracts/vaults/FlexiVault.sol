@@ -1,259 +1,177 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.19;
 
-// Author: Francesco Sullo <francesco@sullo.co>
-
-import {ERC721, IERC721, IERC165} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
-
+import "@openzeppelin/contracts/access/Ownable.sol" as Ownable;
+import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import {Address} from "@openzeppelin/contracts/utils/Address.sol";
+import {IERC4906} from "../utils/IERC4906.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ProtectedERC721, Strings} from "../protected/ProtectedERC721.sol";
+import {FlexiVaultManager} from "../vaults/FlexiVaultManager.sol";
+import {IFlexiVault} from "./IFlexiVault.sol";
+import {Trustee} from "../ERC6551/Trustee.sol";
 
-import {NFTOwned} from "../nft-owned/NFTOwned.sol";
-import {IProtectedERC721} from "../protected-nft/IProtectedERC721.sol";
-import {ITokenUtils} from "../utils/ITokenUtils.sol";
-import {IERC6551Account} from "../ERC6551/IERC6551Account.sol";
-import {IERC6551Registry} from "../ERC6551/IERC6551Registry.sol";
-import {IERC6551Account} from "../ERC6551/IERC6551Account.sol";
-import {TrusteeNFT} from "../ERC6551/TrusteeNFT.sol";
-import {IVersioned} from "../utils/IVersioned.sol";
-import {IFlexiVaultExtended} from "./IFlexiVaultExtended.sol";
-import {IActors} from "../protected-nft/IActors.sol";
+//import "hardhat/console.sol";
 
-//import {console} from "hardhat/console.sol";
+// reference implementation of a Cruna Vault
+contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
+  using Strings for uint256;
 
-contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable, NFTOwned, ReentrancyGuard {
-  mapping(bytes32 => uint256) private _unconfirmedDeposits;
+  event TokenURIFrozen();
+  event TokenURIUpdated(string uri);
+  error FrozenTokenURI();
+  error NotAMinter();
+  error ZeroAddress();
+  error CapReached();
+  error VaultManagerAlreadySet();
+  error VaultManagerNotInitiated();
+  error NotImplemented();
+  error ForbiddenWhenTokenApprovedForSale();
+  error TheAccountIsNotOwnedByTheFlexiVault();
+  error AccountAlreadyEjected();
+  error NotAllowedWhenProtector();
+  error NotAPreviouslyEjectedAccount();
+  error NotActivated();
+  error TrusteeNotFound();
+  error TokenIdDoesNotExist();
 
-  // modifiers
+  FlexiVaultManager public vaultManager;
+  address public factoryAddress;
 
-  mapping(uint256 => bool) private _ejects;
+  uint public nextTokenId;
+  uint public lastTokenId;
+  Trustee public trustee;
 
-  IERC6551Registry internal _registry;
-  IERC6551Account public boundAccount;
-  IERC6551Account public boundAccountUpgradeable;
-  ITokenUtils internal _tokenUtils;
-  TrusteeNFT public trustee;
-  uint256 internal _salt;
-  mapping(uint256 => address) internal _accountAddresses;
-  bool private _initiated;
-  IProtectedERC721 internal _protectedOwningToken;
-
-  // The operators that can manage a specific tokenId.
-  // Operators are not restricted to follow an owner, as protectors do.
-  // The idea is that for any tokenId there can be just a few operators
-  // so we do not risk to go out of gas when checking them.
-  mapping(uint256 => address[]) private _operators;
-
-  modifier onlyOwningTokenOwner(uint256 owningTokenId) {
-    if (ownerOf(owningTokenId) != msg.sender) {
-      revert NotTheOwningTokenOwner();
-    }
-    _;
-  }
-
-  modifier onlyOwningTokenOwnerOrOperator(uint256 owningTokenId) {
-    if (ownerOf(owningTokenId) != msg.sender && !isOperatorFor(owningTokenId, msg.sender)) {
-      revert NotTheOwningTokenOwnerOrOperatorFor();
-    }
-    _;
-  }
-
-  modifier onlyProtected() {
-    if (_msgSender() != address(_protectedOwningToken)) revert OnlyProtectedOwningToken();
-    _;
-  }
-
-  modifier onlyProtector(uint256 owningTokenId) {
-    if (!_protectedOwningToken.isProtectorFor(ownerOf(owningTokenId), _msgSender())) revert NotTheProtector();
-    _;
-  }
-
-  modifier onlyIfActiveAndOwningTokenNotApproved(uint256 owningTokenId) {
-    if (_accountAddresses[owningTokenId] == address(0)) revert NotActivated();
-    if (_ejects[owningTokenId]) revert AccountHasBeenEjected();
+  modifier onlyIfActiveAndTokenNotApproved(uint256 tokenId) {
+    if (vaultManager.accountAddress(tokenId) == address(0)) revert NotActivated();
+    if (trustee.ownerOf(tokenId) != address(vaultManager)) revert TrusteeNotFound();
     // if the owningToken is approved for sale, the vaults cannot be modified to avoid scams
-    if (_owningToken.getApproved(owningTokenId) != address(0)) revert ForbiddenWhenOwningTokenApprovedForSale();
+    if (getApproved(tokenId) != address(0)) revert ForbiddenWhenTokenApprovedForSale();
     _;
   }
 
-  // solhint-disable-next-line
-  constructor(address owningToken, address tokenUtils) NFTOwned(owningToken) {
-    _protectedOwningToken = IProtectedERC721(owningToken);
-    if (!IERC165(_owningToken).supportsInterface(type(IProtectedERC721).interfaceId)) revert OwningTokenNotProtected();
-    _salt = uint256(keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken))));
-    _tokenUtils = ITokenUtils(tokenUtils);
-    if (_tokenUtils.isTokenUtils() != ITokenUtils.isTokenUtils.selector) revert InvalidTokenUtils();
+  constructor(
+    address tokenUtils,
+    address actorsManager
+  ) ProtectedERC721("Cruna Flexi Vault V1", "CRUNA_FV1", tokenUtils, actorsManager) {}
+
+  function supportsInterface(bytes4 interfaceId) public view virtual override(ProtectedERC721) returns (bool) {
+    return interfaceId == type(IERC4906).interfaceId || super.supportsInterface(interfaceId);
   }
 
-  /**
-   * @dev {See IVersioned-version}
-   */
-  function version() external pure override returns (string memory) {
+  function initVault(address flexiVaultManager) public virtual override onlyOwner {
+    // must be called after than the vaultManager has been initiated
+    if (address(vaultManager) != address(0)) revert VaultManagerAlreadySet();
+    if (FlexiVaultManager(flexiVaultManager).isFlexiVaultManager() != FlexiVaultManager.isFlexiVaultManager.selector)
+      revert NotTheVaultManager();
+    vaultManager = FlexiVaultManager(flexiVaultManager);
+    trustee = Trustee(vaultManager.trustee());
+    if (address(trustee) == address(0)) revert VaultManagerNotInitiated();
+    nextTokenId = trustee.firstTokenId();
+    lastTokenId = trustee.lastTokenId();
+  }
+
+  // set factory to 0x0 to disable a factory
+  function setFactory(address factory) external virtual override onlyOwner {
+    if (factory == address(0)) revert ZeroAddress();
+    factoryAddress = factory;
+  }
+
+  function version() external pure virtual returns (string memory) {
     return "1.0.0";
   }
 
-  function onERC721Received(address, address, uint256, bytes memory) external pure returns (bytes4) {
-    return this.onERC721Received.selector;
+  function setSignatureAsUsed(bytes calldata signature) public virtual override {
+    if (_msgSender() != address(vaultManager)) revert NotTheVaultManager();
+    actorsManager.setSignatureAsUsed(signature);
+  }
+
+  function _cleanOperators(uint256 tokenId) internal override {
+    vaultManager.removeOperatorsFor(tokenId);
+  }
+
+  function _baseURI() internal view virtual override returns (string memory) {
+    return "https://meta.cruna.cc/flexy-vault/v1/";
+  }
+
+  function contractURI() public view virtual returns (string memory) {
+    return "https://meta.cruna.cc/flexy-vault/v1/info";
+  }
+
+  function safeMint(address to) public virtual override {
+    if (_msgSender() != factoryAddress) revert NotAMinter();
+    _mintNow(to);
+  }
+
+  function mintFromTrustee(uint) external virtual override {
+    revert NotImplemented(); // not enabled in version 1
+  }
+
+  function _mintNow(address to) internal {
+    if (nextTokenId > lastTokenId) revert CapReached();
+    _safeMint(to, nextTokenId++);
   }
 
   /**
-   * @dev {See IFlexiVault-init}
+   * @dev {See FlexiVaultManager.sol-ejectAccount}
    */
-  function init(
-    address registry,
-    address payable boundAccount_,
-    address payable boundAccountUpgradeable_
-  ) external override onlyOwner {
-    if (_initiated) revert AlreadyInitiated();
-    if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
-    if (!IERC165(boundAccount_).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
-    if (!IERC165(boundAccountUpgradeable_).supportsInterface(type(IERC6551Account).interfaceId)) revert InvalidAccount();
-    _registry = IERC6551Registry(registry);
-    boundAccount = IERC6551Account(boundAccount_);
-    boundAccountUpgradeable = IERC6551Account(boundAccountUpgradeable_);
-    trustee = new TrusteeNFT();
-    trustee.setMinter(address(this), true);
-    trustee.transferOwnership(_msgSender());
-    _initiated = true;
+  function ejectAccount(
+    uint256 tokenId,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external virtual override onlyTokenOwner(tokenId) {
+    // it reverts if called before initiating the vault
+    if (trustee.ownerOf(tokenId) != address(vaultManager)) revert AccountAlreadyEjected();
+    if (getApproved(tokenId) != address(0)) revert ForbiddenWhenTokenApprovedForSale();
+    if (timestamp != 0) {
+      bytes32 hash = tokenUtils.hashEjectRequest(tokenId, timestamp, validFor);
+      actorsManager.validateTimestampAndSignature(ownerOf(tokenId), timestamp, validFor, hash, signature);
+      setSignatureAsUsed(signature);
+    } else if (actorsManager.hasProtectors(ownerOf(tokenId)).length > 0) revert NotAllowedWhenProtector();
+    vaultManager.ejectAccount(tokenId);
   }
 
   /**
-   * @dev {See IFlexiVault-isFlexiVault}
+   * @dev {See FlexiVaultManager.sol-reInjectEjectedAccount}
    */
-  function isFlexiVault() external pure override returns (bytes4) {
-    return this.isFlexiVault.selector;
+  function reInjectEjectedAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) {
+    // it reverts if called before initiating the vault, or with non-existing token
+    if (trustee.ownerOf(tokenId) == address(vaultManager)) revert NotAPreviouslyEjectedAccount();
+    // the contract must be approved
+    trustee.transferFrom(_msgSender(), address(vaultManager), tokenId);
+    vaultManager.reInjectEjectedAccount(tokenId);
   }
 
   /**
-   * @dev {See IFlexiVault-accountAddress}
+   * @dev {See FlexiVaultManager.sol-fixDirectlyInjectedAccount}
    */
-  function accountAddress(uint256 owningTokenId) external view override returns (address) {
-    return _accountAddresses[owningTokenId];
+  function fixDirectlyInjectedAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) {
+    if (!_exists(tokenId)) revert TokenIdDoesNotExist();
+    vaultManager.fixDirectlyInjectedAccount(tokenId);
   }
 
-  /**
-   * @dev {See IFlexiVault-activateAccount}
-   */
-  function activateAccount(uint256 owningTokenId, bool useUpgradeableAccount) external onlyOwningTokenOwner(owningTokenId) {
-    if (!trustee.isMinter(address(this))) {
-      // If the contract is no more the minter, there is a new version of the
-      // vault and new users must use the new version.
-      revert VaultHasBeenUpgraded();
-    }
-    if (_accountAddresses[owningTokenId] != address(0)) revert AccountAlreadyActive();
-    address account = address(useUpgradeableAccount ? boundAccountUpgradeable : boundAccount);
-    address walletAddress = _registry.account(account, block.chainid, address(trustee), owningTokenId, _salt);
-    trustee.mint(address(this), owningTokenId);
-    _accountAddresses[owningTokenId] = walletAddress;
-    _registry.createAccount(account, block.chainid, address(trustee), owningTokenId, _salt, "");
+  // Activation
+
+  function activateAccount(uint256 tokenId, bool useUpgradeableAccount) external virtual override onlyTokenOwner(tokenId) {
+    vaultManager.activateAccount(tokenId, useUpgradeableAccount);
   }
 
-  /**
-   * @dev {See IFlexiVault-depositAssets}
-   */
+  // deposits
+
   function depositAssets(
-    uint256 owningTokenId,
-    TokenType[] memory tokenTypes,
+    uint256 tokenId,
+    FlexiVaultManager.TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts
-  ) external payable override nonReentrant onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    if (assets.length != ids.length || assets.length != amounts.length || assets.length != tokenTypes.length)
-      revert InconsistentLengths();
-    for (uint256 i = 0; i < assets.length; i++) {
-      if (tokenTypes[i] == TokenType.ETH) {
-        if (msg.value == 0) revert NoETH();
-        (bool success, ) = payable(_accountAddresses[owningTokenId]).call{value: msg.value}("");
-        if (!success) revert ETHDepositFailed();
-      } else if (tokenTypes[i] == TokenType.ERC20) {
-        bool transferred = IERC20(assets[i]).transferFrom(_msgSender(), _accountAddresses[owningTokenId], amounts[i]);
-        if (!transferred) revert TransferFailed();
-      } else if (tokenTypes[i] == TokenType.ERC721) {
-        IERC721(assets[i]).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], ids[i]);
-      } else if (tokenTypes[i] == TokenType.ERC1155) {
-        IERC1155(assets[i]).safeTransferFrom(_msgSender(), _accountAddresses[owningTokenId], ids[i], amounts[i], "");
-      } else revert InvalidAsset();
-    }
+  ) external payable override nonReentrant onlyIfActiveAndTokenNotApproved(tokenId) {
+    vaultManager.depositAssets{value: msg.value}(tokenId, tokenTypes, assets, ids, amounts, _msgSender());
   }
 
-  function _getAccountBalance(uint256 owningTokenId, address asset, uint256 id) internal view returns (uint256) {
-    address walletAddress = _accountAddresses[owningTokenId];
-    if (asset == address(0)) {
-      return walletAddress.balance;
-    } else if (_tokenUtils.isERC20(asset)) {
-      return IERC20(asset).balanceOf(walletAddress);
-    } else if (_tokenUtils.isERC721(asset)) {
-      return IERC721(asset).ownerOf(id) == walletAddress ? 1 : 0;
-    } else if (_tokenUtils.isERC1155(asset)) {
-      return IERC1155(asset).balanceOf(walletAddress, id);
-    } else revert InvalidAsset();
-  }
-
-  function _isChangeAllowed(uint256 owningTokenId) internal view {
-    if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
-  }
-
-  function _transferToken(
-    uint256 owningTokenId,
-    TokenType tokenType,
-    address to,
-    address asset,
-    uint256 id,
-    uint256 amount
-  ) internal {
-    address walletAddress = _accountAddresses[owningTokenId];
-    IERC6551Account accountInstance = IERC6551Account(payable(walletAddress));
-    if (tokenType == TokenType.ETH) {
-      accountInstance.executeCall(walletAddress, amount, "");
-    } else if (tokenType == TokenType.ERC721) {
-      accountInstance.executeCall(
-        asset,
-        0,
-        abi.encodeWithSignature("safeTransferFrom(address,address,uint256)", walletAddress, to, id)
-      );
-    } else if (tokenType == TokenType.ERC1155) {
-      accountInstance.executeCall(
-        asset,
-        0,
-        abi.encodeWithSignature("safeTransferFrom(address,address,uint256,uint256,bytes)", walletAddress, to, id, amount, "")
-      );
-    } else if (tokenType == TokenType.ERC20) {
-      accountInstance.executeCall(asset, 0, abi.encodeWithSignature("transfer(address,uint256)", to, amount));
-    } else {
-      revert InvalidAsset();
-    }
-  }
-
-  function _withdrawAsset(
-    uint256 owningTokenId,
-    TokenType tokenType,
-    address asset,
-    uint256 id,
-    uint256 amount,
-    address beneficiary
-  ) internal virtual {
-    if (_owningToken.getApproved(owningTokenId) != address(0)) revert ForbiddenWhenOwningTokenApprovedForSale();
-    if (amount == 0) revert InvalidAmount();
-    uint256 balance = _getAccountBalance(owningTokenId, asset, id);
-    if (balance < amount) revert InsufficientBalance();
-    _transferToken(owningTokenId, tokenType, beneficiary != address(0) ? beneficiary : _msgSender(), asset, id, amount);
-  }
-
-  function _hasProtectorButNotSafeRecipient(uint256 owningTokenId, address recipient) internal view returns (bool) {
-    return
-      _protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0 &&
-      _protectedOwningToken.safeRecipientLevel(ownerOf(owningTokenId), recipient) == IActors.Level.NONE;
-  }
-
-  /**
-   * @dev {See IFlexiVault-withdrawAssets}
-   */
   function withdrawAssets(
-    uint256 owningTokenId,
-    TokenType[] memory tokenTypes,
+    uint256 tokenId,
+    FlexiVaultManager.TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts,
@@ -261,138 +179,18 @@ contract FlexiVault is IFlexiVaultExtended, IERC721Receiver, IVersioned, Ownable
     uint256 timestamp,
     uint256 validFor,
     bytes calldata signature
-  )
-    external
-    override
-    onlyOwningTokenOwnerOrOperator(owningTokenId)
-    onlyIfActiveAndOwningTokenNotApproved(owningTokenId)
-    nonReentrant
-  {
-    if (assets.length != ids.length || assets.length != amounts.length || assets.length != recipients.length)
-      revert InconsistentLengths();
-    // timestamp != 0 means calling it with a signature
-    if (timestamp != 0) {
-      bytes32 hash = _tokenUtils.hashWithdrawsRequest(
-        owningTokenId,
-        tokenTypes,
-        assets,
-        ids,
-        amounts,
-        recipients,
-        timestamp,
-        validFor
-      );
-      _protectedOwningToken.validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
-    }
-    for (uint256 i = 0; i < assets.length; i++) {
-      // calling without a signature, then checking protectors and safe recipient level
-      if (timestamp == 0 && _hasProtectorButNotSafeRecipient(owningTokenId, recipients[i])) {
-        revert NotAllowedWhenProtector();
-      }
-      _withdrawAsset(owningTokenId, tokenTypes[i], assets[i], ids[i], amounts[i], recipients[i]);
-    }
-  }
-
-  /**
-   * @dev {See IFlexiVault-amountOf}
-   */
-  function amountOf(
-    uint256 owningTokenId,
-    address[] memory assets,
-    uint256[] memory ids
-  ) external view virtual override returns (uint256[] memory) {
-    uint256[] memory amounts = new uint256[](assets.length);
-    for (uint256 i = 0; i < assets.length; i++) {
-      amounts[i] = _getAccountBalance(owningTokenId, assets[i], ids[i]);
-    }
-    return amounts;
-  }
-
-  function _ejectAccount(
-    uint256 owningTokenId
-  ) internal onlyOwningTokenOwner(owningTokenId) onlyIfActiveAndOwningTokenNotApproved(owningTokenId) {
-    if (_ejects[owningTokenId]) revert AccountAlreadyEjected();
-    trustee.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
-    _ejects[owningTokenId] = true;
-    emit BoundAccountEjected(owningTokenId);
-  }
-
-  /**
-   * @dev {See IFlexiVault-ejectAccount}
-   */
-  function ejectAccount(uint256 owningTokenId) external override {
-    if (_protectedOwningToken.protectorsFor(ownerOf(owningTokenId)).length > 0) revert NotAllowedWhenProtector();
-    _ejectAccount(owningTokenId);
-  }
-
-  /**
-   * @dev {See IFlexiVault-protectedEjectAccount}
-   */
-  function protectedEjectAccount(
-    uint256 owningTokenId,
-    uint256 timestamp,
-    uint256 validFor,
-    bytes calldata signature
-  ) external override {
-    bytes32 hash = _tokenUtils.hashEjectRequest(owningTokenId, timestamp, validFor);
-    _protectedOwningToken.validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
-    _ejectAccount(owningTokenId);
-  }
-
-  /**
-   * @dev {See IFlexiVault-reInjectEjectedAccount}
-   */
-  function reInjectEjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
-    if (!_ejects[owningTokenId]) revert NotAPreviouslyEjectedAccount();
-    // the contract must be approved
-    trustee.transferFrom(ownerOf(owningTokenId), address(this), owningTokenId);
-    delete _ejects[owningTokenId];
-    emit EjectedBoundAccountReInjected(owningTokenId);
-  }
-
-  /**
-   * @dev {See IFlexiVault-fixDirectlyInjectedAccount}
-   */
-  function fixDirectlyInjectedAccount(uint256 owningTokenId) external override onlyOwningTokenOwner(owningTokenId) {
-    if (!_ejects[owningTokenId]) revert TheAccountHasNeverBeenEjected();
-    if (trustee.ownerOf(owningTokenId) != address(this)) revert TheAccountIsNotOwnedByTheFlexiVault();
-    delete _ejects[owningTokenId];
-    emit EjectedBoundAccountReInjected(owningTokenId);
-  }
-
-  // operators
-
-  function getOperatorForIndexIfExists(uint256 owningTokenId, address operator) public view override returns (bool, uint256) {
-    for (uint256 i = 0; i < _operators[owningTokenId].length; i++) {
-      if (_operators[owningTokenId][i] == operator) return (true, i);
-    }
-    return (false, 0);
-  }
-
-  function isOperatorFor(uint256 owningTokenId, address operator) public view override returns (bool) {
-    for (uint256 i = 0; i < _operators[owningTokenId].length; i++) {
-      if (_operators[owningTokenId][i] == operator) return true;
-    }
-    return false;
-  }
-
-  function setOperatorFor(uint256 owningTokenId, address operator, bool active) external onlyOwningTokenOwner(owningTokenId) {
-    if (operator == address(0)) revert NoZeroAddress();
-    (bool exists, uint256 i) = getOperatorForIndexIfExists(owningTokenId, operator);
-    if (active) {
-      if (exists) revert OperatorAlreadyActive();
-      else _operators[owningTokenId].push(operator);
-    } else {
-      if (!exists) revert OperatorNotActive();
-      else if (i != _operators[owningTokenId].length - 1) {
-        _operators[owningTokenId][i] = _operators[owningTokenId][_operators[owningTokenId].length - 1];
-      }
-      _operators[owningTokenId].pop();
-    }
-    emit OperatorUpdated(owningTokenId, operator, active);
-  }
-
-  function removeOperatorsFor(uint256 owningTokenId) external onlyProtected {
-    delete _operators[owningTokenId];
+  ) external override onlyIfActiveAndTokenNotApproved(tokenId) nonReentrant {
+    vaultManager.withdrawAssets(
+      tokenId,
+      tokenTypes,
+      assets,
+      ids,
+      amounts,
+      recipients,
+      timestamp,
+      validFor,
+      signature,
+      _msgSender()
+    );
   }
 }

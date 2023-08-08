@@ -50,7 +50,7 @@ describe("Bound-account Integration", function () {
 
     expect(await particle.balanceOf(wallet.address)).to.equal(1);
 
-    expect(await wallet.owner()).to.equal(bob.address);
+    expect(await wallet.accountOwner()).to.equal(bob.address);
     expect(await particle.ownerOf(tokenId3)).to.equal(wallet.address);
 
     const safeTransferFromABI = [
@@ -71,7 +71,7 @@ describe("Bound-account Integration", function () {
 
     const data = nftInterface.encodeFunctionData("safeTransferFrom", [wallet.address, alice.address, tokenId3]);
 
-    await expect(wallet.connect(bob).executeCall(particle.address, 0, data))
+    await expect(wallet.connect(bob).execute(particle.address, 0, data, 0))
       .to.emit(particle, "Transfer")
       .withArgs(wallet.address, alice.address, tokenId3);
   });
@@ -96,7 +96,7 @@ describe("Bound-account Integration", function () {
 
     expect(await particle.balanceOf(wallet.address)).to.equal(1);
 
-    expect(await wallet.owner()).to.equal(bob.address);
+    expect(await wallet.accountOwner()).to.equal(bob.address);
     expect(await particle.ownerOf(tokenId3)).to.equal(wallet.address);
 
     const safeTransferFromABI = [
@@ -117,7 +117,7 @@ describe("Bound-account Integration", function () {
 
     const data = nftInterface.encodeFunctionData("safeTransferFrom", [wallet.address, alice.address, tokenId3]);
 
-    await expect(wallet.connect(bob).executeCall(particle.address, 0, data))
+    await expect(wallet.connect(bob).execute(particle.address, 0, data, 0))
       .to.emit(particle, "Transfer")
       .withArgs(wallet.address, alice.address, tokenId3);
   });

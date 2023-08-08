@@ -4,8 +4,8 @@ pragma solidity ^0.8.19;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 //import {console} from "hardhat/console.sol";
-import {IFlexiVault} from "../vaults/IFlexiVault.sol";
-import {IActors} from "../protected-nft/IActors.sol";
+import {IFlexiVaultManager} from "../vaults/IFlexiVaultManager.sol";
+import {IActors} from "../protected/IActors.sol";
 
 interface ITokenUtils {
   function isTokenUtils() external pure returns (bytes4);
@@ -28,7 +28,7 @@ interface ITokenUtils {
 
   function hashWithdrawsRequest(
     uint256 owningTokenId,
-    IFlexiVault.TokenType[] memory tokenTypes,
+    IFlexiVaultManager.TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts,

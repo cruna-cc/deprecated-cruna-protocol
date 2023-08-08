@@ -21,20 +21,20 @@ async function main() {
 
   const [owner] = await ethers.getSigners();
 
-  let crunaVault, flexiVault;
+  let flexiVault, flexiVaultManager;
   let registry, wallet, proxyWallet, tokenUtils, factory;
   let usdc, usdt;
 
   tokenUtils = await deployUtils.attach("TokenUtils");
   usdc = await deployUtils.attach("USDCoin");
   usdt = await deployUtils.attach("TetherUSD");
-  crunaVault = await deployUtils.attach("CrunaVault");
+  flexiVault = await deployUtils.attach("FlexiVault");
   factory = await deployUtils.attach("CrunaClusterFactory");
   registry = await deployUtils.attach("ERC6551Registry");
   wallet = await deployUtils.attach("ERC6551Account");
   let implementation = await deployUtils.attach("ERC6551AccountUpgradeable");
   proxyWallet = await deployUtils.attach("ERC6551AccountProxy");
-  flexiVault = await deployUtils.attach("FlexiVault");
+  flexiVaultManager = await deployUtils.attach("FlexiVaultManager");
 
   const [h1, h2, h3] = [
     "0x888De0501cDBd7f88654Eb22f9517a6c93bf014B",
@@ -42,21 +42,15 @@ async function main() {
     "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743",
   ];
 
-  // await deployUtils.Tx(crunaVault.safeMint(0, "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743"), "minting for " + "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743");
-  // await deployUtils.Tx(crunaVault.safeMint(0, "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743"), "minting for " + "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743");
-  // await deployUtils.Tx(crunaVault.safeMint(0, "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743"), "minting for " + "0x34923658675B99B2DB634cB2BC0cA8d25EdEC743");
-  //
-
-  // await deployUtils.Tx(usdc.mint("0x34923658675B99B2DB634cB2BC0cA8d25EdEC743", normalize("5000")));
-  // await deployUtils.Tx(usdt.mint("0x34923658675B99B2DB634cB2BC0cA8d25EdEC743", normalize("10000", 6)));
-
-  // return;
-
   for (let i = 0; i < 3; i++) {
     let address = i === 0 ? h1 : i === 1 ? h2 : h3;
+    for (let k = 0; k < 3; k++) {
+      await deployUtils.Tx(flexiVault.safeMint(0, address), "minting for " + address);
+    }
+
     // await deployUtils.Tx(usdc.mint(address, normalize("1000")));
     // await deployUtils.Tx(usdt.mint(address, normalize("1000", 6)));
-    await deployUtils.Tx(crunaVault.safeMint(0, address), "minting for " + address);
+    await deployUtils.Tx(flexiVault.safeMint(0, address), "minting for " + address);
   }
 
   console.log(`  

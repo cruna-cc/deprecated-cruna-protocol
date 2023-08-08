@@ -6,7 +6,7 @@ pragma solidity ^0.8.19;
 import {Create2} from "@openzeppelin/contracts/utils/Create2.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-import {IERC6551Registry} from "./IERC6551Registry.sol";
+import {IERC6551Registry} from "./interfaces/IERC6551Registry.sol";
 import {ERC6551BytecodeLib} from "./lib/ERC6551BytecodeLib.sol";
 
 //import {console} from "hardhat/console.sol";

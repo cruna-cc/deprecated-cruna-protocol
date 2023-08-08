@@ -10,12 +10,11 @@ async function main() {
   const chainId = await deployUtils.currentChainId();
   const [owner] = await ethers.getSigners();
 
-  let crunaVault, flexiVault;
+  let flexiVault, flexiVaultManager;
   let registry, wallet, proxyWallet, tokenUtils;
 
-  const _baseTokenURI = "https://meta.cruna.cc/vault/v1/";
-  crunaVault = await deployUtils.deploy("CrunaVault", _baseTokenURI);
-  await crunaVault.addCluster("Cruna Vault V1", "CRUNA", _baseTokenURI, 100000, owner.address);
+  const _baseTokenURI = "https://meta.cruna.cc/flexy-vault/v1/";
+  flexiVault = await deployUtils.deploy("FlexiVault", _baseTokenURI);
 
   registry = await deployUtils.deploy("ERC6551Registry");
   wallet = await deployUtils.deploy("ERC6551Account");
@@ -23,10 +22,10 @@ async function main() {
   let implementation = await deployUtils.deploy("ERC6551AccountUpgradeable");
   proxyWallet = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
 
-  flexiVault = await deployContract("FlexiVault", crunaVault.address, tokenUtils.address);
+  flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address, tokenUtils.address);
 
-  await crunaVault.addVault(flexiVault.address);
-  await flexiVault.init(registry.address, wallet.address, proxyWallet.address);
+  await flexiVault.initVault(flexiVaultManager.address);
+  await flexiVaultManager.init(registry.address, wallet.address, proxyWallet.address);
 
   console.log(`
   

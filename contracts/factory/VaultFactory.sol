@@ -7,16 +7,16 @@ pragma solidity ^0.8.19;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 
-import {CrunaVault} from "../implementation/CrunaVault.sol";
+import {FlexiVault} from "../vaults/FlexiVault.sol";
 import {UUPSUpgradableTemplate} from "../utils/UUPSUpgradableTemplate.sol";
-import {IProtectedERC721} from "../protected-nft/IProtectedERC721.sol";
+import {IProtectedERC721} from "../protected/IProtectedERC721.sol";
 
-import {ICrunaClusterFactory} from "./ICrunaClusterFactory.sol";
+import {IVaultFactory} from "./IVaultFactory.sol";
 
 //import {console} from "hardhat/console.sol";
 
-contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
-  CrunaVault public vault;
+contract VaultFactory is IVaultFactory, UUPSUpgradableTemplate {
+  FlexiVault public vault;
   uint256 public price;
 
   mapping(address => bool) public stableCoins;
@@ -30,7 +30,7 @@ contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
   function initialize(address vault_) public initializer {
     __UUPSUpgradableTemplate_init();
     if (!IERC165Upgradeable(vault_).supportsInterface(type(IProtectedERC721).interfaceId)) revert NotAVault();
-    vault = CrunaVault(vault_);
+    vault = FlexiVault(vault_);
   }
 
   // @notice The price is in points, so that 1 point = 0.01 USD
@@ -91,7 +91,7 @@ contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
     if (payment > ERC20(stableCoin).balanceOf(_msgSender())) revert InsufficientFunds();
     proceedsBalances[stableCoin] += payment;
     for (uint256 i = 0; i < amount; i++) {
-      vault.safeMint(0, _msgSender());
+      vault.safeMint(_msgSender());
     }
     if (!ERC20(stableCoin).transferFrom(_msgSender(), address(this), payment)) revert TransferFailed();
   }
@@ -116,7 +116,7 @@ contract CrunaClusterFactory is ICrunaClusterFactory, UUPSUpgradableTemplate {
     for (uint256 i = 0; i < tos.length; i++) {
       if (amounts[i] != 0) {
         for (uint256 j = 0; j < amounts[i]; j++) {
-          vault.safeMint(0, tos[i]);
+          vault.safeMint(tos[i]);
         }
       }
     }

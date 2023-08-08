@@ -39,8 +39,7 @@ interface ProtectedERC721Errors {
   error SignatureAlreadyUsed();
   error OperatorAlreadyActive();
   error OperatorNotActive();
-  error NotAFlexiVault();
-  error VaultAlreadyAdded();
+  error NotTheVaultManager();
   error InvalidTokenUtils();
   error QuorumCannotBeZero();
   error QuorumCannotBeGreaterThanBeneficiaries();
@@ -53,4 +52,6 @@ interface ProtectedERC721Errors {
   error NotTheRecipient();
   error Unauthorized();
   error NotTransferable();
+  error NotTheActorManager();
+  error InvalidActorsManager();
 }
