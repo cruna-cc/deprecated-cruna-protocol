@@ -154,7 +154,7 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
     address account = address(useUpgradeableAccount ? boundAccountUpgradeable : boundAccount);
     address walletAddress = _registry.account(account, block.chainid, address(trustee), owningTokenId, _salt);
     // revert if already activated
-    trustee.mint(address(this), owningTokenId, walletAddress);
+    trustee.mint(address(this), owningTokenId);
     _accountAddresses[owningTokenId] = walletAddress;
     _registry.createAccount(account, block.chainid, address(trustee), owningTokenId, _salt, "");
     _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;

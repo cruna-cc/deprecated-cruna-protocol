@@ -80,6 +80,15 @@ These future developments further enhance the flexibility, security, and utility
 
 ## History
 
+**1.4.1**
+
+- Add support for receiving ERC777 in ERC6551Account
+
+**1.4.0**
+
+- Full refactor to manage the upgradeability of the vaults, despite being immutable
+- Remove ERC7108, not really needed in this stage
+
 **1.2.6**
 
 - Integrate ClusteredERC721 to manage clusters inside the Cruna Vault
@@ -100,7 +109,7 @@ These future developments further enhance the flexibility, security, and utility
 **1.2.4**
 
 - Add `validFor` field in signature
-- Allow the protector to invalidate signatures~~~~
+- Allow the protector to invalidate signatures
 
 **1.2.3**
 

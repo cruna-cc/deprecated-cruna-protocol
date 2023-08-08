@@ -12,6 +12,7 @@ import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165C
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
+import {IERC777Recipient} from "@openzeppelin/contracts/token/ERC777/IERC777Recipient.sol";
 
 import {IERC6551Account} from "../interfaces/IERC6551Account.sol";
 import {IERC6551Executable} from "../interfaces/IERC6551Executable.sol";
@@ -19,7 +20,15 @@ import {ERC6551AccountLib} from "../lib/ERC6551AccountLib.sol";
 
 //import {console} from "hardhat/console.sol";
 
-contract ERC6551Account is IERC165, IERC721Receiver, IERC1155Receiver, IERC6551Account, IERC6551Executable, IERC1271 {
+contract ERC6551Account is
+  IERC165,
+  IERC721Receiver,
+  IERC1155Receiver,
+  IERC6551Account,
+  IERC6551Executable,
+  IERC1271,
+  IERC777Recipient
+{
   // Padding for initializable values
   uint256 internal _state;
 
@@ -68,6 +77,7 @@ contract ERC6551Account is IERC165, IERC721Receiver, IERC1155Receiver, IERC6551A
       interfaceId == type(IERC6551Executable).interfaceId ||
       interfaceId == type(IERC1155Receiver).interfaceId ||
       interfaceId == type(IERC721Receiver).interfaceId ||
+      interfaceId == type(IERC777Recipient).interfaceId ||
       interfaceId == type(IERC165).interfaceId;
   }
 
@@ -105,6 +115,9 @@ contract ERC6551Account is IERC165, IERC721Receiver, IERC1155Receiver, IERC6551A
   ) public pure returns (bytes4) {
     return this.onERC1155BatchReceived.selector;
   }
+
+  // solhint-disable-next-line no-empty-blocks
+  function tokensReceived(address, address, address, uint, bytes calldata, bytes calldata) external override {}
 
   /**
    * @dev Helper method to check if a received token is in the ownership chain of the wallet.
