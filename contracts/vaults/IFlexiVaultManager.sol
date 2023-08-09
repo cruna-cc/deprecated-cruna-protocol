@@ -111,15 +111,7 @@ interface IFlexiVaultManager {
    * @dev Reinjects an ejected account (called by the vault)
    * @param owningTokenId The id of the owning token
    */
-  function reInjectEjectedAccount(uint256 owningTokenId) external;
-
-  /**
-   * @dev It fixes an account directly injected (called by the vault)
-      Some user may transfer the ownership of a Trustee.sol to the FlexiVaultManager.sol without calling the reInjectEjectedAccount function.
-      If that happens, the FlexiVaultManager.sol is unable to manage the Trustee.sol, and the bound account would be lost.
-   * @param owningTokenId The id of the owning token
-   */
-  function fixDirectlyInjectedAccount(uint256 owningTokenId) external;
+  function injectEjectedAccount(uint256 owningTokenId) external;
 
   /**
 * @dev Checks if an operator is active for a token

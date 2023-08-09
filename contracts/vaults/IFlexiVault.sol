@@ -17,9 +17,7 @@ interface IFlexiVault {
 
   function ejectAccount(uint256 tokenId, uint256 timestamp, uint256 validFor, bytes calldata signature) external;
 
-  function reInjectEjectedAccount(uint256 tokenId) external;
-
-  function fixDirectlyInjectedAccount(uint256 tokenId) external;
+  function injectEjectedAccount(uint256 tokenId) external;
 
   function activateAccount(uint256 tokenId, bool useUpgradeableAccount) external;
 

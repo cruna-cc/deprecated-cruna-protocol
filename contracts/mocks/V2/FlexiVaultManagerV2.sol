@@ -55,4 +55,19 @@ contract FlexiVaultManagerV2 is FlexiVaultManager {
     trustee = new TrusteeV2();
     _initiated = true;
   }
+
+  function injectEjectedAccount(uint256 owningTokenId) public virtual override onlyVault {
+    _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
+    if (_accountAddresses[owningTokenId] == address(0)) {
+      // it is coming from a previous version
+      for (uint i = 0; i < previousTrusteesCount; i++) {
+        if (previousTrustees[i].firstTokenId() <= owningTokenId && owningTokenId <= previousTrustees[i].lastTokenId()) {
+          _accountAddresses[owningTokenId] = previousTrustees[i].boundAccount(owningTokenId);
+          break;
+        }
+      }
+      if (_accountAddresses[owningTokenId] == address(0)) revert TrusteeNotFound();
+    }
+    emit EjectedBoundAccountReInjected(owningTokenId);
+  }
 }

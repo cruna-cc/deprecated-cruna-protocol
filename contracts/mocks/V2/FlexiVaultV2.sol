@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {FlexiVault} from "../../vaults/FlexiVault.sol";
-import {Trustee} from "../../ERC6551/Trustee.sol";
+import {Trustee} from "../../vaults/Trustee.sol";
 
 //import "hardhat/console.sol";
 
@@ -52,25 +52,30 @@ contract FlexiVaultV2 is FlexiVault {
     revert NotFromTrustee();
   }
 
-  function reInjectEjectedAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) {
+  function injectEjectedAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) nonReentrant {
+    if (!_exists(tokenId)) revert TokenIdDoesNotExist();
+    bool done;
+    // it reverts if called before initiating the vault, or with non-existing token
     if (trustee.firstTokenId() <= tokenId && tokenId <= trustee.lastTokenId()) {
-      if (trustee.ownerOf(tokenId) == address(vaultManager)) revert NotAPreviouslyEjectedAccount();
-      trustee.transferFrom(_msgSender(), address(vaultManager), tokenId);
-      vaultManager.reInjectEjectedAccount(tokenId);
+      if (trustee.ownerOf(tokenId) != address(vaultManager)) {
+        trustee.transferFrom(_msgSender(), address(vaultManager), tokenId);
+        done = true;
+      }
     } else {
       for (uint i = 0; i < previousTrusteesCount; i++) {
         if (previousTrustees[i].firstTokenId() <= tokenId && tokenId <= previousTrustees[i].lastTokenId()) {
-          if (previousTrustees[i].ownerOf(tokenId) == address(vaultManager)) revert NotAPreviouslyEjectedAccount();
-          previousTrustees[i].transferFrom(_msgSender(), address(vaultManager), tokenId);
-          vaultManager.reInjectEjectedAccount(tokenId, previousTrustees[i].boundAccount(tokenId));
-          return;
+          if (previousTrustees[i].ownerOf(tokenId) != address(vaultManager)) {
+            previousTrustees[i].transferFrom(_msgSender(), address(vaultManager), tokenId);
+            done = true;
+            break;
+          }
         }
       }
     }
-  }
-
-  function fixDirectlyInjectedAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) {
-    if (!_exists(tokenId)) revert TokenIdDoesNotExist();
-    vaultManager.fixDirectlyInjectedAccount(tokenId);
+    if (done) {
+      vaultManager.injectEjectedAccount(tokenId);
+    } else {
+      revert NotAPreviouslyEjectedAccount();
+    }
   }
 }

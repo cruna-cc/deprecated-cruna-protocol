@@ -102,7 +102,7 @@ describe("Migration V1 to V2", function () {
   }
 
   beforeEach(async function () {
-    expectCount = 0;
+    // expectCount = 1;
     tokenUtils = await deployContract("TokenUtils");
     expect(await tokenUtils.version()).to.equal("1.0.0");
 
@@ -203,6 +203,7 @@ describe("Migration V1 to V2", function () {
   });
 
   it("should create a vaults, add assets to it, then eject and inject in V2", async function () {
+    // expectCount = 1;
     await flexiVault.connect(bob).activateAccount(1, true);
 
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -226,13 +227,13 @@ describe("Migration V1 to V2", function () {
 
     await trustee.connect(bob).approve(flexiVault2.address, 1);
 
-    await expect(flexiVault2.connect(bob).reInjectEjectedAccount(1)).revertedWith("ERC721: invalid token ID");
+    await expect(flexiVault2.connect(bob).injectEjectedAccount(1)).revertedWith("ERC721: invalid token ID");
 
     await expect(flexiVault2.connect(bob).mintFromTrustee(1))
       .emit(flexiVault2, "Transfer")
       .withArgs(ethers.constants.AddressZero, bob.address, 1);
 
-    await expect(flexiVault2.connect(bob).reInjectEjectedAccount(1))
+    await expect(flexiVault2.connect(bob).injectEjectedAccount(1))
       .emit(flexiVaultManager2, "EjectedBoundAccountReInjected")
       .withArgs(1);
 

@@ -2,7 +2,7 @@
 pragma solidity ^0.8.19;
 
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import {INFTOwned, NFTOwned} from "../../nft-owned/NFTOwned.sol";
+import {INFTOwned, NFTOwned} from "../../utils/NFTOwned.sol";
 
 contract MyOwnedContract is NFTOwned {
   error NotInitiated();

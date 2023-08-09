@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Trustee, ITrustee} from "../../ERC6551/Trustee.sol";
+import {Trustee, ITrustee} from "../../vaults/Trustee.sol";
 
 contract TrusteeV2 is Trustee {
   constructor() Trustee() {}

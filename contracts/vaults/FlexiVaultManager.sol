@@ -11,7 +11,7 @@ import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Recei
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {NFTOwned} from "../nft-owned/NFTOwned.sol";
+import {NFTOwned} from "../utils/NFTOwned.sol";
 import {FlexiVault} from "./FlexiVault.sol";
 import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IProtectedERC721} from "../protected/IProtectedERC721.sol";
@@ -19,7 +19,7 @@ import {IERC6551AccountExecutable} from "../ERC6551/interfaces/IERC6551AccountEx
 import {IERC6551Account} from "../ERC6551/interfaces/IERC6551Account.sol";
 import {IERC6551Executable} from "../ERC6551/interfaces/IERC6551Executable.sol";
 import {IERC6551Registry} from "../ERC6551/interfaces/IERC6551Registry.sol";
-import {Trustee, ITrustee} from "../ERC6551/Trustee.sol";
+import {Trustee, ITrustee} from "./Trustee.sol";
 import {IVersioned} from "../utils/IVersioned.sol";
 import {IFlexiVaultManagerExtended} from "./IFlexiVaultManagerExtended.sol";
 import {IActors} from "../protected/IActors.sol";
@@ -324,41 +324,20 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
   /**
    * @dev {See IFlexiVaultManager.sol-ejectAccount}
    */
-  function ejectAccount(uint256 owningTokenId) external virtual override onlyVault {
-    trustee.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
+  function ejectAccount(uint256 owningTokenId) external virtual override onlyVault nonReentrant {
     // we are ejecting a previously reInjected account
     delete _accountStatuses[owningTokenId]; // equal to = AccountStatus.INACTIVE;
     emit BoundAccountEjected(owningTokenId);
+    trustee.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
   }
 
   /**
-   * @dev {See IFlexiVaultManager.sol-reInjectEjectedAccount}
+   * @dev {See IFlexiVaultManager.sol-injectEjectedAccount}
    */
   // In version 1 you can only reinject previously ejected accounts
-  function reInjectEjectedAccount(uint256 owningTokenId) public virtual override onlyVault {
+  function injectEjectedAccount(uint256 owningTokenId) public virtual override onlyVault {
+    if (_accountStatuses[owningTokenId] != AccountStatus.INACTIVE) revert NotAPreviouslyEjectedAccount();
     _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
-    emit EjectedBoundAccountReInjected(owningTokenId);
-  }
-
-  function reInjectEjectedAccount(uint256 owningTokenId, address accountAddress_) public virtual onlyVault {
-    _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
-    if (_accountAddresses[owningTokenId] == address(0)) {
-      if (accountAddress_ == address(0)) revert InvalidAccountAddress();
-      _accountAddresses[owningTokenId] = accountAddress_;
-    }
-    emit EjectedBoundAccountReInjected(owningTokenId);
-  }
-
-  /**
-   * @dev {See IFlexiVaultManager.sol-fixDirectlyInjectedAccount}
-   */
-  function fixDirectlyInjectedAccount(uint256 owningTokenId) external virtual override onlyVault {
-    if (trustee.ownerOf(owningTokenId) == address(this)) {
-      if (_accountStatuses[owningTokenId] == AccountStatus.ACTIVE) revert NotAPreviouslyEjectedAccount();
-      else {
-        _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
-      }
-    } else revert TheAccountIsNotOwnedByTheFlexiVaultManager();
     emit EjectedBoundAccountReInjected(owningTokenId);
   }
 
