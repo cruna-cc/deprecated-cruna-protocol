@@ -12,7 +12,7 @@ import {ERC165Checker} from "@openzeppelin/contracts/utils/introspection/ERC165C
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
-import {IERC777Recipient} from "@openzeppelin/contracts/token/ERC777/IERC777Recipient.sol";
+import {IERC777Recipient} from "@openzeppelin/contracts/token/ERC777/ERC777.sol";
 
 import {IERC6551Account} from "../interfaces/IERC6551Account.sol";
 import {IERC6551Executable} from "../interfaces/IERC6551Executable.sol";

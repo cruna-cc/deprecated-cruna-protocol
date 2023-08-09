@@ -6,6 +6,7 @@ pragma solidity ^0.8.19;
 import {ERC721, IERC721, IERC165} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {IERC777} from "@openzeppelin/contracts/token/ERC777/IERC777.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
@@ -186,6 +187,8 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
         IERC721(assets[i]).safeTransferFrom(sender, _accountAddresses[owningTokenId], ids[i]);
       } else if (tokenTypes[i] == TokenType.ERC1155) {
         IERC1155(assets[i]).safeTransferFrom(sender, _accountAddresses[owningTokenId], ids[i], amounts[i], "");
+      } else if (tokenTypes[i] == TokenType.ERC777) {
+        IERC777(assets[i]).operatorSend(sender, _accountAddresses[owningTokenId], amounts[i], "", "");
       } else revert InvalidAsset();
     }
   }
@@ -194,7 +197,7 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
     address walletAddress = _accountAddresses[owningTokenId];
     if (asset == address(0)) {
       return walletAddress.balance;
-    } else if (tokenUtils.isERC20(asset)) {
+    } else if (tokenUtils.isERC20(asset) || tokenUtils.isERC777(asset)) {
       return IERC20(asset).balanceOf(walletAddress);
     } else if (tokenUtils.isERC721(asset)) {
       return IERC721(asset).ownerOf(id) == walletAddress ? 1 : 0;
@@ -235,6 +238,8 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
       );
     } else if (tokenType == TokenType.ERC20) {
       accountInstance.execute(asset, 0, abi.encodeWithSignature("transfer(address,uint256)", to, amount), 0);
+    } else if (tokenType == TokenType.ERC777) {
+      accountInstance.execute(asset, 0, abi.encodeWithSignature("send(address,uint256,bytes)", to, amount, ""), 0);
     } else {
       revert InvalidAsset();
     }

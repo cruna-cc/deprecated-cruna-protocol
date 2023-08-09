@@ -16,6 +16,8 @@ interface ITokenUtils {
 
   function isERC1155(address asset) external view returns (bool);
 
+  function isERC777(address asset) external view returns (bool);
+
   function hashWithdrawRequest(
     uint256 owningTokenId,
     address asset,
