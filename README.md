@@ -24,6 +24,17 @@ A real-world example can be a CEO who purchases two vaults—one for Marketing a
 
 While it is possible for an owner not to set any Protectors and manage the vault directly, this approach is not recommended due to potential security risks.
 
+#### Asset Recovery and Beneficiary Management
+
+The Cruna Vault provides a mechanism for asset recovery in case the owner loses access or passes away. The owner can designate beneficiaries and set a recovery quorum and expiration timeframe.
+
+Before the expiry, the owner has to trigger a proof-of-life event to indicate they still retain access. If the event isn't triggered, a designated beneficiary can initiate the recovery process and suggest a recipient wallet.
+
+Other beneficiaries can confirm the transfer or reject it. If rejected, they can suggest an alternate recipient. The protocol is designed to prevent blocking of the process by hostile beneficiaries.
+
+This beneficiary management system enables orderly transfer of assets to successors in case of incapacity or demise of the vault owner. It provides individuals and entities a way to ensure business continuity and asset inheritance in a secure manner.
+
+
 ### 2. The Flexi Vault
 
 The Flexi Vault is an application designed to securely store and protect assets (ERC20, ERC721, ERC1155). The ownership of the Flexi Vault is linked to the owning NFT, signifying that transferring the ownership of the NFT also transfers the ownership of the Flexi Vault.
@@ -69,14 +80,6 @@ As the Cruna Core Protocol continues to evolve, two noteworthy additions are cur
 The Distributor Vault is a specialized vault designed to streamline the process of scheduled asset distribution. An entity can pre-load this vault with assets, which are then automatically distributed to the designated beneficiaries according to a predetermined schedule.
 
 This functionality can be advantageous in numerous scenarios. For instance, a company wishing to distribute its governance tokens (ERC20) can purchase a Distributor Vault, fill it with the appropriate tokens, and set a vesting schedule. Once the NFT ownership of the Distributor Vault is given to an investor, the company no longer needs to actively manage token distribution. The tokens will be vested and delivered automatically as per the set schedule, providing the investor with an assurance of receiving their assets in a timely manner. This system is not only beneficial for investors, but it can also be employed for the scheduled distribution of tokens to employees, advisors, and other stakeholders.
-
-#### Inheritance Vault
-
-The Inheritance Vault provides a secure solution for the transfer of digital assets in the event of unforeseen circumstances affecting the original owner. This vault type holds all assets of an owner, and in the case of the owner's sudden incapacity or demise, the assets are transferred to a predetermined beneficiary.
-
-Individuals can use the Inheritance Vault to ensure that their digital assets are passed on to their chosen successors in an orderly and secure manner. Similarly, companies can leverage this vault to ensure business continuity in case of sudden changes in leadership or ownership. The Inheritance Vault adds another layer of protection and planning to digital asset management, providing peace of mind for individuals and organizations alike.
-
-These future developments further enhance the flexibility, security, and utility of the Cruna Core Protocol, catering to a wide range of user needs and expanding the potential applications of NFTs in asset management.
 
 ## History
 
