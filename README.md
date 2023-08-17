@@ -1,6 +1,10 @@
 # Cruna Core Protocol
 
-The Cruna Core Protocol lays out a distinctive hierarchy between a Non-Fungible Token (NFT) and one or more applications, where the NFT owner concurrently owns the corresponding profile of the application. This protocol augments the ERC721 standard, adding robust security mechanisms to ensure the safe and efficient interaction of an NFT with its associated applications. The first of these applications is the Cruna Vault
+The Cruna Protocol is an NFT-based system that enables secure consolidation and management of digital assets across multiple blockchains. It allows users to link ownership of their assets to NFTs called Cruna Vaults, providing a unified interface for managing and transferring the assets.
+
+The protocol implements robust security mechanisms including multi-factor authentication via entity termed Protectors. It also facilitates scheduled distribution and inheritance of assets held in the vaults. The first application in the protocol is the Flexi Vault, which offers safe storage and movement of tokens and NFTs.
+
+The Cruna Protocol aims to tackle key challenges like fragmented asset control, security risks, and lack of flexible distribution options faced by crypto users today. It expands the utility of NFTs beyond collectibles to active asset management functionalities.
 
 ## Key Components
 
@@ -12,13 +16,15 @@ The owning token within this structure functions as a standard NFT, providing a 
 
 The Protectors play a critical role in enhancing the security of the protocol. In the Cruna Vault, the NFT owner can appoint one or two Protectors. While Protectors lack the authority to initiate NFT transfers independently, they must approve any transfer requests initiated by the owner. This two-tier authentication mechanism significantly reduces the risk of unauthorized NFT transfers, even in cases where the owner's account may be compromised.
 
-Once the owner designates the Protectors, the number of Protectors must be locked to guard against potential attacks, such as an unauthorized user adding a new Protector and initiating an NFT transfer. For similar reasons, a Protector cannot be removed unilaterally by the owner but must submit a voluntary resignation which the owner must approve.
+To add flexibility to the system, the vault owner can set Allowlisted recipient that can receive assets without requiring the pre-approval from a protector. This is particularly useful in a company environment, where some wallets receiving assets do not need approval.
 
-It is advisable to assign two Protectors to maintain access to the vault even if one Protector becomes inaccessible. If there is a need for more than two protectors, it is recommended to transfer the ownership of the vault to a multisig wallet.
+Once the owner designates the Protectors, the number of Protectors is locked to guard against potential attacks, such as an unauthorized user adding a new Protector and initiating an NFT transfer. For similar reasons, a Protector cannot be removed unilaterally by the owner but must submit a voluntary resignation which the owner must approve.
+
+It is advisable to assign multiple Protectors to maintain access to the vault even if one Protector becomes inaccessible. If there is a need for more than two protectors, it may make sense to transfer the ownership of the vault to a multisig wallet.
 
 #### Vault Operators
 
-Alongside Protectors, the vault can also have operators—wallets that have the authority to manage the assets in the vault akin to the owner. For example, an owner may possess an NFT in an externally owned account (EOA) wallet like MetaMask and set two protectors using a cold wallet, like a Ledger, and a secondary wallet that hasn't been imported into MetaMask. This setup ensures that the owner can interact with the NFT without the risk of being phished, as any actual token transfer would fail without the approval of the protectors.
+Alongside Protectors, the vault can also have operators—wallets that have the authority to manage the assets in the vault akin to the owner. For example, an owner may possess an NFT in an externally owned account (EOA) wallet like MetaMask and set two protectors using a cold wallet, like a Ledger, and a secondary wallet that hasn't been imported into MetaMask. This setup ensures that the owner can interact with the NFT without the risk of being phished, as any actual token transfer would fail without the approval of one of the protectors.
 
 A real-world example can be a CEO who purchases two vaults—one for Marketing and another for Development. The CEO can appoint the CFO as a Protector, and the CTO and CMO as operators for the respective vaults.
 
@@ -37,7 +43,7 @@ This beneficiary management system enables orderly transfer of assets to success
 
 ### 2. The Flexi Vault
 
-The Flexi Vault is an application designed to securely store and protect assets (ERC20, ERC721, ERC1155). The ownership of the Flexi Vault is linked to the owning NFT, signifying that transferring the ownership of the NFT also transfers the ownership of the Flexi Vault.
+The Flexi Vault is a smart-contract managed by the Cruna Vault to securely store and protect assets (ERC20, ERC721, ERC1155). The ownership of the Flexi Vault is linked to the owning NFT, signifying that transferring the ownership of the NFT also transfers the ownership of the Flexi Vault.
 
 Since the Cruna Vault is a ProtectedERC721, the Flexi Vault inherits its security features. When the owner of the NFT has designated a Protector, any asset movement from the Flexi Vault to external wallets or other vaults not owned by the same owner necessitates a signature from the Protector, enhancing the security of asset transfers.
 
@@ -63,7 +69,7 @@ Through this migration process, users can seamlessly transition to newer version
 
 ### Use Cases
 
-- Consolidate all assets of a collection into a single Flexi Vault, allowing a seamless transfer of ownership without needing to move each asset individually. This offers significant improvements in security and user experience.
+- Consolidate all assets of a collection into a single Vault, allowing a seamless transfer of ownership without needing to move each asset individually. This offers significant improvements in security and user experience.
 
 - Create asset bundles and list them for sale as a single NFT on popular marketplaces like OpenSea.
 
@@ -71,15 +77,23 @@ Through this migration process, users can seamlessly transition to newer version
 
 - Create a Flexi Vault for a DAO, allowing the DAO to manage its assets collectively.
 
+- Use a Cruna Vault to give assets to siblings. For example, a user can set a vault for his kids and when they are adult can just transfer the Vault to them, instead of transferring the assets one by one.
+
+- A company can put their reserves in a vault, "owned" by the CEO, with an inheritance process allowing the board directors to recover the assets in case the CEO becomes unavailable for any reason.
+
 ### Future developments
 
-As the Cruna Core Protocol continues to evolve, two noteworthy additions are currently in the pipeline: the Distributor Vault and the Inheritance Vault. Each of these vaults caters to specific needs, expanding the applications of the Cruna Core Protocol in the realms of asset management and security.
+As the Cruna Core Protocol continues to evolve, many dditions are currently in the pipeline: the Distributor Vault and the Inheritance Vault. Each of these vaults caters to specific needs, expanding the applications of the Cruna Core Protocol in the realms of asset management and security.
 
 #### Distributor Vault
 
 The Distributor Vault is a specialized vault designed to streamline the process of scheduled asset distribution. An entity can pre-load this vault with assets, which are then automatically distributed to the designated beneficiaries according to a predetermined schedule.
 
 This functionality can be advantageous in numerous scenarios. For instance, a company wishing to distribute its governance tokens (ERC20) can purchase a Distributor Vault, fill it with the appropriate tokens, and set a vesting schedule. Once the NFT ownership of the Distributor Vault is given to an investor, the company no longer needs to actively manage token distribution. The tokens will be vested and delivered automatically as per the set schedule, providing the investor with an assurance of receiving their assets in a timely manner. This system is not only beneficial for investors, but it can also be employed for the scheduled distribution of tokens to employees, advisors, and other stakeholders.
+
+#### Privacy protected Vaults
+
+A new family of Zero Knowledge based vaults will allow a high level of privacy.
 
 ## History
 
@@ -89,7 +103,7 @@ This functionality can be advantageous in numerous scenarios. For instance, a co
 
 **1.4.0**
 
-- Full refactor to manage the upgradeability of the vaults, despite being immutable
+- Full refactor to improve the upgradeability of the vaults, despite being immutable
 - Remove ERC7108, not really needed in this stage
 
 **1.2.6**
