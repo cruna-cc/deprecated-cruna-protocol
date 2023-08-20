@@ -6,6 +6,7 @@ pragma solidity ^0.8.19;
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import {IERC721} from "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IERC777} from "@openzeppelin/contracts/token/ERC777/IERC777.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 
 import {IProtectedERC721} from "../protected/IProtectedERC721.sol";
@@ -30,20 +31,22 @@ contract TokenUtils is ITokenUtils {
 
   // It should work fine with ERC20 and ERC777
   function isERC20(address asset) public view override returns (bool) {
-    if (!isERC721(asset)) {
-      // we exclude ERC721 because totalSupply can be also returned
-      // by enumerable ERC721
-      try IERC20(asset).totalSupply() returns (uint256 result) {
-        return result > 0;
-      } catch {}
-    }
+    try IERC20(asset).allowance(address(0), address(0)) returns (uint256 result) {
+      return true;
+    } catch {}
     return false;
   }
 
   function isERC1155(address asset) public view override returns (bool) {
-    // will revert if asset does not implement IERC165
     try IERC165(asset).supportsInterface(type(IERC1155).interfaceId) returns (bool result) {
       return result;
+    } catch {}
+    return false;
+  }
+
+  function isERC777(address asset) public view returns (bool) {
+    try IERC777(asset).granularity() returns (uint result) {
+      return true;
     } catch {}
     return false;
   }

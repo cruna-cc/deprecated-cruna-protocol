@@ -261,6 +261,7 @@ describe("FlexiVaultManager", function () {
   });
 
   it("should create a vaults, add assets to it, then eject and reinject again", async function () {
+    expectCount = 0;
     await flexiVault.connect(bob).activateAccount(1, true);
 
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -278,7 +279,7 @@ describe("FlexiVaultManager", function () {
 
     expect(await trustee.ownerOf(1)).equal(flexiVaultManager.address);
 
-    await expect(flexiVault.connect(bob).reInjectEjectedAccount(1)).revertedWith("NotAPreviouslyEjectedAccount()");
+    await expect(flexiVault.connect(bob).injectEjectedAccount(1)).revertedWith("NotAPreviouslyEjectedAccount()");
 
     await expect(flexiVault.connect(bob).ejectAccount(1, 0, 0, [])).emit(flexiVaultManager, "BoundAccountEjected").withArgs(1);
 
@@ -288,7 +289,7 @@ describe("FlexiVaultManager", function () {
 
     await trustee.connect(bob).approve(flexiVault.address, 1);
 
-    await expect(flexiVault.connect(bob).reInjectEjectedAccount(1))
+    await expect(flexiVault.connect(bob).injectEjectedAccount(1))
       .emit(flexiVaultManager, "EjectedBoundAccountReInjected")
       .withArgs(1);
 

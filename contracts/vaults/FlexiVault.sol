@@ -9,7 +9,7 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {ProtectedERC721, Strings} from "../protected/ProtectedERC721.sol";
 import {FlexiVaultManager} from "../vaults/FlexiVaultManager.sol";
 import {IFlexiVault} from "./IFlexiVault.sol";
-import {Trustee} from "../ERC6551/Trustee.sol";
+import {Trustee} from "./Trustee.sol";
 
 //import "hardhat/console.sol";
 
@@ -121,6 +121,7 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
     uint256 validFor,
     bytes calldata signature
   ) external virtual override onlyTokenOwner(tokenId) {
+    if (!_exists(tokenId)) revert TokenIdDoesNotExist();
     // it reverts if called before initiating the vault
     if (trustee.ownerOf(tokenId) != address(vaultManager)) revert AccountAlreadyEjected();
     if (getApproved(tokenId) != address(0)) revert ForbiddenWhenTokenApprovedForSale();
@@ -133,22 +134,16 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
   }
 
   /**
-   * @dev {See FlexiVaultManager.sol-reInjectEjectedAccount}
+   * @dev {See FlexiVaultManager.sol-injectEjectedAccount}
    */
-  function reInjectEjectedAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) {
-    // it reverts if called before initiating the vault, or with non-existing token
-    if (trustee.ownerOf(tokenId) == address(vaultManager)) revert NotAPreviouslyEjectedAccount();
-    // the contract must be approved
-    trustee.transferFrom(_msgSender(), address(vaultManager), tokenId);
-    vaultManager.reInjectEjectedAccount(tokenId);
-  }
-
-  /**
-   * @dev {See FlexiVaultManager.sol-fixDirectlyInjectedAccount}
-   */
-  function fixDirectlyInjectedAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) {
+  function injectEjectedAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) nonReentrant {
     if (!_exists(tokenId)) revert TokenIdDoesNotExist();
-    vaultManager.fixDirectlyInjectedAccount(tokenId);
+    // it reverts if called before initiating the vault, or with non-existing token
+    if (trustee.ownerOf(tokenId) != address(vaultManager)) {
+      // the contract must be approved
+      trustee.transferFrom(_msgSender(), address(vaultManager), tokenId);
+    }
+    vaultManager.injectEjectedAccount(tokenId);
   }
 
   // Activation

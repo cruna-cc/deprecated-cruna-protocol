@@ -51,4 +51,5 @@ interface IFlexiVaultManagerExtended is IFlexiVaultManager {
   error OnlyVault();
   error NotImplemented();
   error InvalidAccountAddress();
+  error TrusteeNotFound();
 }

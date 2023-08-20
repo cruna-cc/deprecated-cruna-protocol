@@ -6,12 +6,13 @@ pragma solidity ^0.8.19;
 import {ERC721, IERC721, IERC165} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IERC1155} from "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import {IERC777} from "@openzeppelin/contracts/token/ERC777/IERC777.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
-import {NFTOwned} from "../nft-owned/NFTOwned.sol";
+import {NFTOwned} from "../utils/NFTOwned.sol";
 import {FlexiVault} from "./FlexiVault.sol";
 import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IProtectedERC721} from "../protected/IProtectedERC721.sol";
@@ -19,7 +20,7 @@ import {IERC6551AccountExecutable} from "../ERC6551/interfaces/IERC6551AccountEx
 import {IERC6551Account} from "../ERC6551/interfaces/IERC6551Account.sol";
 import {IERC6551Executable} from "../ERC6551/interfaces/IERC6551Executable.sol";
 import {IERC6551Registry} from "../ERC6551/interfaces/IERC6551Registry.sol";
-import {Trustee, ITrustee} from "../ERC6551/Trustee.sol";
+import {Trustee, ITrustee} from "./Trustee.sol";
 import {IVersioned} from "../utils/IVersioned.sol";
 import {IFlexiVaultManagerExtended} from "./IFlexiVaultManagerExtended.sol";
 import {IActors} from "../protected/IActors.sol";
@@ -186,6 +187,8 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
         IERC721(assets[i]).safeTransferFrom(sender, _accountAddresses[owningTokenId], ids[i]);
       } else if (tokenTypes[i] == TokenType.ERC1155) {
         IERC1155(assets[i]).safeTransferFrom(sender, _accountAddresses[owningTokenId], ids[i], amounts[i], "");
+      } else if (tokenTypes[i] == TokenType.ERC777) {
+        IERC777(assets[i]).operatorSend(sender, _accountAddresses[owningTokenId], amounts[i], "", "");
       } else revert InvalidAsset();
     }
   }
@@ -194,7 +197,7 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
     address walletAddress = _accountAddresses[owningTokenId];
     if (asset == address(0)) {
       return walletAddress.balance;
-    } else if (tokenUtils.isERC20(asset)) {
+    } else if (tokenUtils.isERC20(asset) || tokenUtils.isERC777(asset)) {
       return IERC20(asset).balanceOf(walletAddress);
     } else if (tokenUtils.isERC721(asset)) {
       return IERC721(asset).ownerOf(id) == walletAddress ? 1 : 0;
@@ -235,6 +238,8 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
       );
     } else if (tokenType == TokenType.ERC20) {
       accountInstance.execute(asset, 0, abi.encodeWithSignature("transfer(address,uint256)", to, amount), 0);
+    } else if (tokenType == TokenType.ERC777) {
+      accountInstance.execute(asset, 0, abi.encodeWithSignature("send(address,uint256,bytes)", to, amount, ""), 0);
     } else {
       revert InvalidAsset();
     }
@@ -324,41 +329,20 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
   /**
    * @dev {See IFlexiVaultManager.sol-ejectAccount}
    */
-  function ejectAccount(uint256 owningTokenId) external virtual override onlyVault {
-    trustee.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
+  function ejectAccount(uint256 owningTokenId) external virtual override onlyVault nonReentrant {
     // we are ejecting a previously reInjected account
     delete _accountStatuses[owningTokenId]; // equal to = AccountStatus.INACTIVE;
     emit BoundAccountEjected(owningTokenId);
+    trustee.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
   }
 
   /**
-   * @dev {See IFlexiVaultManager.sol-reInjectEjectedAccount}
+   * @dev {See IFlexiVaultManager.sol-injectEjectedAccount}
    */
   // In version 1 you can only reinject previously ejected accounts
-  function reInjectEjectedAccount(uint256 owningTokenId) public virtual override onlyVault {
+  function injectEjectedAccount(uint256 owningTokenId) public virtual override onlyVault {
+    if (_accountStatuses[owningTokenId] != AccountStatus.INACTIVE) revert NotAPreviouslyEjectedAccount();
     _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
-    emit EjectedBoundAccountReInjected(owningTokenId);
-  }
-
-  function reInjectEjectedAccount(uint256 owningTokenId, address accountAddress_) public virtual onlyVault {
-    _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
-    if (_accountAddresses[owningTokenId] == address(0)) {
-      if (accountAddress_ == address(0)) revert InvalidAccountAddress();
-      _accountAddresses[owningTokenId] = accountAddress_;
-    }
-    emit EjectedBoundAccountReInjected(owningTokenId);
-  }
-
-  /**
-   * @dev {See IFlexiVaultManager.sol-fixDirectlyInjectedAccount}
-   */
-  function fixDirectlyInjectedAccount(uint256 owningTokenId) external virtual override onlyVault {
-    if (trustee.ownerOf(owningTokenId) == address(this)) {
-      if (_accountStatuses[owningTokenId] == AccountStatus.ACTIVE) revert NotAPreviouslyEjectedAccount();
-      else {
-        _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
-      }
-    } else revert TheAccountIsNotOwnedByTheFlexiVaultManager();
     emit EjectedBoundAccountReInjected(owningTokenId);
   }
 
