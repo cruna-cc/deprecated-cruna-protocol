@@ -41,6 +41,14 @@ interface ITokenUtils {
 
   function hashEjectRequest(uint256 owningTokenId, uint256 timestamp, uint256 validFor) external view returns (bytes32);
 
+  function hashSetProtector(
+    address tokenOwner,
+    address protector,
+    bool active,
+    uint256 timestamp,
+    uint256 validFor
+  ) external view returns (bytes32);
+
   function hashRecipientRequest(
     address owner,
     address recipient,

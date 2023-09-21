@@ -40,7 +40,7 @@ contract ERC6551Account is
     bytes calldata data,
     uint256 operation
   ) external payable returns (bytes memory result) {
-    require(msg.sender == accountOwner(), "Caller is not owner");
+    require(msg.sender == owner(), "Caller is not owner");
     require(operation == 0, "Only calls are supported");
 
     ++_state;
@@ -57,14 +57,14 @@ contract ERC6551Account is
   }
 
   function isValidSigner(address signer, bytes calldata) external view returns (bytes4) {
-    if (signer == accountOwner()) {
+    if (signer == owner()) {
       return IERC6551Account.isValidSigner.selector;
     }
     return bytes4(0);
   }
 
   function isValidSignature(bytes32 hash, bytes memory signature) external view returns (bytes4 magicValue) {
-    bool isValid = SignatureChecker.isValidSignatureNow(accountOwner(), hash, signature);
+    bool isValid = SignatureChecker.isValidSignatureNow(owner(), hash, signature);
     if (isValid) {
       return IERC1271.isValidSignature.selector;
     }
@@ -131,7 +131,7 @@ contract ERC6551Account is
       "Cannot own yourself"
     );
 
-    address currentOwner = accountOwner();
+    address currentOwner = owner();
     require(currentOwner != address(this), "Token in ownership chain");
     uint256 depth = 0;
     while (currentOwner.code.length > 0) {
@@ -153,7 +153,7 @@ contract ERC6551Account is
     }
   }
 
-  function accountOwner() public view returns (address) {
+  function owner() public view returns (address) {
     (uint256 chainId, address tokenContract, uint256 tokenId) = this.token();
     if (chainId != block.chainid) return address(0);
     return IERC721(tokenContract).ownerOf(tokenId);

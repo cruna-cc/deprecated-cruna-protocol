@@ -26,7 +26,7 @@ contract ERC6551AccountUpgradeable is ERC6551Account {
    * @dev Upgrades the implementation.
    */
   function upgrade(address implementation_) public {
-    require(deployer == msg.sender, "Caller not the deployer");
+    require(msg.sender == owner(), "Caller not the deployer");
     require(implementation_ != address(0), "Invalid implementation address");
     ++_state;
     StorageSlot.getAddressSlot(_IMPLEMENTATION_SLOT).value = implementation_;

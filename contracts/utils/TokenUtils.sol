@@ -31,7 +31,7 @@ contract TokenUtils is ITokenUtils {
 
   // It should work fine with ERC20 and ERC777
   function isERC20(address asset) public view override returns (bool) {
-    try IERC20(asset).allowance(address(0), address(0)) returns (uint256 result) {
+    try IERC20(asset).allowance(address(0), address(0)) returns (uint256) {
       return true;
     } catch {}
     return false;
@@ -45,7 +45,7 @@ contract TokenUtils is ITokenUtils {
   }
 
   function isERC777(address asset) public view returns (bool) {
-    try IERC777(asset).granularity() returns (uint result) {
+    try IERC777(asset).granularity() returns (uint) {
       return true;
     } catch {}
     return false;
@@ -133,6 +133,18 @@ contract TokenUtils is ITokenUtils {
   ) external view override returns (bytes32) {
     if (timestamp == 0) revert TimestampZero();
     return keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), owningTokenId, timestamp, validFor));
+  }
+
+  function hashSetProtector(
+    address tokenOwner,
+    address protector,
+    bool active,
+    uint256 timestamp,
+    uint256 validFor
+  ) external view override returns (bytes32) {
+    if (timestamp == 0) revert TimestampZero();
+    return
+      keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), tokenOwner, protector, active, timestamp, validFor));
   }
 
   function hashTransferRequest(
