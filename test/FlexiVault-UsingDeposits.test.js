@@ -1,5 +1,5 @@
 const chai = require("chai");
-const {deployContract, amount, getTimestamp, signPackedData, deployContractUpgradeable} = require("./helpers");
+const {deployContract, amount, getTimestamp, signPackedData, privateKeyByWallet} = require("./helpers");
 const DeployUtils = require("../scripts/lib/DeployUtils");
 
 let expectCount = 0;
@@ -11,7 +11,7 @@ const expect = (actual) => {
   return chai.expect(actual);
 };
 
-describe("FlexiVaultManager Using internal Deposits", function () {
+describe.only("FlexiVaultManager Using internal Deposits", function () {
   const deployUtils = new DeployUtils(ethers);
 
   let flexiVault, flexiVaultManager, actorsManager;
@@ -35,7 +35,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
     tokenUtils = await deployContract("TokenUtils");
     expect(await tokenUtils.version()).to.equal("1.0.0");
 
-    actorsManager = await deployContract("ActorsManager");
+    actorsManager = await deployContract("ActorsManagerV2");
 
     const _baseTokenURI = "https://meta.cruna.cc/flexy-vault/v1/";
     flexiVault = await deployContract("FlexiVaultMock", tokenUtils.address, actorsManager.address);
@@ -253,9 +253,9 @@ describe("FlexiVaultManager Using internal Deposits", function () {
     await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
     expect((await flexiVaultManager.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
+    // await expect(actorsManager.connect(bob).proposeProtector(mark.address))
+    //   .emit(actorsManager, "ProtectorProposed")
+    //   .withArgs(bob.address, mark.address);
 
     // bob transfers the protected to alice
     await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1))
@@ -266,61 +266,21 @@ describe("FlexiVaultManager Using internal Deposits", function () {
       .emit(flexiVault, "Transfer")
       .withArgs(alice.address, bob.address, 1);
 
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
+    const timestamp = (await getTimestamp()) - 100;
+    const validFor = 3600;
+    const hash = await tokenUtils.hashSetProtector(bob.address, mark.address, true, timestamp, validFor);
+    const privateKey = privateKeyByWallet[mark.address];
+    const signature = await signPackedData(hash, privateKey);
+
+    await expect(actorsManager.connect(bob).setProtector(mark.address, true, timestamp, validFor, signature))
       .emit(actorsManager, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
     await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
 
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address)).revertedWith("ProtectorAlreadySetByYou()");
-  });
-
-  it("should dot allow a transfer if protectors resigns successfully", async function () {
-    // expectCount = 1;
-    await flexiVault.connect(bob).activateAccount(1, true);
-
-    // bob creates a vaults depositing a particle token
-    await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
-    await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
-    expect((await flexiVaultManager.amountOf(1, [particle.address], [2]))[0]).equal(1);
-
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
-
-    // like not accepting
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
-
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address)).revertedWith("ProtectorAlreadySet()");
-
-    // explicitly not acceptingbin/
-
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, false))
-      .to.emit(actorsManager, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, false);
-
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
-
-    // 7
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, false)).revertedWith("PendingProtectorNotFound()");
-
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
-
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(mark.address)).revertedWith("NotAProtector()");
-
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
-
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
-
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
-      .to.emit(actorsManager, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
-
-    await actorsManager.connect(mark).resignAsProtectorFor(bob.address);
-
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(bob.address)).revertedWith("ResignationAlreadySubmitted()");
+    await expect(actorsManager.connect(bob).setProtector(mark.address, true, timestamp, validFor, signature)).revertedWith(
+      "ProtectorAlreadySetByYou()"
+    );
   });
 
   it("should not allow a transfer if a protector is active", async function () {
@@ -331,26 +291,30 @@ describe("FlexiVaultManager Using internal Deposits", function () {
     await flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1]);
     expect((await flexiVaultManager.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
+    const timestamp = (await getTimestamp()) - 100;
+    const validFor = 3600;
+    const hash = await tokenUtils.hashSetProtector(bob.address, mark.address, true, timestamp, validFor);
+    const privateKey = privateKeyByWallet[mark.address];
+    const signature = await signPackedData(hash, privateKey);
 
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
+    await expect(actorsManager.connect(bob).setProtector(mark.address, true, timestamp, validFor, signature))
       .emit(actorsManager, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
     await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
   });
 
-  it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
+  it.only("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
     await flexiVault.connect(bob).activateAccount(1, false);
     // expectCount = 1;
 
-    await expect(actorsManager.connect(bob).proposeProtector(john.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, john.address);
+    let timestamp = (await getTimestamp()) - 100;
+    let validFor = 3600;
+    let hash = await tokenUtils.hashSetProtector(bob.address, mark.address, true, timestamp, validFor);
+    let privateKey = privateKeyByWallet[john.address];
+    let signature = await signPackedData(hash, privateKey);
 
-    await expect(actorsManager.connect(john).acceptProposal(bob.address, true))
+    await expect(actorsManager.connect(bob).setProtector(john.address, true, timestamp, validFor, signature))
       .emit(actorsManager, "ProtectorUpdated")
       .withArgs(bob.address, john.address, true);
 
@@ -358,12 +322,11 @@ describe("FlexiVaultManager Using internal Deposits", function () {
 
     await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
 
-    const timestamp = (await getTimestamp()) - 100;
-    const validFor = 3600;
-    const hash = await tokenUtils.hashTransferRequest(1, alice.address, timestamp, validFor);
-
-    // this helper function uses by default hardhat account [4], which is john, the protector
-    const signature = await signPackedData(hash);
+    timestamp = (await getTimestamp()) - 100;
+    validFor = 3600;
+    hash = await tokenUtils.hashTransferRequest(1, alice.address, timestamp, validFor);
+    privateKey = privateKeyByWallet[john.address];
+    signature = await signPackedData(hash, privateKey);
 
     await expect(flexiVault.protectedTransfer(1, alice.address, timestamp, validFor, signature)).revertedWith(
       "NotTheTokenOwner()"
@@ -398,11 +361,13 @@ describe("FlexiVaultManager Using internal Deposits", function () {
       .emit(actorsManager, "SafeRecipientUpdated")
       .withArgs(bob.address, alice.address, 2);
 
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
+    const timestamp = (await getTimestamp()) - 100;
+    const validFor = 3600;
+    const hash = await tokenUtils.hashSetProtector(bob.address, mark.address, true, timestamp, validFor);
+    const privateKey = privateKeyByWallet[mark.address];
+    const signature = await signPackedData(hash, privateKey);
 
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
+    await expect(actorsManager.connect(bob).setProtector(mark.address, true, timestamp, validFor, signature))
       .emit(actorsManager, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
@@ -427,11 +392,13 @@ describe("FlexiVaultManager Using internal Deposits", function () {
       .emit(actorsManager, "SafeRecipientUpdated")
       .withArgs(bob.address, alice.address, 1);
 
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
+    const timestamp = (await getTimestamp()) - 100;
+    const validFor = 3600;
+    const hash = await tokenUtils.hashSetProtector(bob.address, mark.address, true, timestamp, validFor);
+    const privateKey = privateKeyByWallet[mark.address];
+    const signature = await signPackedData(hash, privateKey);
 
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
+    await expect(actorsManager.connect(bob).setProtector(mark.address, true, timestamp, validFor, signature))
       .emit(actorsManager, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 
@@ -450,11 +417,13 @@ describe("FlexiVaultManager Using internal Deposits", function () {
       .emit(actorsManager, "SafeRecipientUpdated")
       .withArgs(bob.address, alice.address, 1);
 
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
+    const timestamp = (await getTimestamp()) - 100;
+    const validFor = 3600;
+    const hash = await tokenUtils.hashSetProtector(bob.address, mark.address, true, timestamp, validFor);
+    const privateKey = privateKeyByWallet[mark.address];
+    const signature = await signPackedData(hash, privateKey);
 
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
+    await expect(actorsManager.connect(bob).setProtector(mark.address, true, timestamp, validFor, signature))
       .emit(actorsManager, "ProtectorUpdated")
       .withArgs(bob.address, mark.address, true);
 

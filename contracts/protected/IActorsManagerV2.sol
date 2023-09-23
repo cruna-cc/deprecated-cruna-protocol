@@ -79,6 +79,7 @@ interface IActorsManagerV2 {
   error ProtectorsNotLocked();
   error TimestampInvalidOrExpired();
   error WrongDataOrNotSignedByProtector();
+  error WrongDataOrNotSignedByProposedProtector();
   error SignatureAlreadyUsed();
   error OperatorAlreadyActive();
   error OperatorNotActive();
@@ -97,6 +98,7 @@ interface IActorsManagerV2 {
   error NotTransferable();
   error InvalidProtectedERC721();
   error NotTheBondedProtectedERC721();
+  error NoLockedProtectors();
 
   struct BeneficiaryConf {
     uint256 quorum;
@@ -161,17 +163,17 @@ interface IActorsManagerV2 {
   * @dev Unlocks the number of protectors for an tokensOwner
   * @notice The function MUST be executed by an active protector and later
      approved by the tokensOwner
-  * @param tokensOwner_ The tokensOwner address
+  * @param protectors The protectors to unlock
+  * @param timestamp The timestamp of the unlock request
+  * @param validFor The validity of the unlock request
+  * @param signature The signature of the unlock request
   */
-  function unlockProtectorsFor(address tokensOwner_) external;
-
-  /**
-  * @dev Approves the unlock of the number of protectors for an tokensOwner
-  * @notice The function MUST be executed by the tokensOwner
-  * @param approved True if the tokensOwner approves the unlock,
-     false if the tokensOwner rejects the unlock
-  */
-  function approveUnlockProtectors(bool approved) external;
+  function unlockProtectors(
+    address[] memory protectors,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external;
 
   /**
    * @dev Verifies if the transfer request is signed by a protector

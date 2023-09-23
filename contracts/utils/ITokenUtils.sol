@@ -49,6 +49,13 @@ interface ITokenUtils {
     uint256 validFor
   ) external view returns (bytes32);
 
+  function hashUnlockProtectors(
+    address tokenOwner,
+    address[] memory protectors,
+    uint256 timestamp,
+    uint256 validFor
+  ) external view returns (bytes32);
+
   function hashRecipientRequest(
     address owner,
     address recipient,
