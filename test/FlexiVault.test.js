@@ -357,6 +357,11 @@ describe("FlexiVaultManager", function () {
       .withArgs(bob.address, john.address, true);
   });
 
+  it("should allow setting protectors and removing them and then add them again smoothly", async function () {
+    console.info("TODO: Missing test");
+    console.info("should allow setting protectors and removing them and then add them again smoothly");
+  });
+
   it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
     await flexiVault.connect(bob).activateAccount(1, false);
     // expectCount = 1;

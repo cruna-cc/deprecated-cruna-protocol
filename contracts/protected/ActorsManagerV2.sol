@@ -38,8 +38,6 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
   // the address of the owner given the second wallet required to start the transfer
   mapping(address => address) internal _ownersByProtector;
 
-  mapping(address => Status) internal _lockedProtectorsFor;
-
   // the tokens currently being transferred when a second wallet is set
   //  mapping(uint256 => ControlledTransfer) private _controlledTransfers;
   mapping(bytes32 => bool) internal _usedSignatures;
@@ -176,30 +174,6 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
     if (status < Status.ACTIVE) revert NotAProtector();
     if (!signedByProtector(tokenOwner_, hash, signature)) revert WrongDataOrNotSignedByProtector();
     _usedSignatures[keccak256(signature)] = true;
-  }
-
-  function lockProtectors() external onlyTokensOwner {
-    if (countActiveProtectors(_msgSender()) == 0) revert NoActiveProtectors();
-    if (_lockedProtectorsFor[_msgSender()] == Status.UNSET) {
-      _lockedProtectorsFor[_msgSender()] = Status.ACTIVE;
-      emit ProtectorsLocked(_msgSender(), true);
-    } else {
-      // it can be active or set for removal
-      revert ProtectorsAlreadyLocked();
-    }
-  }
-
-  function unlockProtectors(
-    address[] memory protectors,
-    uint256 timestamp,
-    uint256 validFor,
-    bytes calldata signature
-  ) external onlyTokensOwner {
-    if (_lockedProtectorsFor[_msgSender()] != Status.ACTIVE) revert NoLockedProtectors();
-    bytes32 hash = _tokenUtils.hashUnlockProtectors(_msgSender(), protectors, timestamp, validFor);
-    validateTimestampAndSignature(_msgSender(), timestamp, validFor, hash, signature);
-    _setSignatureAsUsed(signature);
-    delete _lockedProtectorsFor[_msgSender()];
   }
 
   function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {

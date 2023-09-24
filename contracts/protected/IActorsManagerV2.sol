@@ -152,30 +152,6 @@ interface IActorsManagerV2 {
   function setSignatureAsUsed(bytes calldata signature) external;
 
   /**
-  * @dev Locks the number of protectors for an tokensOwner
-     If not locked, if the tokensOwner is hacked, the hacker could set a new protector
-     and use the new protector to transfer all the tokens owned by tokensOwner.
-  * @notice The function MUST be executed by the tokensOwner
-  */
-  function lockProtectors() external;
-
-  /**
-  * @dev Unlocks the number of protectors for an tokensOwner
-  * @notice The function MUST be executed by an active protector and later
-     approved by the tokensOwner
-  * @param protectors The protectors to unlock
-  * @param timestamp The timestamp of the unlock request
-  * @param validFor The validity of the unlock request
-  * @param signature The signature of the unlock request
-  */
-  function unlockProtectors(
-    address[] memory protectors,
-    uint256 timestamp,
-    uint256 validFor,
-    bytes calldata signature
-  ) external;
-
-  /**
    * @dev Verifies if the transfer request is signed by a protector
    * @param tokenOwner_ The token owner
    * @param hash The hash of the transfer request

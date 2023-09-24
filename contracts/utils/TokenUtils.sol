@@ -147,16 +147,6 @@ contract TokenUtils is ITokenUtils {
       keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), tokenOwner, protector, active, timestamp, validFor));
   }
 
-  function hashUnlockProtectors(
-    address tokenOwner,
-    address[] memory protectors,
-    uint256 timestamp,
-    uint256 validFor
-  ) external view override returns (bytes32) {
-    if (timestamp == 0) revert TimestampZero();
-    return keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), tokenOwner, protectors, timestamp, validFor));
-  }
-
   function hashTransferRequest(
     uint256 tokenId,
     address to,
