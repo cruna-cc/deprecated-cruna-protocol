@@ -106,12 +106,12 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
     bytes calldata signature
   ) external virtual override onlyTokensOwner {
     if (protector_ == address(0)) revert NoZeroAddress();
-    if (_ownersByProtector[protector_] != address(0)) {
-      if (_ownersByProtector[protector_] == _msgSender()) revert ProtectorAlreadySetByYou();
-      else revert AssociatedToAnotherOwner();
-    }
     bytes32 hash = _tokenUtils.hashSetProtector(_msgSender(), protector_, active, timestamp, validFor);
     if (active) {
+      if (_ownersByProtector[protector_] != address(0)) {
+        if (_ownersByProtector[protector_] == _msgSender()) revert ProtectorAlreadySetByYou();
+        else revert AssociatedToAnotherOwner();
+      }
       Status status = _actorStatus(_msgSender(), protector_, Role.PROTECTOR);
       // solhint-disable-next-line not-rely-on-time
       if (timestamp > block.timestamp || timestamp < block.timestamp - validFor) revert TimestampInvalidOrExpired();
@@ -125,15 +125,15 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
       _addActor(_msgSender(), protector_, Role.PROTECTOR, Status.ACTIVE, Level.NONE);
       _ownersByProtector[protector_] = _msgSender();
     } else {
+      validateTimestampAndSignature(_msgSender(), timestamp, validFor, hash, signature);
+      if (_ownersByProtector[protector_] != _msgSender()) revert NotYourProtector();
       (uint256 i, Status status) = findProtector(_msgSender(), protector_);
-      if (status == Status.RESIGNED) {
+      if (status == Status.ACTIVE) {
         _removeActorByIndex(_msgSender(), i, Role.PROTECTOR);
       } else {
-        revert ResignationNotSubmitted();
+        revert NotAnActiveProtector();
       }
-
       if (status != Status.ACTIVE) revert ProtectorNotFound();
-      validateTimestampAndSignature(_msgSender(), timestamp, validFor, hash, signature);
       //      _removeActorByIndex(tokensOwner_, i, Role.PROTECTOR);
       delete _ownersByProtector[protector_];
     }

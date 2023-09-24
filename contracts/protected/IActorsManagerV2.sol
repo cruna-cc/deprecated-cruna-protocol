@@ -98,7 +98,8 @@ interface IActorsManagerV2 {
   error NotTransferable();
   error InvalidProtectedERC721();
   error NotTheBondedProtectedERC721();
-  error NoLockedProtectors();
+  error NotYourProtector();
+  error NotAnActiveProtector();
 
   struct BeneficiaryConf {
     uint256 quorum;

@@ -34,6 +34,11 @@ describe("FlexiVaultManager", function () {
   let notAToken;
   // wallets
   let owner, bob, alice, fred, john, jane, mark;
+  let timestamp;
+  let validFor;
+  let hash;
+  let privateKey;
+  let signature;
 
   const TokenType = {
     ETH: 0,
@@ -346,11 +351,11 @@ describe("FlexiVaultManager", function () {
 
     await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
 
-    const timestamp = (await getTimestamp()) - 100;
-    const validFor = 3600;
-    const hash = await tokenUtils.hashSetProtector(bob.address, john.address, true, timestamp, validFor);
-    const privateKey = privateKeyByWallet[mark.address];
-    const signature = await signPackedData(hash, privateKey);
+    timestamp = (await getTimestamp()) - 100;
+    validFor = 3600;
+    hash = await tokenUtils.hashSetProtector(bob.address, john.address, true, timestamp, validFor);
+    privateKey = privateKeyByWallet[mark.address];
+    signature = await signPackedData(hash, privateKey);
 
     await expect(actorsManager.connect(bob).setProtector(john.address, true, timestamp, validFor, signature))
       .emit(actorsManager, "ProtectorUpdated")
@@ -358,8 +363,51 @@ describe("FlexiVaultManager", function () {
   });
 
   it("should allow setting protectors and removing them and then add them again smoothly", async function () {
-    console.info("TODO: Missing test");
-    console.info("should allow setting protectors and removing them and then add them again smoothly");
+    await flexiVault.connect(bob).activateAccount(1, true);
+
+    // bob creates a vaults depositing a particle token
+    await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
+    await depositERC721(bob, 1, particle, 2);
+    expect((await flexiVaultManager.amountOf(1, [particle.address], [2]))[0]).equal(1);
+
+    await setProtector(bob, mark);
+
+    await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
+
+    // console.log("mark adds john")
+
+    timestamp = (await getTimestamp()) - 100;
+    validFor = 3600;
+    hash = await tokenUtils.hashSetProtector(bob.address, john.address, true, timestamp, validFor);
+    privateKey = privateKeyByWallet[mark.address];
+    signature = await signPackedData(hash, privateKey);
+
+    await expect(actorsManager.connect(bob).setProtector(john.address, true, timestamp, validFor, signature))
+      .emit(actorsManager, "ProtectorUpdated")
+      .withArgs(bob.address, john.address, true);
+
+    // console.log("john removes mark");
+
+    hash = await tokenUtils.hashSetProtector(bob.address, mark.address, false, timestamp, validFor);
+    privateKey = privateKeyByWallet[john.address];
+    signature = await signPackedData(hash, privateKey);
+
+    await expect(actorsManager.connect(bob).setProtector(mark.address, false, timestamp, validFor, signature))
+      .emit(actorsManager, "ProtectorUpdated")
+      .withArgs(bob.address, mark.address, false);
+
+    // console.log("john removes himself")
+
+    hash = await tokenUtils.hashSetProtector(bob.address, john.address, false, timestamp, validFor);
+    privateKey = privateKeyByWallet[john.address];
+    signature = await signPackedData(hash, privateKey);
+
+    await expect(actorsManager.connect(bob).setProtector(john.address, false, timestamp, validFor, signature))
+      .emit(actorsManager, "ProtectorUpdated")
+      .withArgs(bob.address, john.address, false);
+
+    // adding john again
+    await setProtector(bob, john);
   });
 
   it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
@@ -372,12 +420,12 @@ describe("FlexiVaultManager", function () {
 
     await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
 
-    const timestamp = (await getTimestamp()) - 100;
-    const validFor = 3600;
-    const hash = await tokenUtils.hashTransferRequest(1, alice.address, timestamp, validFor);
+    timestamp = (await getTimestamp()) - 100;
+    validFor = 3600;
+    hash = await tokenUtils.hashTransferRequest(1, alice.address, timestamp, validFor);
 
     // this helper function uses by default hardhat account [4], which is john, the protector
-    const signature = await signPackedData(hash);
+    signature = await signPackedData(hash);
 
     await expect(flexiVault.protectedTransfer(1, alice.address, timestamp, validFor, signature)).revertedWith(
       "NotTheTokenOwner()"
