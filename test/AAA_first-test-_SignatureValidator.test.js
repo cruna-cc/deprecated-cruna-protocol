@@ -27,14 +27,14 @@ describe("SignatureValidator", function () {
     validator = await deployContract("SignatureValidator", "Cruna", "1");
   });
 
-  // THIS MUST BE THE FIRST TEST IF NOT validator.address IS NOT THE ONE THAT IS EXPECTED (due to Create2)
+  // THIS MUST BE THE FIRST TEST HERE IF NOT validator.address IS NOT THE ONE THAT IS EXPECTED (due to Create2)
   // OR LAUNCHED AS only
   it("should validate signature with preset MetaMask signature", async function () {
     expect(mailTo.address).equal("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266");
-    expect(validator.address).equal("0x0E801D84Fa97b50751Dbf25036d067dCf18858bF");
+    expect(validator.address).equal("0x5FbDB2315678afecb367f032d93F642f64180aa3");
 
     let signature =
-      "0xf5760a6a7b7c23445d11d43c01d1258cd1a6e5cd9b26910533edf421baac65210a589663564830a22528bb88793aa2e1c47b0cd0a9907751b0366a055c5846541b";
+      "0xe38ca8fb8e6a7ed40a0ea4228d5454d8e61e5d8232649ca3cfbd44b32530788d19a316b477138258b90dbcb4973f0bfc9e44511464bb04928e06645bf6391d1b1c";
 
     const message = {
       to: mailTo.address,

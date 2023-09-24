@@ -1,5 +1,12 @@
 const chai = require("chai");
-const {deployContract, amount, getTimestamp, signPackedData, deployContractUpgradeable} = require("./helpers");
+const {
+  deployContract,
+  amount,
+  getTimestamp,
+  signPackedData,
+  deployContractUpgradeable,
+  privateKeyByWallet,
+} = require("./helpers");
 const DeployUtils = require("../scripts/lib/DeployUtils");
 
 let expectCount = 0;
@@ -164,6 +171,18 @@ describe("FlexiVaultManager", function () {
     await uselessWeapons.mintBatch(john.address, [3, 4], [10, 1], "0x00");
   });
 
+  const setProtector = async (owner, protector) => {
+    const timestamp = (await getTimestamp()) - 100;
+    const validFor = 3600;
+    const hash = await tokenUtils.hashSetProtector(owner.address, protector.address, true, timestamp, validFor);
+    const privateKey = privateKeyByWallet[protector.address];
+    const signature = await signPackedData(hash, privateKey);
+
+    await expect(actorsManager.connect(owner).setProtector(protector.address, true, timestamp, validFor, signature))
+      .emit(actorsManager, "ProtectorUpdated")
+      .withArgs(owner.address, protector.address, true);
+  };
+
   // it("should revert if not activated", async function () {
   //   // bob creates a vaults depositing a particle token
   //   await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -302,85 +321,6 @@ describe("FlexiVaultManager", function () {
     expect(await particle.ownerOf(4)).equal(accountAddress);
   });
 
-  it("should allow a transfer if a transfer initializer is pending", async function () {
-    // expectCount = 1;
-    await flexiVault.connect(bob).activateAccount(1, true);
-
-    // bob creates a vaults depositing a particle token
-    await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
-    await depositERC721(bob, 1, particle, 2);
-    expect((await flexiVaultManager.amountOf(1, [particle.address], [2]))[0]).equal(1);
-
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
-
-    // bob transfers the protected to alice
-    await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1))
-      .emit(flexiVault, "Transfer")
-      .withArgs(bob.address, alice.address, 1);
-
-    await expect(transferNft(flexiVault, alice)(alice.address, bob.address, 1))
-      .emit(flexiVault, "Transfer")
-      .withArgs(alice.address, bob.address, 1);
-
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
-      .emit(actorsManager, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
-
-    await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
-
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address)).revertedWith("ProtectorAlreadySetByYou()");
-  });
-
-  it("should dot allow a transfer if protectors resigns successfully", async function () {
-    // expectCount = 1;
-    await flexiVault.connect(bob).activateAccount(1, true);
-
-    // bob creates a vaults depositing a particle token
-    await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
-    await depositERC721(bob, 1, particle, 2);
-    expect((await flexiVaultManager.amountOf(1, [particle.address], [2]))[0]).equal(1);
-
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
-
-    // like not accepting
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
-
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address)).revertedWith("ProtectorAlreadySet()");
-
-    // explicitly not acceptingbin/
-
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, false))
-      .to.emit(actorsManager, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, false);
-
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
-
-    // 7
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, false)).revertedWith("PendingProtectorNotFound()");
-
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
-
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(mark.address)).revertedWith("NotAProtector()");
-
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(alice.address)).revertedWith("NotAProtector()");
-
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
-
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
-      .to.emit(actorsManager, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
-
-    await actorsManager.connect(mark).resignAsProtectorFor(bob.address);
-
-    await expect(actorsManager.connect(mark).resignAsProtectorFor(bob.address)).revertedWith("ResignationAlreadySubmitted()");
-  });
-
   it("should not allow a transfer if a protector is active", async function () {
     await flexiVault.connect(bob).activateAccount(1, true);
 
@@ -389,28 +329,39 @@ describe("FlexiVaultManager", function () {
     await depositERC721(bob, 1, particle, 2);
     expect((await flexiVaultManager.amountOf(1, [particle.address], [2]))[0]).equal(1);
 
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
-
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
-      .emit(actorsManager, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
+    await setProtector(bob, mark);
 
     await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
+  });
+
+  it("setting a second protector requires a protector's signature", async function () {
+    await flexiVault.connect(bob).activateAccount(1, true);
+
+    // bob creates a vaults depositing a particle token
+    await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
+    await depositERC721(bob, 1, particle, 2);
+    expect((await flexiVaultManager.amountOf(1, [particle.address], [2]))[0]).equal(1);
+
+    await setProtector(bob, mark);
+
+    await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
+
+    const timestamp = (await getTimestamp()) - 100;
+    const validFor = 3600;
+    const hash = await tokenUtils.hashSetProtector(bob.address, john.address, true, timestamp, validFor);
+    const privateKey = privateKeyByWallet[mark.address];
+    const signature = await signPackedData(hash, privateKey);
+
+    await expect(actorsManager.connect(bob).setProtector(john.address, true, timestamp, validFor, signature))
+      .emit(actorsManager, "ProtectorUpdated")
+      .withArgs(bob.address, john.address, true);
   });
 
   it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
     await flexiVault.connect(bob).activateAccount(1, false);
     // expectCount = 1;
 
-    await expect(actorsManager.connect(bob).proposeProtector(john.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, john.address);
-
-    await expect(actorsManager.connect(john).acceptProposal(bob.address, true))
-      .emit(actorsManager, "ProtectorUpdated")
-      .withArgs(bob.address, john.address, true);
+    await setProtector(bob, john);
 
     expect(await actorsManager.isProtectorFor(bob.address, john.address)).equal(true);
 
@@ -455,13 +406,7 @@ describe("FlexiVaultManager", function () {
       .emit(actorsManager, "SafeRecipientUpdated")
       .withArgs(bob.address, alice.address, 2);
 
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
-
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
-      .emit(actorsManager, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
+    await setProtector(bob, mark);
 
     await expect(actorsManager.connect(bob).setSafeRecipient(fred.address, 2, 0, 0, 0)).revertedWith(
       "NotPermittedWhenProtectorsAreActive()"
@@ -484,13 +429,7 @@ describe("FlexiVaultManager", function () {
       .emit(actorsManager, "SafeRecipientUpdated")
       .withArgs(bob.address, alice.address, 1);
 
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
-
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
-      .emit(actorsManager, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
+    await setProtector(bob, mark);
 
     await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
   });
@@ -507,13 +446,7 @@ describe("FlexiVaultManager", function () {
       .emit(actorsManager, "SafeRecipientUpdated")
       .withArgs(bob.address, alice.address, 1);
 
-    await expect(actorsManager.connect(bob).proposeProtector(mark.address))
-      .emit(actorsManager, "ProtectorProposed")
-      .withArgs(bob.address, mark.address);
-
-    await expect(actorsManager.connect(mark).acceptProposal(bob.address, true))
-      .emit(actorsManager, "ProtectorUpdated")
-      .withArgs(bob.address, mark.address, true);
+    await setProtector(bob, mark);
 
     let account = await flexiVaultManager.accountAddress(1);
 

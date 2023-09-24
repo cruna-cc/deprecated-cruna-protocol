@@ -117,9 +117,12 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
       Status status = _actorStatus(_msgSender(), protector_, Role.PROTECTOR);
       // solhint-disable-next-line not-rely-on-time
       if (timestamp > block.timestamp || timestamp < block.timestamp - validFor) revert TimestampInvalidOrExpired();
-      if (protector_ != hash.recover(signature)) revert WrongDataOrNotSignedByProposedProtector();
+      if (countActiveProtectors(_msgSender()) == 0) {
+        if (protector_ != hash.recover(signature)) revert WrongDataOrNotSignedByProposedProtector();
+      } else {
+        if (!signedByProtector(_msgSender(), hash, signature)) revert WrongDataOrNotSignedByProtector();
+      }
       if (isSignatureUsed(signature)) revert SignatureAlreadyUsed();
-
       if (status != Status.UNSET) revert ProtectorAlreadySet();
       _addActor(_msgSender(), protector_, Role.PROTECTOR, Status.ACTIVE, Level.NONE);
       _ownersByProtector[protector_] = _msgSender();
