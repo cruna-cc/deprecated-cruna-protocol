@@ -10,7 +10,7 @@ import {IERC777} from "@openzeppelin/contracts/token/ERC777/IERC777.sol";
 import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {NFTOwned} from "../utils/NFTOwned.sol";
 import {FlexiVault} from "./FlexiVault.sol";
@@ -27,7 +27,7 @@ import {IActors} from "../protected/IActors.sol";
 
 //import {console} from "hardhat/console.sol";
 
-contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVersioned, Ownable, NFTOwned, ReentrancyGuard {
+contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVersioned, Ownable2Step, NFTOwned, ReentrancyGuard {
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
 
   // modifiers

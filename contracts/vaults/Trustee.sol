@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {IERC165} from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {IFlexiVaultManager} from "../vaults/IFlexiVaultManager.sol";
 
 import {ITrustee} from "./ITrustee.sol";
@@ -11,7 +11,7 @@ import {ITrustee} from "./ITrustee.sol";
 // @dev The NFTs owning the bound account are all minted from this contract.
 // The vaultManager must be an active FlexiVaultManager.sol
 // The NFT can be ejected from the FlexiVaultManager.sol and transferred to the owner
-contract Trustee is ITrustee, ERC721, Ownable {
+contract Trustee is ITrustee, ERC721, Ownable2Step {
   error TokenIdOutOfRange();
   error Forbidden();
 

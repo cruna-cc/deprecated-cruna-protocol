@@ -7,7 +7,7 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {IProtectedERC721} from "./IProtectedERC721.sol";
 import {ProtectedERC721Errors} from "./ProtectedERC721Errors.sol";
@@ -16,7 +16,8 @@ import {IVersioned} from "../utils/IVersioned.sol";
 import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IERC6454} from "./IERC6454.sol";
 import {Actors, IActors} from "./Actors.sol";
-import {ActorsManagerV2, IActorsManagerV2} from "./ActorsManagerV2.sol";
+import {ActorsManager, IActorsManager} from "./ActorsManager.sol";
+import {ISignatureValidator} from "../utils/ISignatureValidator.sol";
 
 //import {console} from "hardhat/console.sol";
 
@@ -29,13 +30,14 @@ abstract contract ProtectedERC721 is
   Actors,
   ERC721,
   ERC721Enumerable,
-  Ownable
+  Ownable2Step
 {
   using ECDSA for bytes32;
   using Strings for uint256;
 
   ITokenUtils public tokenUtils;
-  IActorsManagerV2 public actorsManager;
+  IActorsManager public actorsManager;
+  ISignatureValidator public signatureValidator;
 
   mapping(uint256 => bool) internal _approvedTransfers;
 
@@ -68,11 +70,20 @@ abstract contract ProtectedERC721 is
     _;
   }
 
-  constructor(string memory name_, string memory symbol_, address tokenUtils_, address actorsManager_) ERC721(name_, symbol_) {
+  constructor(
+    string memory name_,
+    string memory symbol_,
+    address tokenUtils_,
+    address actorsManager_,
+    address signatureValidator_
+  ) ERC721(name_, symbol_) {
     tokenUtils = ITokenUtils(tokenUtils_);
     if (tokenUtils.isTokenUtils() != ITokenUtils.isTokenUtils.selector) revert InvalidTokenUtils();
-    actorsManager = IActorsManagerV2(actorsManager_);
-    if (actorsManager.isActorsManager() != IActorsManagerV2.isActorsManager.selector) revert InvalidActorsManager();
+    actorsManager = IActorsManager(actorsManager_);
+    if (actorsManager.isActorsManager() != IActorsManager.isActorsManager.selector) revert InvalidActorsManager();
+    signatureValidator = ISignatureValidator(signatureValidator_);
+    if (signatureValidator.isSignatureValidator() != ISignatureValidator.isSignatureValidator.selector)
+      revert InvalidSignatureValidator();
   }
 
   function protectedTransfer(

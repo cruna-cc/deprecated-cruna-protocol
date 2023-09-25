@@ -54,4 +54,5 @@ interface ProtectedERC721Errors {
   error NotTransferable();
   error NotTheActorManager();
   error InvalidActorsManager();
+  error InvalidSignatureValidator();
 }

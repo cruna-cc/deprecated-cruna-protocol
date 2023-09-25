@@ -18,16 +18,6 @@ interface ITokenUtils {
 
   function isERC777(address asset) external view returns (bool);
 
-  function hashWithdrawRequest(
-    uint256 owningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount,
-    address beneficiary,
-    uint256 timestamp,
-    uint256 validFor
-  ) external view returns (bytes32);
-
   function hashWithdrawsRequest(
     uint256 owningTokenId,
     IFlexiVaultManager.TokenType[] memory tokenTypes,
@@ -40,30 +30,6 @@ interface ITokenUtils {
   ) external view returns (bytes32);
 
   function hashEjectRequest(uint256 owningTokenId, uint256 timestamp, uint256 validFor) external view returns (bytes32);
-
-  function hashSetProtector(
-    address tokenOwner,
-    address protector,
-    bool active,
-    uint256 timestamp,
-    uint256 validFor
-  ) external view returns (bytes32);
-
-  function hashRecipientRequest(
-    address owner,
-    address recipient,
-    IActors.Level level,
-    uint256 timestamp,
-    uint256 validFor
-  ) external view returns (bytes32);
-
-  function hashBeneficiaryRequest(
-    address owner,
-    address beneficiary,
-    IActors.Status status,
-    uint256 timestamp,
-    uint256 validFor
-  ) external view returns (bytes32);
 
   /**
    * @dev Returns the hash of a transfer request

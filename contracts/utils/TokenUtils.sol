@@ -59,44 +59,6 @@ contract TokenUtils is ITokenUtils {
     return TokenUtils.isTokenUtils.selector;
   }
 
-  function hashWithdrawRequest(
-    uint256 owningTokenId,
-    address asset,
-    uint256 id,
-    uint256 amount,
-    address beneficiary,
-    uint256 timestamp,
-    uint256 validFor
-  ) external view override returns (bytes32) {
-    if (timestamp == 0) revert TimestampZero();
-    return
-      keccak256(
-        abi.encode("\x19\x01", block.chainid, address(this), owningTokenId, asset, id, amount, beneficiary, timestamp, validFor)
-      );
-  }
-
-  function hashRecipientRequest(
-    address owner,
-    address recipient,
-    IActors.Level level,
-    uint256 timestamp,
-    uint256 validFor
-  ) external view override returns (bytes32) {
-    if (timestamp == 0) revert TimestampZero();
-    return keccak256(abi.encode("\x19\x01", block.chainid, address(this), owner, recipient, level, timestamp, validFor));
-  }
-
-  function hashBeneficiaryRequest(
-    address owner,
-    address beneficiary,
-    IActors.Status status,
-    uint256 timestamp,
-    uint256 validFor
-  ) external view override returns (bytes32) {
-    if (timestamp == 0) revert TimestampZero();
-    return keccak256(abi.encode("\x19\x01", block.chainid, address(this), owner, beneficiary, status, timestamp, validFor));
-  }
-
   function hashWithdrawsRequest(
     uint256 owningTokenId,
     IFlexiVaultManager.TokenType[] memory tokenTypes,
@@ -133,18 +95,6 @@ contract TokenUtils is ITokenUtils {
   ) external view override returns (bytes32) {
     if (timestamp == 0) revert TimestampZero();
     return keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), owningTokenId, timestamp, validFor));
-  }
-
-  function hashSetProtector(
-    address tokenOwner,
-    address protector,
-    bool active,
-    uint256 timestamp,
-    uint256 validFor
-  ) external view override returns (bytes32) {
-    if (timestamp == 0) revert TimestampZero();
-    return
-      keccak256(abi.encodePacked("\x19\x01", block.chainid, address(this), tokenOwner, protector, active, timestamp, validFor));
   }
 
   function hashTransferRequest(

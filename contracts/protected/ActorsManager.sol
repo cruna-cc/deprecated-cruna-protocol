@@ -8,7 +8,7 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
-import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {FlexiVault} from "../vaults/FlexiVault.sol";
 import {IProtectedERC721} from "./IProtectedERC721.sol";
@@ -18,17 +18,19 @@ import {IVersioned} from "../utils/IVersioned.sol";
 import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IERC6454} from "./IERC6454.sol";
 import {Actors, IActors} from "./Actors.sol";
-import {IActorsManagerV2} from "./IActorsManagerV2.sol";
+import {IActorsManager} from "./IActorsManager.sol";
 import {FlexiVault} from "../vaults/FlexiVault.sol";
+import {ISignatureValidator} from "../utils/ISignatureValidator.sol";
 
 //import {console} from "hardhat/console.sol";
 
-contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
+contract ActorsManager is IActorsManager, Actors, Ownable2Step, ERC165 {
   using ECDSA for bytes32;
   using Strings for uint256;
 
-  ITokenUtils internal _tokenUtils;
-  FlexiVault internal _crunaVault;
+  ITokenUtils public tokenUtils;
+  FlexiVault public flexiVault;
+  ISignatureValidator public signatureValidator;
 
   // the address of a second wallet required to validate the transfer of a token
   // the user can set up to 2 protectors
@@ -46,38 +48,26 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
 
   mapping(address => BeneficiaryConf) internal _beneficiaryConfs;
 
-  modifier onlyProtectorFor(address owner_) {
-    (uint256 i, Status status) = findProtector(owner_, _msgSender());
-    if (status < Status.ACTIVE) revert NotAProtector();
-    _;
-  }
-
-  modifier onlyProtectorForTokenId(uint256 tokenId_) {
-    address owner_ = _crunaVault.ownerOf(tokenId_);
-    (uint256 i, Status status) = findProtector(owner_, _msgSender());
-    if (status < Status.ACTIVE) revert NotAProtector();
-    _;
-  }
-
   modifier onlyTokenOwner(uint256 tokenId) {
-    if (_crunaVault.ownerOf(tokenId) != _msgSender()) revert NotTheTokenOwner();
+    if (flexiVault.ownerOf(tokenId) != _msgSender()) revert NotTheTokenOwner();
     _;
   }
 
   modifier onlyTokensOwner() {
-    if (_crunaVault.balanceOf(_msgSender()) == 0) revert NotATokensOwner();
+    if (flexiVault.balanceOf(_msgSender()) == 0) revert NotATokensOwner();
     _;
   }
 
   function init(address crunaVault) external onlyOwner {
     if (!IERC165(crunaVault).supportsInterface(type(IProtectedERC721).interfaceId)) revert InvalidProtectedERC721();
-    _crunaVault = FlexiVault(crunaVault);
-    if (address(_crunaVault.actorsManager()) != address(this)) revert NotTheBondedProtectedERC721();
-    _tokenUtils = ITokenUtils(_crunaVault.tokenUtils());
+    flexiVault = FlexiVault(crunaVault);
+    if (address(flexiVault.actorsManager()) != address(this)) revert NotTheBondedProtectedERC721();
+    tokenUtils = ITokenUtils(flexiVault.tokenUtils());
+    signatureValidator = ISignatureValidator(flexiVault.signatureValidator());
   }
 
   function isActorsManager() external pure override returns (bytes4) {
-    return ActorsManagerV2.isActorsManager.selector;
+    return ActorsManager.isActorsManager.selector;
   }
 
   function countActiveProtectors(address tokensOwner_) public view override returns (uint256) {
@@ -89,12 +79,12 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
     return (i, actor.status);
   }
 
-  function isProtectorFor(address tokensOwner_, address protector_) external view returns (bool) {
+  function isProtectorFor(address tokensOwner_, address protector_) public view returns (bool) {
     Status status = _actorStatus(tokensOwner_, protector_, Role.PROTECTOR);
-    return status > Status.PENDING;
+    return status == Status.ACTIVE;
   }
 
-  function hasProtectors(address tokensOwner_) external view override returns (address[] memory) {
+  function hasProtectors(address tokensOwner_) public view override returns (address[] memory) {
     return _listActiveActors(tokensOwner_, Role.PROTECTOR);
   }
 
@@ -106,26 +96,25 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
     bytes calldata signature
   ) external virtual override onlyTokensOwner {
     if (protector_ == address(0)) revert NoZeroAddress();
-    bytes32 hash = _tokenUtils.hashSetProtector(_msgSender(), protector_, active, timestamp, validFor);
+    checkIfSignatureUsed(signature);
+    isNotExpired(timestamp, validFor);
+    address signer = signatureValidator.signSetProtector(_msgSender(), protector_, active, timestamp, validFor, signature);
     if (active) {
       if (_ownersByProtector[protector_] != address(0)) {
         if (_ownersByProtector[protector_] == _msgSender()) revert ProtectorAlreadySetByYou();
         else revert AssociatedToAnotherOwner();
       }
       Status status = _actorStatus(_msgSender(), protector_, Role.PROTECTOR);
-      // solhint-disable-next-line not-rely-on-time
-      if (timestamp > block.timestamp || timestamp < block.timestamp - validFor) revert TimestampInvalidOrExpired();
       if (countActiveProtectors(_msgSender()) == 0) {
-        if (protector_ != hash.recover(signature)) revert WrongDataOrNotSignedByProposedProtector();
+        if (protector_ != signer) revert WrongDataOrNotSignedByProposedProtector();
       } else {
-        if (!signedByProtector(_msgSender(), hash, signature)) revert WrongDataOrNotSignedByProtector();
+        isSignerAProtector(_msgSender(), signer);
       }
-      if (isSignatureUsed(signature)) revert SignatureAlreadyUsed();
       if (status != Status.UNSET) revert ProtectorAlreadySet();
       _addActor(_msgSender(), protector_, Role.PROTECTOR, Status.ACTIVE, Level.NONE);
       _ownersByProtector[protector_] = _msgSender();
     } else {
-      validateTimestampAndSignature(_msgSender(), timestamp, validFor, hash, signature);
+      isSignerAProtector(_msgSender(), signer);
       if (_ownersByProtector[protector_] != _msgSender()) revert NotYourProtector();
       (uint256 i, Status status) = findProtector(_msgSender(), protector_);
       if (status == Status.ACTIVE) {
@@ -134,11 +123,18 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
         revert NotAnActiveProtector();
       }
       if (status != Status.ACTIVE) revert ProtectorNotFound();
-      //      _removeActorByIndex(tokensOwner_, i, Role.PROTECTOR);
       delete _ownersByProtector[protector_];
     }
-    _setSignatureAsUsed(signature);
     emit ProtectorUpdated(_msgSender(), protector_, active);
+  }
+
+  function isNotExpired(uint256 timestamp, uint256 validFor) public view {
+    // solhint-disable-next-line not-rely-on-time
+    if (timestamp > block.timestamp || timestamp < block.timestamp - validFor) revert TimestampInvalidOrExpired();
+  }
+
+  function isSignerAProtector(address tokenOwner_, address signer_) public view {
+    if (!isProtectorFor(tokenOwner_, signer_)) revert WrongDataOrNotSignedByProtector();
   }
 
   function signedByProtector(address owner_, bytes32 hash, bytes memory signature) public view override returns (bool) {
@@ -149,6 +145,11 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
 
   function isSignatureUsed(bytes calldata signature) public view override returns (bool) {
     return _usedSignatures[keccak256(signature)];
+  }
+
+  function checkIfSignatureUsed(bytes calldata signature) public {
+    if (_usedSignatures[keccak256(signature)]) revert SignatureAlreadyUsed();
+    _usedSignatures[keccak256(signature)] = true;
   }
 
   function validateTimestampAndSignature(
@@ -169,7 +170,7 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
     bytes32 hash,
     bytes calldata signature
   ) external override onlyTokenOwner(tokenId) {
-    address tokenOwner_ = _crunaVault.ownerOf(tokenId);
+    address tokenOwner_ = flexiVault.ownerOf(tokenId);
     (, Status status) = findProtector(tokenOwner_, _msgSender());
     if (status < Status.ACTIVE) revert NotAProtector();
     if (!signedByProtector(tokenOwner_, hash, signature)) revert WrongDataOrNotSignedByProtector();
@@ -177,7 +178,7 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
   }
 
   function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-    return interfaceId == type(IActorsManagerV2).interfaceId || super.supportsInterface(interfaceId);
+    return interfaceId == type(IActorsManager).interfaceId || super.supportsInterface(interfaceId);
   }
 
   // safe recipients
@@ -192,13 +193,16 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
     if (timestamp == 0) {
       if (countActiveProtectors(_msgSender()) > 0) revert NotPermittedWhenProtectorsAreActive();
     } else {
-      validateTimestampAndSignature(
+      address signer = signatureValidator.signRecipientRequest(
         _msgSender(),
+        recipient,
+        uint256(level),
         timestamp,
         validFor,
-        _tokenUtils.hashRecipientRequest(_msgSender(), recipient, level, timestamp, validFor),
         signature
       );
+      isNotExpired(timestamp, validFor);
+      isSignerAProtector(_msgSender(), signer);
       _usedSignatures[keccak256(signature)] = true;
     }
     if (level == Level.NONE) {
@@ -210,7 +214,7 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
   }
 
   function setSignatureAsUsed(bytes calldata signature) public override {
-    if (_msgSender() != address(_crunaVault)) revert Forbidden();
+    if (_msgSender() != address(flexiVault)) revert Forbidden();
     _setSignatureAsUsed(signature);
   }
 
@@ -239,13 +243,16 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
     if (timestamp == 0) {
       if (countActiveProtectors(_msgSender()) > 0) revert NotPermittedWhenProtectorsAreActive();
     } else {
-      validateTimestampAndSignature(
+      address signer = signatureValidator.signBeneficiaryRequest(
         _msgSender(),
+        beneficiary,
+        uint256(status),
         timestamp,
         validFor,
-        _tokenUtils.hashBeneficiaryRequest(_msgSender(), beneficiary, status, timestamp, validFor),
         signature
       );
+      isNotExpired(timestamp, validFor);
+      isSignerAProtector(_msgSender(), signer);
       _usedSignatures[keccak256(signature)] = true;
     }
     if (status == Status.UNSET) {
@@ -320,13 +327,13 @@ contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
       _beneficiariesRequests[tokenOwner_].recipient == _msgSender() &&
       _beneficiariesRequests[tokenOwner_].approvers.length >= _beneficiaryConfs[tokenOwner_].quorum
     ) {
-      uint256 balance = _crunaVault.balanceOf(tokenOwner_);
+      uint256 balance = flexiVault.balanceOf(tokenOwner_);
       uint256[] memory tokenIds = new uint256[](balance);
       for (uint256 i = 0; i < balance; i++) {
-        tokenIds[i] = _crunaVault.tokenOfOwnerByIndex(tokenOwner_, i);
+        tokenIds[i] = flexiVault.tokenOfOwnerByIndex(tokenOwner_, i);
       }
       for (uint256 i = 0; i < balance; i++) {
-        _crunaVault.managedTransfer(tokenIds[i], _msgSender());
+        flexiVault.managedTransfer(tokenIds[i], _msgSender());
       }
       emit Inherited(tokenOwner_, _msgSender(), balance);
       delete _beneficiariesRequests[tokenOwner_];

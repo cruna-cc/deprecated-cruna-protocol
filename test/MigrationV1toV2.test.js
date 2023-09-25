@@ -28,6 +28,7 @@ describe("Migration V1 to V2", function () {
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   let notAToken;
   // wallets
+  let guardian, signatureValidator;
   let owner, bob, alice, fred, john, jane, mark;
 
   const TokenType = {
@@ -106,17 +107,20 @@ describe("Migration V1 to V2", function () {
     tokenUtils = await deployContract("TokenUtils");
     expect(await tokenUtils.version()).to.equal("1.0.0");
 
-    actorsManager = await deployContract("ActorsManagerV2");
+    actorsManager = await deployContract("ActorsManager");
+    signatureValidator = await deployContract("SignatureValidator", "Cruna", "1");
 
-    const _baseTokenURI = "https://meta.cruna.cc/flexy-vault/v1/";
-    flexiVault = await deployContract("FlexiVaultMock", tokenUtils.address, actorsManager.address);
+    flexiVault = await deployContract("FlexiVaultMock", tokenUtils.address, actorsManager.address, signatureValidator.address);
+
     expect(await flexiVault.version()).to.equal("1.0.0");
 
     await actorsManager.init(flexiVault.address);
 
     registry = await deployContract("ERC6551Registry");
     wallet = await deployContract("ERC6551Account");
-    let implementation = await deployContract("ERC6551AccountUpgradeable");
+    guardian = await deployContract("AccountGuardian");
+
+    let implementation = await deployContract("ERC6551AccountUpgradeable", guardian.address);
     proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
     flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address, tokenUtils.address);
@@ -174,8 +178,8 @@ describe("Migration V1 to V2", function () {
 
     // V2
 
-    actorsManager2 = await deployContract("ActorsManagerV2");
-    flexiVault2 = await deployContract("FlexiVaultV2", tokenUtils.address, actorsManager2.address);
+    actorsManager2 = await deployContract("ActorsManager");
+    flexiVault2 = await deployContract("FlexiVaultV2", tokenUtils.address, actorsManager2.address, signatureValidator.address);
 
     await actorsManager2.init(flexiVault2.address);
 

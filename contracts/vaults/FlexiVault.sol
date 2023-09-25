@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/Ownable.sol" as Ownable;
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC4906} from "../utils/IERC4906.sol";
@@ -52,8 +52,9 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
 
   constructor(
     address tokenUtils,
-    address actorsManager
-  ) ProtectedERC721("Cruna Flexi Vault V1", "CRUNA_FV1", tokenUtils, actorsManager) {}
+    address actorsManager,
+    address signatureValidator
+  ) ProtectedERC721("Cruna Flexi Vault V1", "CRUNA_FV1", tokenUtils, actorsManager, signatureValidator) {}
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(ProtectedERC721) returns (bool) {
     return interfaceId == type(IERC4906).interfaceId || super.supportsInterface(interfaceId);

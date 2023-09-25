@@ -1,6 +1,9 @@
 const hre = require("hardhat");
 const {assert} = require("chai");
 const BN = require("bn.js");
+const ethSigUtil = require("eth-sig-util");
+
+const {domainType} = require("./eip712");
 
 const Helpers = {
   initEthers(ethers) {
@@ -88,6 +91,34 @@ const Helpers = {
 
   normalize(amount, decimals = 18) {
     return amount + "0".repeat(decimals);
+  },
+
+  async makeSignature(chainId, verifyingContract, privateKey, primaryType, types, message) {
+    const domain = {
+      name: "Cruna",
+      version: "1",
+      chainId,
+      verifyingContract,
+    };
+    const data = {
+      types: {
+        EIP712Domain: domainType(domain),
+      },
+      domain,
+      primaryType,
+      message,
+    };
+    data.types[primaryType] = types;
+    return ethSigUtil.signTypedMessage(Buffer.from(privateKey.slice(2), "hex"), {data});
+  },
+
+  getTypesFromSelector(selector) {
+    selector = selector.split(",").map((s) => s.split(" "));
+    const types = [];
+    for (const [type, name] of selector) {
+      types.push({name, type});
+    }
+    return types;
   },
 };
 

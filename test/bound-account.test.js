@@ -2,6 +2,7 @@
 
 const {expect} = require("chai");
 const DeployUtils = require("../scripts/lib/DeployUtils");
+const {deployContract} = require("./helpers");
 
 describe("Bound-account Integration", function () {
   let registry, proxy, implementation, wallet;
@@ -10,7 +11,7 @@ describe("Bound-account Integration", function () {
   const tokenId1 = 1;
   const tokenId2 = 2;
   const tokenId3 = 3;
-
+  let guardian, signatureValidator;
   let owner, bob, alice, fred;
   let chainId;
 
@@ -21,7 +22,9 @@ describe("Bound-account Integration", function () {
 
   beforeEach(async function () {
     registry = await deployUtils.deploy("ERC6551Registry");
-    implementation = await deployUtils.deploy("ERC6551AccountUpgradeable");
+    guardian = await deployContract("AccountGuardian");
+
+    implementation = await deployContract("ERC6551AccountUpgradeable", guardian.address);
     proxy = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
     particle = await deployUtils.deploy("Particle", "https://particle.xyz/meta/");
 

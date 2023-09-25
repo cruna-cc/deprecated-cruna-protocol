@@ -15,6 +15,7 @@ describe("VaultFactory", function () {
   const deployUtils = new DeployUtils(ethers);
 
   let flexiVault, flexiVaultManager, factory;
+  let guardian, signatureValidator;
   let registry, wallet, proxyWallet, tokenUtils, actorsManager;
   // mocks
   let usdc, usdt;
@@ -31,17 +32,21 @@ describe("VaultFactory", function () {
     tokenUtils = await deployContract("TokenUtils");
     expect(await tokenUtils.version()).to.equal("1.0.0");
 
-    actorsManager = await deployContract("ActorsManagerV2");
+    actorsManager = await deployContract("ActorsManager");
+    signatureValidator = await deployContract("SignatureValidator", "Cruna", "1");
 
     const _baseTokenURI = "https://meta.cruna.cc/flexy-vault/v1/";
-    flexiVault = await deployContract("FlexiVaultMock", tokenUtils.address, actorsManager.address);
+    flexiVault = await deployContract("FlexiVaultMock", tokenUtils.address, actorsManager.address, signatureValidator.address);
+
     expect(await flexiVault.version()).to.equal("1.0.0");
 
     await actorsManager.init(flexiVault.address);
 
     registry = await deployContract("ERC6551Registry");
     wallet = await deployContract("ERC6551Account");
-    let implementation = await deployContract("ERC6551AccountUpgradeable");
+    guardian = await deployContract("AccountGuardian");
+
+    let implementation = await deployContract("ERC6551AccountUpgradeable", guardian.address);
     proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
     flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address, tokenUtils.address);

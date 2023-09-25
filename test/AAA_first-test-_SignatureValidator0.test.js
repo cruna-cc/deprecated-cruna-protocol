@@ -5,11 +5,9 @@ let deployUtils;
 const ethSigUtil = require("eth-sig-util");
 const helpers = require("./helpers");
 helpers.initEthers(ethers);
-const {privateKeyByWallet, deployContract, getChainId} = helpers;
+const {privateKeyByWallet, deployContract, getChainId, makeSignature} = helpers;
 
-const {domainType} = require("./helpers/eip712");
-
-describe("SignatureValidator", function () {
+describe("SignatureValidator0", function () {
   deployUtils = new DeployUtils(ethers);
 
   let chainId;
@@ -24,7 +22,7 @@ describe("SignatureValidator", function () {
   });
 
   beforeEach(async function () {
-    validator = await deployContract("SignatureValidator", "Cruna", "1");
+    validator = await deployContract("SignatureValidator0", "Cruna", "1");
   });
 
   // THIS MUST BE THE FIRST TEST HERE IF NOT validator.address IS NOT THE ONE THAT IS EXPECTED (due to Create2)
@@ -47,35 +45,24 @@ describe("SignatureValidator", function () {
   });
 
   it("should validate signature", async function () {
-    let domain = {
-      name: "Cruna",
-      version: "1",
-      chainId,
-      verifyingContract: validator.address,
-    };
+    let privateKey = privateKeyByWallet[wallet.address];
 
     const message = {
       to: mailTo.address,
       contents: "very interesting",
     };
 
-    const data = {
-      types: {
-        EIP712Domain: domainType(domain),
-        Mail: [
-          {name: "to", type: "address"},
-          {name: "contents", type: "string"},
-        ],
-      },
-      domain,
-      primaryType: "Mail",
-      message,
-    };
-
-    let privateKey = privateKeyByWallet[wallet.address];
-    const privateKeyBuffer = Buffer.from(privateKey.slice(2), "hex");
-
-    const signature = ethSigUtil.signTypedMessage(privateKeyBuffer, {data});
+    const signature = await makeSignature(
+      chainId,
+      validator.address,
+      privateKey,
+      "Mail",
+      [
+        {name: "to", type: "address"},
+        {name: "contents", type: "string"},
+      ],
+      message
+    );
 
     expect(await validator.verify(signature, wallet.address, message.to, message.contents)).equal(true);
   });

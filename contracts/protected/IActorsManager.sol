@@ -6,7 +6,7 @@ pragma solidity ^0.8.19;
 import {IActors} from "./IActors.sol";
 
 // erc165 interfaceId 0x8dca4bea
-interface IActorsManagerV2 {
+interface IActorsManager {
   /**
    * @dev Emitted when a protector is proposed for an tokensOwner
    */
