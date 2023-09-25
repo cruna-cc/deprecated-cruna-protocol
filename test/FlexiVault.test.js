@@ -273,7 +273,7 @@ describe("FlexiVaultManager", function () {
     await expect((await ethers.provider.getBalance(accountAddress)).toString()).equal(amount("1000"));
   });
 
-  it.only("should create a vaults, add assets to it, then eject and reinject again", async function () {
+  it("should create a vaults, add assets to it, then eject and reinject again", async function () {
     expectCount = 0;
     await flexiVault.connect(bob).activateAccount(1, true);
 
