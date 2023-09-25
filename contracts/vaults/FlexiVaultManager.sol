@@ -14,7 +14,6 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {NFTOwned} from "../utils/NFTOwned.sol";
 import {FlexiVault} from "./FlexiVault.sol";
-import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IProtectedERC721} from "../protected/IProtectedERC721.sol";
 import {IERC6551AccountExecutable} from "../ERC6551/interfaces/IERC6551AccountExecutable.sol";
 import {IERC6551Account} from "../ERC6551/interfaces/IERC6551Account.sol";
@@ -24,6 +23,8 @@ import {Trustee, ITrustee} from "./Trustee.sol";
 import {IVersioned} from "../utils/IVersioned.sol";
 import {IFlexiVaultManagerExtended} from "./IFlexiVaultManagerExtended.sol";
 import {IActors} from "../protected/IActors.sol";
+import {IActorsManager} from "../protected/IActorsManager.sol";
+import {ISignatureValidator} from "../utils/ISignatureValidator.sol";
 
 //import {console} from "hardhat/console.sol";
 
@@ -35,7 +36,6 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
   IERC6551Registry internal _registry;
   IERC6551AccountExecutable public boundAccount;
   IERC6551AccountExecutable public boundAccountUpgradeable;
-  ITokenUtils public tokenUtils;
   Trustee public trustee;
 
   mapping(uint => Trustee) public previousTrustees;
@@ -86,12 +86,10 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
   }
 
   // solhint-disable-next-line
-  constructor(address owningToken, address tokenUtils_) NFTOwned(owningToken) {
+  constructor(address owningToken) NFTOwned(owningToken) {
     _vault = FlexiVault(owningToken);
     if (!IERC165(_owningToken).supportsInterface(type(IProtectedERC721).interfaceId)) revert OwningTokenNotProtected();
     _salt = uint256(keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken))));
-    tokenUtils = ITokenUtils(tokenUtils_);
-    if (tokenUtils.isTokenUtils() != ITokenUtils.isTokenUtils.selector) revert InvalidTokenUtils();
   }
 
   /**
@@ -197,11 +195,11 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
     address walletAddress = _accountAddresses[owningTokenId];
     if (asset == address(0)) {
       return walletAddress.balance;
-    } else if (tokenUtils.isERC20(asset) || tokenUtils.isERC777(asset)) {
+    } else if (isERC20(asset) || isERC777(asset)) {
       return IERC20(asset).balanceOf(walletAddress);
-    } else if (tokenUtils.isERC721(asset)) {
+    } else if (isERC721(asset)) {
       return IERC721(asset).ownerOf(id) == walletAddress ? 1 : 0;
-    } else if (tokenUtils.isERC1155(asset)) {
+    } else if (isERC1155(asset)) {
       return IERC1155(asset).balanceOf(walletAddress, id);
     } else revert InvalidAsset();
   }
@@ -267,6 +265,36 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
       _vault.actorsManager().safeRecipientLevel(ownerOf(owningTokenId), recipient) == IActors.Level.NONE;
   }
 
+  function _verifyWithdrawSigner(
+    uint256 owningTokenId,
+    TokenType[] memory tokenTypes,
+    address[] memory assets,
+    uint256[] memory ids,
+    uint256[] memory amounts,
+    address[] memory recipients,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) internal view returns (address) {
+    uint256[] memory uintArray = new uint256[](tokenTypes.length);
+    for (uint256 i = 0; i < tokenTypes.length; i++) {
+      uintArray[i] = uint256(tokenTypes[i]);
+    }
+    ISignatureValidator signatureValidator = _vault.signatureValidator();
+    return
+      signatureValidator.signWithdrawsRequest(
+        owningTokenId,
+        uintArray,
+        assets,
+        ids,
+        amounts,
+        recipients,
+        timestamp,
+        validFor,
+        signature
+      );
+  }
+
   /**
    * @dev {See IFlexiVaultManager.sol-withdrawAssets}
    */
@@ -282,14 +310,14 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
     bytes calldata signature,
     address sender
   ) external virtual override onlyVault {
-    if (ownerOf(owningTokenId) != sender && !isOperatorFor(owningTokenId, sender)) {
-      revert NotTheOwningTokenOwnerOrOperatorFor();
+    if (sender != ownerOf(owningTokenId)) {
+      revert NotTheOwningTokenOwner();
     }
     if (assets.length != ids.length || assets.length != amounts.length || assets.length != recipients.length)
       revert InconsistentLengths();
-    // timestamp != 0 means calling it with a signature
+    IActorsManager actorsManager = _vault.actorsManager();
     if (timestamp != 0) {
-      bytes32 hash = tokenUtils.hashWithdrawsRequest(
+      address signer = _verifyWithdrawSigner(
         owningTokenId,
         tokenTypes,
         assets,
@@ -297,9 +325,12 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
         amounts,
         recipients,
         timestamp,
-        validFor
+        validFor,
+        signature
       );
-      _vault.actorsManager().validateTimestampAndSignature(ownerOf(owningTokenId), timestamp, validFor, hash, signature);
+      actorsManager.isNotExpired(timestamp, validFor);
+      actorsManager.isSignerAProtector(_msgSender(), signer);
+      if (actorsManager.isSignatureUsed(signature)) revert SignatureAlreadyUsed();
       _vault.setSignatureAsUsed(signature);
     }
     for (uint256 i = 0; i < assets.length; i++) {
@@ -389,5 +420,37 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
 
   function removeOperatorsFor(uint256 owningTokenId) external virtual onlyVault {
     delete _operators[owningTokenId];
+  }
+
+  function isERC721(address asset) public view returns (bool) {
+    try IERC165(asset).supportsInterface(type(IProtectedERC721).interfaceId) returns (bool result) {
+      if (result) revert TheERC721IsAProtector();
+    } catch {}
+    try IERC165(asset).supportsInterface(type(IERC721).interfaceId) returns (bool result) {
+      return result;
+    } catch {}
+    return false;
+  }
+
+  // It should work fine with ERC20 and ERC777
+  function isERC20(address asset) public view override returns (bool) {
+    try IERC20(asset).allowance(address(0), address(0)) returns (uint256) {
+      return true;
+    } catch {}
+    return false;
+  }
+
+  function isERC1155(address asset) public view override returns (bool) {
+    try IERC165(asset).supportsInterface(type(IERC1155).interfaceId) returns (bool result) {
+      return result;
+    } catch {}
+    return false;
+  }
+
+  function isERC777(address asset) public view returns (bool) {
+    try IERC777(asset).granularity() returns (uint) {
+      return true;
+    } catch {}
+    return false;
   }
 }

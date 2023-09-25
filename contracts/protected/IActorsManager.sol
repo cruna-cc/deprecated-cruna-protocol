@@ -84,7 +84,6 @@ interface IActorsManager {
   error OperatorAlreadyActive();
   error OperatorNotActive();
   error NotTheVaultManager();
-  error InvalidTokenUtils();
   error QuorumCannotBeZero();
   error QuorumCannotBeGreaterThanBeneficiaries();
   error BeneficiaryNotConfigured();
@@ -167,6 +166,12 @@ interface IActorsManager {
    * @return True if the signature has been used
    */
   function isSignatureUsed(bytes calldata signature) external view returns (bool);
+
+  function isNotExpired(uint256 timestamp, uint256 validFor) external view;
+
+  function isSignerAProtector(address tokenOwner_, address signer_) external view;
+
+  function checkIfSignatureUsed(bytes calldata signature) external;
 
   function validateTimestampAndSignature(
     address tokenOwner_,

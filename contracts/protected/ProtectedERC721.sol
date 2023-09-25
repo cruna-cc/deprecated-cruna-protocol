@@ -13,7 +13,6 @@ import {IProtectedERC721} from "./IProtectedERC721.sol";
 import {ProtectedERC721Errors} from "./ProtectedERC721Errors.sol";
 import {ProtectedERC721Events} from "./ProtectedERC721Events.sol";
 import {IVersioned} from "../utils/IVersioned.sol";
-import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IERC6454} from "./IERC6454.sol";
 import {Actors, IActors} from "./Actors.sol";
 import {ActorsManager, IActorsManager} from "./ActorsManager.sol";
@@ -35,7 +34,6 @@ abstract contract ProtectedERC721 is
   using ECDSA for bytes32;
   using Strings for uint256;
 
-  ITokenUtils public tokenUtils;
   IActorsManager public actorsManager;
   ISignatureValidator public signatureValidator;
 
@@ -73,12 +71,9 @@ abstract contract ProtectedERC721 is
   constructor(
     string memory name_,
     string memory symbol_,
-    address tokenUtils_,
     address actorsManager_,
     address signatureValidator_
   ) ERC721(name_, symbol_) {
-    tokenUtils = ITokenUtils(tokenUtils_);
-    if (tokenUtils.isTokenUtils() != ITokenUtils.isTokenUtils.selector) revert InvalidTokenUtils();
     actorsManager = IActorsManager(actorsManager_);
     if (actorsManager.isActorsManager() != IActorsManager.isActorsManager.selector) revert InvalidActorsManager();
     signatureValidator = ISignatureValidator(signatureValidator_);
@@ -93,14 +88,10 @@ abstract contract ProtectedERC721 is
     uint256 validFor,
     bytes calldata signature
   ) external override onlyTokenOwner(tokenId) {
-    actorsManager.validateTimestampAndSignature(
-      ownerOf(tokenId),
-      timestamp,
-      validFor,
-      tokenUtils.hashTransferRequest(tokenId, to, timestamp, validFor),
-      signature
-    );
-    actorsManager.setSignatureAsUsed(signature);
+    actorsManager.checkIfSignatureUsed(signature);
+    actorsManager.isNotExpired(timestamp, validFor);
+    address signer = signatureValidator.signTransferRequest(tokenId, to, timestamp, validFor, signature);
+    actorsManager.isSignerAProtector(ownerOf(tokenId), signer);
     _approvedTransfers[tokenId] = true;
     _transfer(_msgSender(), to, tokenId);
     delete _approvedTransfers[tokenId];

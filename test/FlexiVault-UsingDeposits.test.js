@@ -24,7 +24,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   const deployUtils = new DeployUtils(ethers);
 
   let flexiVault, flexiVaultManager, actorsManager;
-  let registry, wallet, proxyWallet, tokenUtils;
+  let registry, wallet, proxyWallet;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   let notAToken;
@@ -44,14 +44,12 @@ describe("FlexiVaultManager Using internal Deposits", function () {
 
   beforeEach(async function () {
     expectCount = 0;
-    tokenUtils = await deployContract("TokenUtils");
-    expect(await tokenUtils.version()).to.equal("1.0.0");
 
     actorsManager = await deployContract("ActorsManager");
     signatureValidator = await deployContract("SignatureValidator", "Cruna", "1");
 
     const _baseTokenURI = "https://meta.cruna.cc/flexy-vault/v1/";
-    flexiVault = await deployContract("FlexiVaultMock", tokenUtils.address, actorsManager.address, signatureValidator.address);
+    flexiVault = await deployContract("FlexiVaultMock", actorsManager.address, signatureValidator.address);
 
     expect(await flexiVault.version()).to.equal("1.0.0");
 
@@ -64,7 +62,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
     let implementation = await deployContract("ERC6551AccountUpgradeable", guardian.address);
     proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
-    flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address, tokenUtils.address);
+    flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address);
     expect(await flexiVaultManager.version()).to.equal("1.0.0");
 
     await flexiVaultManager.init(registry.address, wallet.address, proxyWallet.address);
@@ -342,11 +340,25 @@ describe("FlexiVaultManager Using internal Deposits", function () {
 
     await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
 
-    let timestamp = (await getTimestamp()) - 100;
-    let validFor = 3600;
-    let hash = await tokenUtils.hashTransferRequest(1, alice.address, timestamp, validFor);
-    let privateKey = privateKeyByWallet[john.address];
-    let signature = await signPackedData(hash, privateKey);
+    timestamp = (await getTimestamp()) - 100;
+    validFor = 3600;
+
+    const message = {
+      tokenId: 1,
+      to: alice.address,
+      level: 2,
+      timestamp,
+      validFor,
+    };
+
+    signature = makeSignature(
+      chainId,
+      signatureValidator.address,
+      privateKeyByWallet[john.address],
+      "Auth",
+      getTypesFromSelector("uint256 tokenId,address to,uint256 timestamp,uint256 validFor"),
+      message
+    );
 
     await expect(flexiVault.protectedTransfer(1, alice.address, timestamp, validFor, signature)).revertedWith(
       "NotTheTokenOwner()"

@@ -40,7 +40,6 @@ interface IFlexiVaultManagerExtended is IFlexiVaultManager {
   error SignatureAlreadyUsed();
   error OwningTokenNotProtected();
   error VaultHasBeenUpgraded();
-  error InvalidTokenUtils();
   error TheAccountHasNeverBeenEjected();
   error TheAccountIsNotOwnedByTheFlexiVaultManager();
   error OperatorAlreadyActive();
@@ -52,4 +51,6 @@ interface IFlexiVaultManagerExtended is IFlexiVaultManager {
   error NotImplemented();
   error InvalidAccountAddress();
   error TrusteeNotFound();
+  error TheERC721IsAProtector();
+  error NotPermittedWhenProtectorsAreActive();
 }

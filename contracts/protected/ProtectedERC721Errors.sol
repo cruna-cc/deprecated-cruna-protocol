@@ -40,7 +40,6 @@ interface ProtectedERC721Errors {
   error OperatorAlreadyActive();
   error OperatorNotActive();
   error NotTheVaultManager();
-  error InvalidTokenUtils();
   error QuorumCannotBeZero();
   error QuorumCannotBeGreaterThanBeneficiaries();
   error BeneficiaryNotConfigured();

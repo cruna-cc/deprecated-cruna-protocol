@@ -15,7 +15,6 @@ import {IProtectedERC721} from "./IProtectedERC721.sol";
 import {ProtectedERC721Errors} from "./ProtectedERC721Errors.sol";
 import {ProtectedERC721Events} from "./ProtectedERC721Events.sol";
 import {IVersioned} from "../utils/IVersioned.sol";
-import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IERC6454} from "./IERC6454.sol";
 import {Actors, IActors} from "./Actors.sol";
 import {IActorsManager} from "./IActorsManager.sol";
@@ -28,7 +27,6 @@ contract ActorsManager is IActorsManager, Actors, Ownable2Step, ERC165 {
   using ECDSA for bytes32;
   using Strings for uint256;
 
-  ITokenUtils public tokenUtils;
   FlexiVault public flexiVault;
   ISignatureValidator public signatureValidator;
 
@@ -62,7 +60,6 @@ contract ActorsManager is IActorsManager, Actors, Ownable2Step, ERC165 {
     if (!IERC165(crunaVault).supportsInterface(type(IProtectedERC721).interfaceId)) revert InvalidProtectedERC721();
     flexiVault = FlexiVault(crunaVault);
     if (address(flexiVault.actorsManager()) != address(this)) revert NotTheBondedProtectedERC721();
-    tokenUtils = ITokenUtils(flexiVault.tokenUtils());
     signatureValidator = ISignatureValidator(flexiVault.signatureValidator());
   }
 
@@ -96,7 +93,7 @@ contract ActorsManager is IActorsManager, Actors, Ownable2Step, ERC165 {
     bytes calldata signature
   ) external virtual override onlyTokensOwner {
     if (protector_ == address(0)) revert NoZeroAddress();
-    checkIfSignatureUsed(signature);
+    _checkIfSignatureUsed(signature);
     isNotExpired(timestamp, validFor);
     address signer = signatureValidator.signSetProtector(_msgSender(), protector_, active, timestamp, validFor, signature);
     if (active) {
@@ -128,12 +125,12 @@ contract ActorsManager is IActorsManager, Actors, Ownable2Step, ERC165 {
     emit ProtectorUpdated(_msgSender(), protector_, active);
   }
 
-  function isNotExpired(uint256 timestamp, uint256 validFor) public view {
+  function isNotExpired(uint256 timestamp, uint256 validFor) public view override {
     // solhint-disable-next-line not-rely-on-time
     if (timestamp > block.timestamp || timestamp < block.timestamp - validFor) revert TimestampInvalidOrExpired();
   }
 
-  function isSignerAProtector(address tokenOwner_, address signer_) public view {
+  function isSignerAProtector(address tokenOwner_, address signer_) public view override {
     if (!isProtectorFor(tokenOwner_, signer_)) revert WrongDataOrNotSignedByProtector();
   }
 
@@ -147,7 +144,12 @@ contract ActorsManager is IActorsManager, Actors, Ownable2Step, ERC165 {
     return _usedSignatures[keccak256(signature)];
   }
 
-  function checkIfSignatureUsed(bytes calldata signature) public {
+  function checkIfSignatureUsed(bytes calldata signature) public override {
+    if (_msgSender() != address(flexiVault)) revert Forbidden();
+    _checkIfSignatureUsed(signature);
+  }
+
+  function _checkIfSignatureUsed(bytes calldata signature) internal {
     if (_usedSignatures[keccak256(signature)]) revert SignatureAlreadyUsed();
     _usedSignatures[keccak256(signature)] = true;
   }

@@ -8,6 +8,7 @@ const {
   privateKeyByWallet,
   makeSignature,
   getChainId,
+  getTypesFromSelector,
 } = require("./helpers");
 const DeployUtils = require("../scripts/lib/DeployUtils");
 
@@ -30,8 +31,8 @@ describe("FlexiVaultManager", function () {
   const deployUtils = new DeployUtils(ethers);
 
   let flexiVault, flexiVaultManager;
-  let registry, wallet, proxyWallet, tokenUtils, actorsManager;
-  let guardian, signatureValidator;
+  let registry, wallet, proxyWallet, actorsManager;
+  let guardian, signatureValidator, chainId;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   let notAToken;
@@ -108,14 +109,12 @@ describe("FlexiVaultManager", function () {
 
   beforeEach(async function () {
     expectCount = 0;
-    tokenUtils = await deployContract("TokenUtils");
-    expect(await tokenUtils.version()).to.equal("1.0.0");
 
     actorsManager = await deployContract("ActorsManager");
     signatureValidator = await deployContract("SignatureValidator", "Cruna", "1");
 
     const _baseTokenURI = "https://meta.cruna.cc/flexy-vault/v1/";
-    flexiVault = await deployContract("FlexiVaultMock", tokenUtils.address, actorsManager.address, signatureValidator.address);
+    flexiVault = await deployContract("FlexiVaultMock", actorsManager.address, signatureValidator.address);
 
     expect(await flexiVault.version()).to.equal("1.0.0");
 
@@ -128,7 +127,7 @@ describe("FlexiVaultManager", function () {
     let implementation = await deployContract("ERC6551AccountUpgradeable", guardian.address);
     proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
-    flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address, tokenUtils.address);
+    flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address);
     expect(await flexiVaultManager.version()).to.equal("1.0.0");
 
     await flexiVaultManager.init(registry.address, wallet.address, proxyWallet.address);
@@ -222,20 +221,7 @@ describe("FlexiVaultManager", function () {
   it("should create a vaults and add more assets to it", async function () {
     await flexiVault.connect(bob).activateAccount(1, false);
 
-    // bob creates a vaults depositing a particle token
-    // await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
-
-    // bob adds a stupidMonk token to his vaults
-    // await stupidMonk.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
-
-    // bob adds some bulls tokens to his vaults
-    // await bulls.connect(bob).approve(flexiVaultManager.address, amount("10000"));
-
     await depositAssets(bob, 1, [2, 2, 1], [particle, stupidMonk, bulls], [2, 1, 0], [1, 1, amount("5000")]);
-    //
-    // await depositERC721(bob, 1, particle, 2);
-    // await depositERC721(bob, 1, stupidMonk, 1);
-    // await depositERC20(bob, 1, bulls, amount("5000"));
 
     expect((await flexiVaultManager.amountOf(1, [particle.address], [2]))[0]).equal(1);
     expect((await flexiVaultManager.amountOf(1, [stupidMonk.address], [1]))[0]).equal(1);
@@ -413,43 +399,6 @@ describe("FlexiVaultManager", function () {
 
     // adding john again
     await setProtector(bob, john);
-  });
-
-  it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
-    await flexiVault.connect(bob).activateAccount(1, false);
-    // expectCount = 1;
-
-    await setProtector(bob, john);
-
-    expect(await actorsManager.isProtectorFor(bob.address, john.address)).equal(true);
-
-    await expect(transferNft(flexiVault, bob)(bob.address, alice.address, 1)).revertedWith("NotTransferable()");
-
-    timestamp = (await getTimestamp()) - 100;
-    validFor = 3600;
-    hash = await tokenUtils.hashTransferRequest(1, alice.address, timestamp, validFor);
-
-    // this helper function uses by default hardhat account [4], which is john, the protector
-    signature = await signPackedData(hash);
-
-    await expect(flexiVault.protectedTransfer(1, alice.address, timestamp, validFor, signature)).revertedWith(
-      "NotTheTokenOwner()"
-    );
-
-    await expect(flexiVault.connect(bob).protectedTransfer(1, fred.address, timestamp, validFor, signature)).revertedWith(
-      "WrongDataOrNotSignedByProtector()"
-    );
-
-    await expect(flexiVault.connect(bob).protectedTransfer(1, alice.address, timestamp, validFor, signature))
-      .emit(flexiVault, "Transfer")
-      .withArgs(bob.address, alice.address, 1);
-
-    // transfer it back
-    transferNft(flexiVault, alice)(alice.address, bob.address, 1);
-
-    await expect(flexiVault.connect(bob).protectedTransfer(1, alice.address, timestamp, validFor, signature)).revertedWith(
-      "SignatureAlreadyUsed()"
-    );
   });
 
   it("should allow a transfer to a safe recipient level HIGH even if a protector is active", async function () {

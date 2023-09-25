@@ -38,6 +38,14 @@ interface IFlexiVaultManager {
    */
   function init(address registry, address payable boundAccount, address payable boundAccountUpgradeable) external;
 
+  function isERC721(address asset) external view returns (bool);
+
+  function isERC20(address asset) external view returns (bool);
+
+  function isERC1155(address asset) external view returns (bool);
+
+  function isERC777(address asset) external view returns (bool);
+
   /**
    * @dev Deposits multiple assets in the bound account
    * @param owningTokenId The id of the owning token
