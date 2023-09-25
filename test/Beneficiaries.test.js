@@ -114,7 +114,6 @@ describe("Beneficiaries", function () {
     actorsManager = await deployContract("ActorsManager");
     signatureValidator = await deployContract("SignatureValidator", "Cruna", "1");
 
-    const _baseTokenURI = "https://meta.cruna.cc/flexy-vault/v1/";
     flexiVault = await deployContract("FlexiVaultMock", actorsManager.address, signatureValidator.address);
 
     expect(await flexiVault.version()).to.equal("1.0.0");
