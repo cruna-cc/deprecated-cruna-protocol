@@ -1,3 +1,3 @@
 module.exports = {
-  skipFiles: ["mocks", "ERC6551"],
+  skipFiles: ["mocks", "erc6551"],
 };

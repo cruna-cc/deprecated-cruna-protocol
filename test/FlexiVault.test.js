@@ -121,11 +121,11 @@ describe("FlexiVaultManager", function () {
     await actorsManager.init(flexiVault.address);
 
     registry = await deployContract("ERC6551Registry");
-    wallet = await deployContract("ERC6551Account");
+    wallet = await deployContract("Account");
     guardian = await deployContract("AccountGuardian");
 
-    let implementation = await deployContract("ERC6551AccountUpgradeable", guardian.address);
-    proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
+    let implementation = await deployContract("AccountUpgradeable", guardian.address);
+    proxyWallet = await deployContract("AccountProxy", implementation.address);
 
     flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address);
     expect(await flexiVaultManager.version()).to.equal("1.0.0");

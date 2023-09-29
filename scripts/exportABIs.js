@@ -15,10 +15,10 @@ async function main() {
   }
   abi("CrunaClusterFactory", "contracts/factory");
   abi("FlexiVault", "contracts/implementation");
-  abi("ERC6551Registry", "contracts/ERC6551");
-  abi("ERC6551Account", "contracts/ERC6551");
-  abi("ERC6551AccountUpgradeable", "contracts/ERC6551");
-  abi("ERC6551AccountProxy", "contracts/ERC6551");
+  abi("ERC6551Registry", "contracts/erc6551");
+  abi("Account.sol", "contracts/erc6551");
+  abi("AccountUpgradeable.sol", "contracts/erc6551");
+  abi("AccountProxy.sol", "contracts/erc6551");
   abi("FlexiVaultManager", "contracts/vaults");
   abi("SignatureValidator", "contracts/utils");
 

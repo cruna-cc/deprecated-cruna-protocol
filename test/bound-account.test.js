@@ -24,8 +24,8 @@ describe("Bound-account Integration", function () {
     registry = await deployUtils.deploy("ERC6551Registry");
     guardian = await deployContract("AccountGuardian");
 
-    implementation = await deployContract("ERC6551AccountUpgradeable", guardian.address);
-    proxy = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
+    implementation = await deployContract("AccountUpgradeable", guardian.address);
+    proxy = await deployUtils.deploy("AccountProxy", implementation.address);
     particle = await deployUtils.deploy("Particle", "https://particle.xyz/meta/");
 
     await particle.safeMint(bob.address, tokenId1);
@@ -40,7 +40,7 @@ describe("Bound-account Integration", function () {
 
     await registry.createAccount(proxy.address, chainId, particle.address, tokenId1, salt, []);
 
-    wallet = await deployUtils.attach("ERC6551AccountUpgradeable", predictedAccount);
+    wallet = await deployUtils.attach("AccountUpgradeable", predictedAccount);
 
     await expect(particle.connect(fred)["safeTransferFrom(address,address,uint256)"](fred.address, predictedAccount, tokenId3))
       .to.emit(particle, "Transfer")
@@ -86,7 +86,7 @@ describe("Bound-account Integration", function () {
 
     await registry.createAccount(proxy.address, chainId, particle.address, tokenId1, salt, []);
 
-    wallet = await deployUtils.attach("ERC6551AccountUpgradeable", predictedAccount);
+    wallet = await deployUtils.attach("AccountUpgradeable", predictedAccount);
 
     await expect(particle.connect(fred)["safeTransferFrom(address,address,uint256)"](fred.address, predictedAccount, tokenId3))
       .to.emit(particle, "Transfer")
