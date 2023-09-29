@@ -7,8 +7,4 @@ import {ERC6551AccountProxy} from "erc6551/examples/upgradeable/ERC6551AccountPr
 
 contract AccountProxy is ERC6551AccountProxy {
   constructor(address _defaultImplementation) ERC6551AccountProxy(_defaultImplementation) {}
-
-  function isERC6551Account() external pure returns (bool) {
-    return true;
-  }
 }

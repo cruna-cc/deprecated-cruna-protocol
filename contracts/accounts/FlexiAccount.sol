@@ -12,7 +12,7 @@ import {AccountGuardian} from "./AccountGuardian.sol";
 
 //import {console} from "hardhat/console.sol";
 
-contract CrunaAccount is ERC6551AccountUpgradeable, IERC777Recipient {
+contract FlexiAccount is ERC6551AccountUpgradeable, IERC777Recipient {
   address public guardian;
 
   function supportsInterface(bytes4 interfaceId) public pure override(ERC6551AccountUpgradeable) returns (bool) {

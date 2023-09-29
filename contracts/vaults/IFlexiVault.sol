@@ -19,7 +19,7 @@ interface IFlexiVault {
 
   function injectEjectedAccount(uint256 tokenId) external;
 
-  function activateAccount(uint256 tokenId, bool useUpgradeableAccount) external;
+  function activateAccount(uint256 tokenId) external;
 
   // deposits
 
