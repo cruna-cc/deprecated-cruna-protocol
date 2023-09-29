@@ -14,6 +14,9 @@ dependencies:
   '@openzeppelin/contracts-upgradeable':
     specifier: ^4.8.3
     version: 4.8.3
+  erc6551:
+    specifier: ^0.2.4
+    version: 0.2.4
   ethereumjs-abi:
     specifier: ^0.6.8
     version: 0.6.8
@@ -3895,6 +3898,10 @@ packages:
     resolution: {integrity: sha512-+h1lkLKhZMTYjog1VEpJNG7NZJWcuc2DDk/qsqSTRRCOXiLjeQ1d1/udrUGhqMxUgAlwKNZ0cf2uqan5GLuS2A==}
     engines: {node: '>=6'}
     dev: true
+
+  /erc6551@0.2.4:
+    resolution: {integrity: sha512-uP3HcCUGw7ofaUO+0z574uS8OkdQQawxdi2IQx+GpvnPGN3yi3wkWXV6z2KdUQJqjhFQLQv7rjcrBL4a4Pi0tQ==}
+    dev: false
 
   /errno@0.1.8:
     resolution: {integrity: sha512-dJ6oBr5SQ1VSd9qkk7ByRgb/1SH4JZjCHSW/mr63/QcXO9zLVxvJ6Oy13nio03rxpSnVDDjFor75SjVeZWPW/A==}

@@ -3,24 +3,10 @@ pragma solidity ^0.8.19;
 
 // from https://github.com/erc6551/reference
 
-import {ERC1967Upgrade} from "@openzeppelin/contracts/proxy/ERC1967/ERC1967Upgrade.sol";
-import {Proxy} from "@openzeppelin/contracts/proxy/Proxy.sol";
+import {ERC6551AccountProxy} from "erc6551/examples/upgradeable/ERC6551AccountProxy.sol";
 
-contract AccountProxy is Proxy, ERC1967Upgrade {
-  // solhint-disable-next-line
-  address immutable defaultImplementation;
-
-  constructor(address _defaultImplementation) {
-    defaultImplementation = _defaultImplementation;
-  }
-
-  function _implementation() internal view virtual override returns (address) {
-    address implementation = ERC1967Upgrade._getImplementation();
-
-    if (implementation == address(0)) return defaultImplementation;
-
-    return implementation;
-  }
+contract AccountProxy is ERC6551AccountProxy {
+  constructor(address _defaultImplementation) ERC6551AccountProxy(_defaultImplementation) {}
 
   function isERC6551Account() external pure returns (bool) {
     return true;

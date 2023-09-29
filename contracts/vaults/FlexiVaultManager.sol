@@ -15,10 +15,10 @@ import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {NFTOwned} from "../utils/NFTOwned.sol";
 import {FlexiVault} from "./FlexiVault.sol";
 import {IProtectedERC721} from "../protected/IProtectedERC721.sol";
-import {IERC6551AccountExecutable} from "../erc6551/interfaces/IERC6551AccountExecutable.sol";
-import {IERC6551Account} from "../erc6551/interfaces/IERC6551Account.sol";
-import {IERC6551Executable} from "../erc6551/interfaces/IERC6551Executable.sol";
-import {IERC6551Registry} from "../erc6551/interfaces/IERC6551Registry.sol";
+import {IERC6551AccountExecutable} from "../accounts/IERC6551AccountExecutable.sol";
+import {IERC6551Account} from "erc6551/interfaces/IERC6551Account.sol";
+import {IERC6551Executable} from "erc6551/interfaces/IERC6551Executable.sol";
+import {IERC6551Registry} from "erc6551/interfaces/IERC6551Registry.sol";
 import {Trustee, ITrustee} from "./Trustee.sol";
 import {IVersioned} from "../utils/IVersioned.sol";
 import {IFlexiVaultManagerExtended} from "./IFlexiVaultManagerExtended.sol";
@@ -112,7 +112,6 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
     address payable boundAccountUpgradeable_
   ) external virtual override onlyOwner {
     if (_initiated) revert AlreadyInitiated();
-    if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
     if (
       !IERC165(boundAccount_).supportsInterface(type(IERC6551Account).interfaceId) ||
       !IERC165(boundAccount_).supportsInterface(type(IERC6551Executable).interfaceId)

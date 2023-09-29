@@ -40,7 +40,6 @@ contract FlexiVaultManagerV2 is FlexiVaultManager {
     address payable boundAccountUpgradeable_
   ) external virtual override onlyOwner {
     if (_initiated) revert AlreadyInitiated();
-    if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
     if (
       !IERC165(boundAccount_).supportsInterface(type(IERC6551Account).interfaceId) ||
       !IERC165(boundAccount_).supportsInterface(type(IERC6551Executable).interfaceId)
