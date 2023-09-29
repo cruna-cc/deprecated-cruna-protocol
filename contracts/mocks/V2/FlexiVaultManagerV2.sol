@@ -12,7 +12,7 @@ contract FlexiVaultManagerV2 is FlexiVaultManager {
   error PreviousTrusteeAlreadySet();
 
   // solhint-disable-next-line
-  constructor(address owningToken, address tokenUtils) FlexiVaultManager(owningToken, tokenUtils) {}
+  constructor(address owningToken) FlexiVaultManager(owningToken) {}
 
   /**
    * @dev {See IVersioned-version}

@@ -20,7 +20,7 @@ async function main() {
   abi("ERC6551AccountUpgradeable", "contracts/ERC6551");
   abi("ERC6551AccountProxy", "contracts/ERC6551");
   abi("FlexiVaultManager", "contracts/vaults");
-  abi("TokenUtils", "contracts/utils");
+  abi("SignatureValidator", "contracts/utils");
 
   abi("ERC20", "@openzeppelin/contracts/token/ERC20");
   abi("ERC721", "@openzeppelin/contracts/token/ERC721");

@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 
-contract SignatureValidator is EIP712 {
+contract SignatureValidator0 is EIP712 {
   constructor(string memory name, string memory version) EIP712(name, version) {}
 
   function verify(

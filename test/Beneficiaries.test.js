@@ -1,5 +1,14 @@
 const chai = require("chai");
-const {deployContract, amount, getTimestamp, signPackedData, deployContractUpgradeable} = require("./helpers");
+const {
+  deployContract,
+  amount,
+  getTimestamp,
+  signPackedData,
+  deployContractUpgradeable,
+  privateKeyByWallet,
+  makeSignature,
+  getChainId,
+} = require("./helpers");
 const DeployUtils = require("../scripts/lib/DeployUtils");
 
 let expectCount = 0;
@@ -17,19 +26,24 @@ const expect = (actual) => {
   return chai.expect(actual);
 };
 
-describe("Migration V1 to V2", function () {
+describe("Beneficiaries", function () {
+  // TODO This is a fake test. We need a test for the beneficiaries
+
   const deployUtils = new DeployUtils(ethers);
 
   let flexiVault, flexiVaultManager;
   let registry, wallet, proxyWallet, actorsManager;
-  let flexiVault2, flexiVaultManager2;
-  let actorsManager2;
+  let guardian, signatureValidator;
   // mocks
   let bulls, particle, fatBelly, stupidMonk, uselessWeapons;
   let notAToken;
   // wallets
-  let guardian, signatureValidator;
   let owner, bob, alice, fred, john, jane, mark;
+  let timestamp;
+  let validFor;
+  let hash;
+  let privateKey;
+  let signature;
 
   const TokenType = {
     ETH: 0,
@@ -38,8 +52,8 @@ describe("Migration V1 to V2", function () {
     ERC1155: 3,
   };
 
-  async function depositETH(manager, signer, owningTokenId, params = {}) {
-    const accountAddress = await manager.accountAddress(owningTokenId);
+  async function depositETH(signer, owningTokenId, params = {}) {
+    const accountAddress = await flexiVaultManager.accountAddress(owningTokenId);
     try {
       await signer.sendTransaction({
         to: accountAddress,
@@ -50,44 +64,35 @@ describe("Migration V1 to V2", function () {
     }
   }
 
-  async function depositERC20(manager, signer, owningTokenId, asset, amount) {
-    const accountAddress = await manager.accountAddress(owningTokenId);
+  async function depositERC20(signer, owningTokenId, asset, amount) {
+    const accountAddress = await flexiVaultManager.accountAddress(owningTokenId);
     const assetContract = new ethers.Contract(asset.address, await getABI("ERC20"), ethers.provider);
     const balance = await assetContract.balanceOf(signer.address);
     await assetContract.connect(signer).transfer(accountAddress, amount, {gasLimit: 1000000});
   }
 
-  async function depositERC721(manager, signer, owningTokenId, asset, id) {
-    const accountAddress = await manager.accountAddress(owningTokenId);
+  async function depositERC721(signer, owningTokenId, asset, id) {
+    const accountAddress = await flexiVaultManager.accountAddress(owningTokenId);
     const assetContract = new ethers.Contract(asset.address, await getABI("ERC721"), ethers.provider);
     await assetContract.connect(signer)["safeTransferFrom(address,address,uint256)"](signer.address, accountAddress, id);
   }
 
-  async function depositERC1155(manager, signer, owningTokenId, asset, id, amount) {
-    const accountAddress = await manager.accountAddress(owningTokenId);
+  async function depositERC1155(signer, owningTokenId, asset, id, amount) {
+    const accountAddress = await flexiVaultManager.accountAddress(owningTokenId);
     const assetContract = new ethers.Contract(asset.address, await getABI("ERC1155"), ethers.provider);
     await assetContract.connect(signer).safeTransferFrom(signer.address, accountAddress, id, amount, 0, {gasLimit: 1000000});
   }
 
-  async function depositAssets(
-    signer,
-    owningTokenId,
-    tokenTypes,
-    assets,
-    ids,
-    amounts,
-    params = {},
-    manager = flexiVaultManager
-  ) {
+  async function depositAssets(signer, owningTokenId, tokenTypes, assets, ids, amounts, params = {}) {
     for (let i = 0; i < assets.length; i++) {
       if (tokenTypes[i] === TokenType.ETH) {
-        await depositETH(manager, signer, owningTokenId, params);
+        await depositETH(signer, owningTokenId, params);
       } else if (tokenTypes[i] === TokenType.ERC20) {
-        await depositERC20(manager, signer, owningTokenId, assets[i], amounts[i]);
+        await depositERC20(signer, owningTokenId, assets[i], amounts[i]);
       } else if (tokenTypes[i] === TokenType.ERC721) {
-        await depositERC721(manager, signer, owningTokenId, assets[i], ids[i]);
+        await depositERC721(signer, owningTokenId, assets[i], ids[i]);
       } else if (tokenTypes[i] === TokenType.ERC1155) {
-        await depositERC1155(manager, signer, owningTokenId, assets[i], ids[i], amounts[i]);
+        await depositERC1155(signer, owningTokenId, assets[i], ids[i], amounts[i]);
       } else {
         throw new Error("Invalid asset");
       }
@@ -96,6 +101,7 @@ describe("Migration V1 to V2", function () {
 
   before(async function () {
     [owner, bob, alice, fred, john, jane, mark] = await ethers.getSigners();
+    chainId = await getChainId();
   });
 
   function transferNft(nft, user) {
@@ -103,7 +109,7 @@ describe("Migration V1 to V2", function () {
   }
 
   beforeEach(async function () {
-    // expectCount = 1;
+    expectCount = 0;
 
     actorsManager = await deployContract("ActorsManager");
     signatureValidator = await deployContract("SignatureValidator", "Cruna", "1");
@@ -127,13 +133,15 @@ describe("Migration V1 to V2", function () {
     await flexiVaultManager.init(registry.address, wallet.address, proxyWallet.address);
     await flexiVault.initVault(flexiVaultManager.address);
 
+    await expect(flexiVault.initVault(flexiVaultManager.address)).revertedWith("VaultManagerAlreadySet()");
+
     notAToken = await deployContract("NotAToken");
 
     await expect(flexiVault.safeMint0(bob.address))
       .emit(flexiVault, "Transfer")
       .withArgs(ethers.constants.AddressZero, bob.address, 1);
 
-    let uri = await flexiVault.tokenURI(1);
+    const uri = await flexiVault.tokenURI(1);
     expect(uri).to.equal("https://meta.cruna.cc/flexy-vault/v1/1");
 
     await flexiVault.safeMint0(bob.address);
@@ -170,80 +178,45 @@ describe("Migration V1 to V2", function () {
 
     // erc1155
     uselessWeapons = await deployContract("UselessWeapons", "https://api.uselessweapons.com/");
-    await uselessWeapons.mintBatch(bob.address, [1, 2, 3, 4], [5, 2, 10, 10], "0x00");
+    await uselessWeapons.mintBatch(bob.address, [1, 2], [5, 2], "0x00");
     await uselessWeapons.mintBatch(alice.address, [2], [2], "0x00");
     await uselessWeapons.mintBatch(john.address, [3, 4], [10, 1], "0x00");
-
-    // V2
-
-    actorsManager2 = await deployContract("ActorsManager");
-    flexiVault2 = await deployContract("FlexiVaultV2", actorsManager2.address, signatureValidator.address);
-
-    await actorsManager2.init(flexiVault2.address);
-
-    flexiVaultManager2 = await deployContract("FlexiVaultManagerV2", flexiVault2.address);
-
-    await flexiVaultManager2.init(registry.address, wallet.address, proxyWallet.address);
-    await flexiVaultManager2.setPreviousTrustees([flexiVault.trustee()]);
-    await flexiVault2.initVault(flexiVaultManager2.address);
-
-    await expect(flexiVault2.safeMint0(bob.address))
-      .emit(flexiVault2, "Transfer")
-      .withArgs(ethers.constants.AddressZero, bob.address, 100001);
-
-    uri = await flexiVault2.tokenURI(100001);
-    expect(uri).to.equal("https://meta.cruna.cc/flexy-vault/v2/100001");
-
-    await expect(flexiVault2.safeMint0(bob.address))
-      .emit(flexiVault2, "Transfer")
-      .withArgs(ethers.constants.AddressZero, bob.address, 100002);
-
-    await flexiVault2.safeMint0(bob.address);
-    await flexiVault2.safeMint0(bob.address);
-    await flexiVault2.safeMint0(alice.address);
-    await flexiVault2.safeMint0(alice.address);
   });
 
-  it("should create a vaults, add assets to it, then eject and inject in V2", async function () {
-    // expectCount = 1;
-    await flexiVault.connect(bob).activateAccount(1, true);
+  const signSetProtector = async (tokenOwner, protector, timestamp, validFor = 3600, active = true, signer) => {
+    const message = {
+      tokenOwner: tokenOwner.address,
+      protector: protector.address,
+      active,
+      timestamp,
+      validFor,
+    };
 
-    await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
-    await uselessWeapons.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
-    await depositAssets(bob, 1, [2, 3], [particle, uselessWeapons], [2, 2], [1, 2]);
-    expect((await flexiVaultManager.amountOf(1, [uselessWeapons.address], [2]))[0]).equal(2);
+    return makeSignature(
+      chainId,
+      signatureValidator.address,
+      privateKeyByWallet[(signer || protector).address],
+      "Auth",
+      [
+        {name: "tokenOwner", type: "address"},
+        {name: "protector", type: "address"},
+        {name: "active", type: "bool"},
+        {name: "timestamp", type: "uint256"},
+        {name: "validFor", type: "uint256"},
+      ],
+      message
+    );
+  };
 
-    // bob adds some bulls tokens to his vaults
-    await bulls.connect(fred).approve(flexiVaultManager.address, amount("10000"));
-    await depositAssets(fred, 1, [1], [bulls], [0], [amount("5000")]);
-    expect((await flexiVaultManager.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
+  const setProtector = async (owner, protector) => {
+    const timestamp = (await getTimestamp()) - 100;
+    const validFor = 3600;
+    const signature = await signSetProtector(owner, protector, timestamp, validFor);
 
-    const trusteeAddress = await flexiVaultManager.trustee();
-    const trustee = await deployUtils.attach("Trustee", trusteeAddress);
+    await expect(actorsManager.connect(owner).setProtector(protector.address, true, timestamp, validFor, signature))
+      .emit(actorsManager, "ProtectorUpdated")
+      .withArgs(owner.address, protector.address, true);
+  };
 
-    expect(await trustee.ownerOf(1)).equal(flexiVaultManager.address);
-
-    await expect(flexiVault.connect(bob).ejectAccount(1, 0, 0, [])).emit(flexiVaultManager, "BoundAccountEjected").withArgs(1);
-
-    expect(await trustee.ownerOf(1)).equal(bob.address);
-
-    await trustee.connect(bob).approve(flexiVault2.address, 1);
-
-    await expect(flexiVault2.connect(bob).injectEjectedAccount(1)).revertedWith("ERC721: invalid token ID");
-
-    await expect(flexiVault2.connect(bob).mintFromTrustee(1))
-      .emit(flexiVault2, "Transfer")
-      .withArgs(ethers.constants.AddressZero, bob.address, 1);
-
-    await expect(flexiVault2.connect(bob).injectEjectedAccount(1))
-      .emit(flexiVaultManager2, "EjectedBoundAccountReInjected")
-      .withArgs(1);
-
-    await depositAssets(bob, 1, [2, 3], [particle, uselessWeapons], [4, 3], [1, 5], flexiVaultManager2);
-    expect(await particle.ownerOf(4)).equal(await flexiVaultManager2.accountAddress(1));
-  });
-
-  it.skip("should verify that a migration is possible even when protectors exist", async function () {
-    // TODO
-  });
+  it.skip("should test beneficiaries", async function () {});
 });

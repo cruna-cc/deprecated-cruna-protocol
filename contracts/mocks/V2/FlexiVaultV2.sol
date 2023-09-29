@@ -14,7 +14,7 @@ contract FlexiVaultV2 is FlexiVault {
   mapping(uint => Trustee) public previousTrustees;
   uint public previousTrusteesCount;
 
-  constructor(address tokenUtils, address actorsManager) FlexiVault(tokenUtils, actorsManager) {}
+  constructor(address actorsManager, address signatureValidator) FlexiVault(actorsManager, signatureValidator) {}
 
   function safeMint0(address to) public onlyOwner {
     _mintNow(to);

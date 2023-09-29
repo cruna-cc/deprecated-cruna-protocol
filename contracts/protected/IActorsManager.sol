@@ -6,36 +6,11 @@ pragma solidity ^0.8.19;
 import {IActors} from "./IActors.sol";
 
 // erc165 interfaceId 0x8dca4bea
-interface IActorsManagerV2 {
-  /**
-   * @dev Emitted when a protector is proposed for an tokensOwner
-   */
-  event ProtectorProposed(address indexed tokensOwner, address indexed protector);
-
-  /**
-   * @dev Emitted when a protector resigns
-   */
-  event ProtectorResigned(address indexed tokensOwner, address indexed protector);
-
+interface IActorsManager {
   /**
    * @dev Emitted when a protector is set for an tokensOwner
    */
   event ProtectorUpdated(address indexed tokensOwner, address indexed protector, bool status);
-
-  /**
-   * @dev Emitted when the number of protectors is locked or unlocked
-   */
-  event ProtectorsLocked(address indexed tokensOwner, bool locked);
-
-  /**
-   * @dev Emitted when the process to unlock the protectors is initiated by one protector
-   */
-  event ProtectorsUnlockInitiated(address indexed tokensOwner);
-
-  /**
-   * @dev Emitted when the process to update a protector starts
-   */
-  event ProtectorUpdateStarted(address indexed owner, address indexed protector, bool status);
 
   /**
    * @dev Emitted when the level of an allowed recipient is updated
@@ -84,7 +59,6 @@ interface IActorsManagerV2 {
   error OperatorAlreadyActive();
   error OperatorNotActive();
   error NotTheVaultManager();
-  error InvalidTokenUtils();
   error QuorumCannotBeZero();
   error QuorumCannotBeGreaterThanBeneficiaries();
   error BeneficiaryNotConfigured();
@@ -100,6 +74,7 @@ interface IActorsManagerV2 {
   error NotTheBondedProtectedERC721();
   error NotYourProtector();
   error NotAnActiveProtector();
+  error CannotBeYourself();
 
   struct BeneficiaryConf {
     uint256 quorum;
@@ -167,6 +142,12 @@ interface IActorsManagerV2 {
    * @return True if the signature has been used
    */
   function isSignatureUsed(bytes calldata signature) external view returns (bool);
+
+  function isNotExpired(uint256 timestamp, uint256 validFor) external view;
+
+  function isSignerAProtector(address tokenOwner_, address signer_) external view;
+
+  function checkIfSignatureUsed(bytes calldata signature) external;
 
   function validateTimestampAndSignature(
     address tokenOwner_,

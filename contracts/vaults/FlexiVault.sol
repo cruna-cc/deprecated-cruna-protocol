@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL3
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/Ownable.sol" as Ownable;
+import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 import {ERC721Enumerable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC4906} from "../utils/IERC4906.sol";
@@ -51,9 +51,9 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
   }
 
   constructor(
-    address tokenUtils,
-    address actorsManager
-  ) ProtectedERC721("Cruna Flexi Vault V1", "CRUNA_FV1", tokenUtils, actorsManager) {}
+    address actorsManager,
+    address signatureValidator
+  ) ProtectedERC721("Cruna Flexi Vault V1", "CRUNA_FV1", actorsManager, signatureValidator) {}
 
   function supportsInterface(bytes4 interfaceId) public view virtual override(ProtectedERC721) returns (bool) {
     return interfaceId == type(IERC4906).interfaceId || super.supportsInterface(interfaceId);
@@ -122,13 +122,13 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
     bytes calldata signature
   ) external virtual override onlyTokenOwner(tokenId) {
     if (!_exists(tokenId)) revert TokenIdDoesNotExist();
-    // it reverts if called before initiating the vault
     if (trustee.ownerOf(tokenId) != address(vaultManager)) revert AccountAlreadyEjected();
     if (getApproved(tokenId) != address(0)) revert ForbiddenWhenTokenApprovedForSale();
     if (timestamp != 0) {
-      bytes32 hash = tokenUtils.hashEjectRequest(tokenId, timestamp, validFor);
-      actorsManager.validateTimestampAndSignature(ownerOf(tokenId), timestamp, validFor, hash, signature);
-      setSignatureAsUsed(signature);
+      actorsManager.checkIfSignatureUsed(signature);
+      actorsManager.isNotExpired(timestamp, validFor);
+      address signer = signatureValidator.signEjectRequest(tokenId, timestamp, validFor, signature);
+      actorsManager.isSignerAProtector(ownerOf(tokenId), signer);
     } else if (actorsManager.hasProtectors(ownerOf(tokenId)).length > 0) revert NotAllowedWhenProtector();
     vaultManager.ejectAccount(tokenId);
   }

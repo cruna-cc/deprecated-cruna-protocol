@@ -2,7 +2,7 @@ require("dotenv").config();
 const hre = require("hardhat");
 const ethers = hre.ethers;
 const DeployUtils = require("./lib/DeployUtils");
-const {normalize} = require("../test/helpers");
+const {normalize, deployContractUpgradeable} = require("../test/helpers");
 let deployUtils;
 
 async function main() {
@@ -38,7 +38,15 @@ async function main() {
   usdc = await deployUtils.attach("USDCoin");
   usdt = await deployUtils.attach("TetherUSD");
   flexiVault = await deployUtils.attach("FlexiVault");
-  factory = await deployUtils.deployProxy("CrunaClusterFactory", flexiVault.address);
+  factory = await deployUtils.deployProxy("VaultFactory", flexiVault.address);
+
+  await flexiVault.setFactory(factory.address);
+
+  await deployUtils.Tx(factory.setPrice(990), "Setting price");
+
+  await deployUtils.Tx(factory.setStableCoin(usdc.address, true), "Set USDC as stable coin");
+
+  await deployUtils.Tx(factory.setStableCoin(usdt.address, true), "Set USDT as stable coin");
 
   console.log(`
   
