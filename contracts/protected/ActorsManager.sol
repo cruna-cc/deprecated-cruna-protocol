@@ -93,6 +93,7 @@ contract ActorsManager is IActorsManager, Actors, Ownable2Step, ERC165 {
     bytes calldata signature
   ) external virtual override onlyTokensOwner {
     if (protector_ == address(0)) revert NoZeroAddress();
+    if (protector_ == _msgSender()) revert CannotBeYourself();
     _checkIfSignatureUsed(signature);
     isNotExpired(timestamp, validFor);
     address signer = signatureValidator.signSetProtector(_msgSender(), protector_, active, timestamp, validFor, signature);

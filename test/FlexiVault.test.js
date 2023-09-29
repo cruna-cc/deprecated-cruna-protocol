@@ -191,7 +191,6 @@ describe("FlexiVaultManager", function () {
       timestamp,
       validFor,
     };
-
     return makeSignature(
       chainId,
       signatureValidator.address,
