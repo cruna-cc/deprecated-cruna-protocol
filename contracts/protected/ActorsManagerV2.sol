@@ -18,12 +18,12 @@ import {IVersioned} from "../utils/IVersioned.sol";
 import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IERC6454} from "./IERC6454.sol";
 import {Actors, IActors} from "./Actors.sol";
-import {IActorsManager} from "./IActorsManager.sol";
+import {IActorsManagerV2} from "./IActorsManagerV2.sol";
 import {FlexiVault} from "../vaults/FlexiVault.sol";
 
 //import {console} from "hardhat/console.sol";
 
-contract ActorsManager is IActorsManager, Actors, Ownable, ERC165 {
+contract ActorsManagerV2 is IActorsManagerV2, Actors, Ownable, ERC165 {
   using ECDSA for bytes32;
   using Strings for uint256;
 
@@ -37,8 +37,6 @@ contract ActorsManager is IActorsManager, Actors, Ownable, ERC165 {
 
   // the address of the owner given the second wallet required to start the transfer
   mapping(address => address) internal _ownersByProtector;
-
-  mapping(address => Status) internal _lockedProtectorsFor;
 
   // the tokens currently being transferred when a second wallet is set
   //  mapping(uint256 => ControlledTransfer) private _controlledTransfers;
@@ -79,37 +77,16 @@ contract ActorsManager is IActorsManager, Actors, Ownable, ERC165 {
   }
 
   function isActorsManager() external pure override returns (bytes4) {
-    return ActorsManager.isActorsManager.selector;
+    return ActorsManagerV2.isActorsManager.selector;
   }
 
   function countActiveProtectors(address tokensOwner_) public view override returns (uint256) {
     return _countActiveActorsByRole(tokensOwner_, Role.PROTECTOR);
   }
 
-  function proposeProtector(address protector_) external onlyTokensOwner {
-    if (protector_ == address(0)) revert NoZeroAddress();
-    if (_ownersByProtector[protector_] != address(0)) {
-      if (_ownersByProtector[protector_] == _msgSender()) revert ProtectorAlreadySetByYou();
-      else revert AssociatedToAnotherOwner();
-    }
-    Status status = _actorStatus(_msgSender(), protector_, Role.PROTECTOR);
-    if (status != Status.UNSET) revert ProtectorAlreadySet();
-    _addActor(_msgSender(), protector_, Role.PROTECTOR, Status.PENDING, Level.NONE);
-    emit ProtectorProposed(_msgSender(), protector_);
-  }
-
   function findProtector(address tokensOwner_, address protector_) public view override returns (uint256, Status) {
     (uint256 i, IActors.Actor storage actor) = _getActor(tokensOwner_, protector_, Role.PROTECTOR);
     return (i, actor.status);
-  }
-
-  function _validatePendingProtector(address tokensOwner_, address protector_) private view returns (uint256) {
-    (uint256 i, Status status) = findProtector(tokensOwner_, protector_);
-    if (status == Status.PENDING) {
-      return i;
-    } else {
-      revert PendingProtectorNotFound();
-    }
   }
 
   function isProtectorFor(address tokensOwner_, address protector_) external view returns (bool) {
@@ -121,44 +98,47 @@ contract ActorsManager is IActorsManager, Actors, Ownable, ERC165 {
     return _listActiveActors(tokensOwner_, Role.PROTECTOR);
   }
 
-  function acceptProposal(address tokensOwner_, bool accepted_) external {
-    uint256 i = _validatePendingProtector(tokensOwner_, _msgSender());
-    if (_ownersByProtector[_msgSender()] != address(0)) {
-      // the transfer initializer has been associated to another owner in between the
-      // set and the confirmation
-      revert AssociatedToAnotherOwner();
-    }
-    if (accepted_) {
-      _updateStatus(tokensOwner_, i, Role.PROTECTOR, Status.ACTIVE);
-      _ownersByProtector[_msgSender()] = tokensOwner_;
+  function setProtector(
+    address protector_,
+    bool active,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external virtual override onlyTokensOwner {
+    if (protector_ == address(0)) revert NoZeroAddress();
+    bytes32 hash = _tokenUtils.hashSetProtector(_msgSender(), protector_, active, timestamp, validFor);
+    if (active) {
+      if (_ownersByProtector[protector_] != address(0)) {
+        if (_ownersByProtector[protector_] == _msgSender()) revert ProtectorAlreadySetByYou();
+        else revert AssociatedToAnotherOwner();
+      }
+      Status status = _actorStatus(_msgSender(), protector_, Role.PROTECTOR);
+      // solhint-disable-next-line not-rely-on-time
+      if (timestamp > block.timestamp || timestamp < block.timestamp - validFor) revert TimestampInvalidOrExpired();
+      if (countActiveProtectors(_msgSender()) == 0) {
+        if (protector_ != hash.recover(signature)) revert WrongDataOrNotSignedByProposedProtector();
+      } else {
+        if (!signedByProtector(_msgSender(), hash, signature)) revert WrongDataOrNotSignedByProtector();
+      }
+      if (isSignatureUsed(signature)) revert SignatureAlreadyUsed();
+      if (status != Status.UNSET) revert ProtectorAlreadySet();
+      _addActor(_msgSender(), protector_, Role.PROTECTOR, Status.ACTIVE, Level.NONE);
+      _ownersByProtector[protector_] = _msgSender();
     } else {
-      _removeActorByIndex(tokensOwner_, i, Role.PROTECTOR);
+      validateTimestampAndSignature(_msgSender(), timestamp, validFor, hash, signature);
+      if (_ownersByProtector[protector_] != _msgSender()) revert NotYourProtector();
+      (uint256 i, Status status) = findProtector(_msgSender(), protector_);
+      if (status == Status.ACTIVE) {
+        _removeActorByIndex(_msgSender(), i, Role.PROTECTOR);
+      } else {
+        revert NotAnActiveProtector();
+      }
+      if (status != Status.ACTIVE) revert ProtectorNotFound();
+      //      _removeActorByIndex(tokensOwner_, i, Role.PROTECTOR);
+      delete _ownersByProtector[protector_];
     }
-    emit ProtectorUpdated(tokensOwner_, _msgSender(), accepted_);
-  }
-
-  function resignAsProtectorFor(address tokensOwner_) external {
-    (uint256 i, Status status) = findProtector(tokensOwner_, _msgSender());
-    if (status == Status.UNSET) {
-      revert NotAProtector();
-    } else if (status == Status.RESIGNED) {
-      revert ResignationAlreadySubmitted();
-    } else if (status == Status.ACTIVE) {
-      _updateStatus(tokensOwner_, i, Role.PROTECTOR, Status.RESIGNED);
-      emit ProtectorResigned(_msgSender(), _msgSender());
-    } else {
-      // it obtains similar results like not accepting a proposal
-      _removeActorByIndex(tokensOwner_, i, Role.PROTECTOR);
-    }
-  }
-
-  function acceptResignation(address protector_) external onlyTokensOwner {
-    (uint256 i, Status status) = findProtector(_msgSender(), protector_);
-    if (status == Status.RESIGNED) {
-      _removeActorByIndex(_msgSender(), i, Role.PROTECTOR);
-    } else {
-      revert ResignationNotSubmitted();
-    }
+    _setSignatureAsUsed(signature);
+    emit ProtectorUpdated(_msgSender(), protector_, active);
   }
 
   function signedByProtector(address owner_, bytes32 hash, bytes memory signature) public view override returns (bool) {
@@ -184,45 +164,20 @@ contract ActorsManager is IActorsManager, Actors, Ownable, ERC165 {
     if (isSignatureUsed(signature)) revert SignatureAlreadyUsed();
   }
 
-  function invalidateSignatureFor(uint256 tokenId, bytes32 hash, bytes calldata signature) external override {
+  function invalidateSignatureFor(
+    uint256 tokenId,
+    bytes32 hash,
+    bytes calldata signature
+  ) external override onlyTokenOwner(tokenId) {
     address tokenOwner_ = _crunaVault.ownerOf(tokenId);
-    (, Status status) = findProtector(_crunaVault.ownerOf(tokenId), _msgSender());
+    (, Status status) = findProtector(tokenOwner_, _msgSender());
     if (status < Status.ACTIVE) revert NotAProtector();
     if (!signedByProtector(tokenOwner_, hash, signature)) revert WrongDataOrNotSignedByProtector();
     _usedSignatures[keccak256(signature)] = true;
   }
 
-  function lockProtectors() external onlyTokensOwner {
-    if (countActiveProtectors(_msgSender()) == 0) revert NoActiveProtectors();
-    if (_lockedProtectorsFor[_msgSender()] == Status.UNSET) {
-      _lockedProtectorsFor[_msgSender()] = Status.ACTIVE;
-      emit ProtectorsLocked(_msgSender(), true);
-    } else {
-      // it can be active or set for removal
-      revert ProtectorsAlreadyLocked();
-    }
-  }
-
-  function unlockProtectorsFor(address tokensOwner_) external onlyProtectorFor(tokensOwner_) {
-    if (_lockedProtectorsFor[tokensOwner_] == Status.UNSET) revert ProtectorsNotLocked();
-    if (_lockedProtectorsFor[tokensOwner_] == Status.RESIGNED) revert ProtectorsUnlockAlreadyStarted();
-    // else is ACTIVE, since there is no PENDING status
-    _lockedProtectorsFor[tokensOwner_] = Status.RESIGNED;
-  }
-
-  function approveUnlockProtectors(bool approved) external onlyTokensOwner {
-    if (_lockedProtectorsFor[_msgSender()] != Status.RESIGNED) revert ProtectorsUnlockNotStarted();
-    if (approved) {
-      delete _lockedProtectorsFor[_msgSender()];
-      emit ProtectorsLocked(_msgSender(), false);
-    } else {
-      // reverts the change from RESIGNED to ACTIVE
-      _lockedProtectorsFor[_msgSender()] = Status.ACTIVE;
-    }
-  }
-
   function supportsInterface(bytes4 interfaceId) public view virtual override returns (bool) {
-    return interfaceId == type(IActorsManager).interfaceId || super.supportsInterface(interfaceId);
+    return interfaceId == type(IActorsManagerV2).interfaceId || super.supportsInterface(interfaceId);
   }
 
   // safe recipients
@@ -256,6 +211,10 @@ contract ActorsManager is IActorsManager, Actors, Ownable, ERC165 {
 
   function setSignatureAsUsed(bytes calldata signature) public override {
     if (_msgSender() != address(_crunaVault)) revert Forbidden();
+    _setSignatureAsUsed(signature);
+  }
+
+  function _setSignatureAsUsed(bytes calldata signature) internal {
     _usedSignatures[keccak256(signature)] = true;
   }
 

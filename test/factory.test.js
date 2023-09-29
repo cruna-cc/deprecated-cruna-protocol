@@ -31,7 +31,7 @@ describe("VaultFactory", function () {
     tokenUtils = await deployContract("TokenUtils");
     expect(await tokenUtils.version()).to.equal("1.0.0");
 
-    actorsManager = await deployContract("ActorsManager");
+    actorsManager = await deployContract("ActorsManagerV2");
 
     const _baseTokenURI = "https://meta.cruna.cc/flexy-vault/v1/";
     flexiVault = await deployContract("FlexiVaultMock", tokenUtils.address, actorsManager.address);

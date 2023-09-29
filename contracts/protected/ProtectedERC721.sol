@@ -16,7 +16,7 @@ import {IVersioned} from "../utils/IVersioned.sol";
 import {ITokenUtils} from "../utils/ITokenUtils.sol";
 import {IERC6454} from "./IERC6454.sol";
 import {Actors, IActors} from "./Actors.sol";
-import {ActorsManager, IActorsManager} from "./ActorsManager.sol";
+import {ActorsManagerV2, IActorsManagerV2} from "./ActorsManagerV2.sol";
 
 //import {console} from "hardhat/console.sol";
 
@@ -35,7 +35,7 @@ abstract contract ProtectedERC721 is
   using Strings for uint256;
 
   ITokenUtils public tokenUtils;
-  IActorsManager public actorsManager;
+  IActorsManagerV2 public actorsManager;
 
   mapping(uint256 => bool) internal _approvedTransfers;
 
@@ -71,8 +71,8 @@ abstract contract ProtectedERC721 is
   constructor(string memory name_, string memory symbol_, address tokenUtils_, address actorsManager_) ERC721(name_, symbol_) {
     tokenUtils = ITokenUtils(tokenUtils_);
     if (tokenUtils.isTokenUtils() != ITokenUtils.isTokenUtils.selector) revert InvalidTokenUtils();
-    actorsManager = IActorsManager(actorsManager_);
-    if (actorsManager.isActorsManager() != IActorsManager.isActorsManager.selector) revert InvalidActorsManager();
+    actorsManager = IActorsManagerV2(actorsManager_);
+    if (actorsManager.isActorsManager() != IActorsManagerV2.isActorsManager.selector) revert InvalidActorsManager();
   }
 
   function protectedTransfer(

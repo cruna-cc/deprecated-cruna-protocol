@@ -106,7 +106,7 @@ describe("Migration V1 to V2", function () {
     tokenUtils = await deployContract("TokenUtils");
     expect(await tokenUtils.version()).to.equal("1.0.0");
 
-    actorsManager = await deployContract("ActorsManager");
+    actorsManager = await deployContract("ActorsManagerV2");
 
     const _baseTokenURI = "https://meta.cruna.cc/flexy-vault/v1/";
     flexiVault = await deployContract("FlexiVaultMock", tokenUtils.address, actorsManager.address);
@@ -174,7 +174,7 @@ describe("Migration V1 to V2", function () {
 
     // V2
 
-    actorsManager2 = await deployContract("ActorsManager");
+    actorsManager2 = await deployContract("ActorsManagerV2");
     flexiVault2 = await deployContract("FlexiVaultV2", tokenUtils.address, actorsManager2.address);
 
     await actorsManager2.init(flexiVault2.address);

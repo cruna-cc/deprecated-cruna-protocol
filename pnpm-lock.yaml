@@ -33,10 +33,13 @@ devDependencies:
     version: 1.24.0(@nomiclabs/hardhat-ethers@2.2.3)(@nomiclabs/hardhat-etherscan@3.1.7)(ethers@5.7.2)(hardhat@2.14.0)
   '@openzeppelin/test-helpers':
     specifier: ^0.5.16
-    version: 0.5.16(bn.js@4.12.0)
+    version: 0.5.16(bn.js@5.2.1)
   '@secrez/cryptoenv':
     specifier: ^0.2.4
     version: 0.2.4
+  bn.js:
+    specifier: ^5.2.1
+    version: 5.2.1
   case:
     specifier: ^1.6.3
     version: 1.6.3
@@ -46,6 +49,9 @@ devDependencies:
   dotenv:
     specifier: ^16.1.3
     version: 16.1.3
+  eth-sig-util:
+    specifier: ^3.0.1
+    version: 3.0.1
   ethereum-waffle:
     specifier: ^3.4.4
     version: 3.4.4(typescript@4.9.5)
@@ -67,6 +73,9 @@ devDependencies:
   husky:
     specifier: ^8.0.3
     version: 8.0.3
+  keccak256:
+    specifier: ^1.0.6
+    version: 1.0.6
   prettier:
     specifier: ^2.8.8
     version: 2.8.8
@@ -1003,14 +1012,14 @@ packages:
       - supports-color
     dev: true
 
-  /@openzeppelin/test-helpers@0.5.16(bn.js@4.12.0):
+  /@openzeppelin/test-helpers@0.5.16(bn.js@5.2.1):
     resolution: {integrity: sha512-T1EvspSfH1qQO/sgGlskLfYVBbqzJR23SZzYl/6B2JnT4EhThcI85UpvDk0BkLWKaDScQTabGHt4GzHW+3SfZg==}
     dependencies:
       '@openzeppelin/contract-loader': 0.6.3
       '@truffle/contract': 4.6.21
       ansi-colors: 3.2.3
       chai: 4.3.7
-      chai-bn: 0.2.2(bn.js@4.12.0)(chai@4.3.7)
+      chai-bn: 0.2.2(bn.js@5.2.1)(chai@4.3.7)
       ethjs-abi: 0.2.1
       lodash.flatten: 4.4.0
       semver: 5.7.1
@@ -2894,13 +2903,13 @@ packages:
       nofilter: 3.1.0
     dev: true
 
-  /chai-bn@0.2.2(bn.js@4.12.0)(chai@4.3.7):
+  /chai-bn@0.2.2(bn.js@5.2.1)(chai@4.3.7):
     resolution: {integrity: sha512-MzjelH0p8vWn65QKmEq/DLBG1Hle4WeyqT79ANhXZhn/UxRWO0OogkAxi5oGGtfzwU9bZR8mvbvYdoqNVWQwFg==}
     peerDependencies:
       bn.js: ^4.11.0
       chai: ^4.0.0
     dependencies:
-      bn.js: 4.12.0
+      bn.js: 5.2.1
       chai: 4.3.7
     dev: true
 
@@ -4173,6 +4182,16 @@ packages:
       buffer: 5.7.1
       elliptic: 6.5.4
       ethereumjs-abi: 0.6.5
+      ethereumjs-util: 5.2.1
+      tweetnacl: 1.0.3
+      tweetnacl-util: 0.15.1
+    dev: true
+
+  /eth-sig-util@3.0.1:
+    resolution: {integrity: sha512-0Us50HiGGvZgjtWTyAI/+qTzYPMLy5Q451D0Xy68bxq1QMWdoOddDwGvsqcFT27uohKgalM9z/yxplyt+mY2iQ==}
+    deprecated: Deprecated in favor of '@metamask/eth-sig-util'
+    dependencies:
+      ethereumjs-abi: 0.6.8
       ethereumjs-util: 5.2.1
       tweetnacl: 1.0.3
       tweetnacl-util: 0.15.1
@@ -6391,6 +6410,14 @@ packages:
       extsprintf: 1.3.0
       json-schema: 0.4.0
       verror: 1.10.0
+    dev: true
+
+  /keccak256@1.0.6:
+    resolution: {integrity: sha512-8GLiM01PkdJVGUhR1e6M/AvWnSqYS0HaERI+K/QtStGDGlSTx2B1zTqZk4Zlqu5TxHJNTxWAdP9Y+WI50OApUw==}
+    dependencies:
+      bn.js: 5.2.1
+      buffer: 6.0.3
+      keccak: 3.0.3
     dev: true
 
   /keccak@3.0.3:

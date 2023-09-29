@@ -21,7 +21,7 @@ contract VaultFactory is IVaultFactory, UUPSUpgradableTemplate {
 
   mapping(address => bool) public stableCoins;
 
-  // TODO this variable can be remove when going to production. I am leaving it here now so. I can upgrade the contract during development
+  // TODO this variable can be removed when going to production. I am leaving it here now so. I can upgrade the contract during development
   mapping(address => uint256) public proceedsBalances;
   mapping(bytes32 => uint) private _promoCodes;
 

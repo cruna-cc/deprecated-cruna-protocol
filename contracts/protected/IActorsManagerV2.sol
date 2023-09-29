@@ -6,7 +6,7 @@ pragma solidity ^0.8.19;
 import {IActors} from "./IActors.sol";
 
 // erc165 interfaceId 0x8dca4bea
-interface IActorsManager {
+interface IActorsManagerV2 {
   /**
    * @dev Emitted when a protector is proposed for an tokensOwner
    */
@@ -79,6 +79,7 @@ interface IActorsManager {
   error ProtectorsNotLocked();
   error TimestampInvalidOrExpired();
   error WrongDataOrNotSignedByProtector();
+  error WrongDataOrNotSignedByProposedProtector();
   error SignatureAlreadyUsed();
   error OperatorAlreadyActive();
   error OperatorNotActive();
@@ -97,6 +98,8 @@ interface IActorsManager {
   error NotTransferable();
   error InvalidProtectedERC721();
   error NotTheBondedProtectedERC721();
+  error NotYourProtector();
+  error NotAnActiveProtector();
 
   struct BeneficiaryConf {
     uint256 quorum;
@@ -135,66 +138,19 @@ interface IActorsManager {
    */
   function isProtectorFor(address tokensOwner_, address protector_) external view returns (bool);
 
-  /**
-   * @dev Propose a protector for an tokensOwner
-   * @notice The function MUST be executed by a user that owns at least one token
-   * @param protector_ The protector address
-   */
-  function proposeProtector(address protector_) external;
+  function setProtector(
+    address protector_,
+    bool active,
+    uint256 timestamp,
+    uint256 validFor,
+    bytes calldata signature
+  ) external;
 
   function findProtector(address tokensOwner_, address protector_) external view returns (uint256, IActors.Status);
 
   function countActiveProtectors(address tokensOwner_) external view returns (uint256);
 
-  /**
-   * @dev Confirm the protector role
-   * @notice The function MUST be executed by the protector to confirm that they accept the role
-   * @param tokensOwner_ The tokensOwner address
-   * @param accepted_ True if the protector accepts the role
-   */
-  function acceptProposal(address tokensOwner_, bool accepted_) external;
-
-  /**
-  * @dev Unset a protector for an tokensOwner
-  * @notice The function MUST be executed by an active protector to remove themself.
-     The tokensOwner cannot remove a protector, because this would defy the reason for
-     having a protector in the first place.
-  * @param tokensOwner_ The tokenId's tokensOwner address
-  */
-  function resignAsProtectorFor(address tokensOwner_) external;
-
   function setSignatureAsUsed(bytes calldata signature) external;
-
-  /**
-   * @dev Confirm the unset of a protector role
-   * @notice The function MUST be executed by the tokensOwner to remove the protector
-   * @param protector_ The protector address
-   */
-  function acceptResignation(address protector_) external;
-
-  /**
-  * @dev Locks the number of protectors for an tokensOwner
-     If not locked, if the tokensOwner is hacked, the hacker could set a new protector
-     and use the new protector to transfer all the tokens owned by tokensOwner.
-  * @notice The function MUST be executed by the tokensOwner
-  */
-  function lockProtectors() external;
-
-  /**
-  * @dev Unlocks the number of protectors for an tokensOwner
-  * @notice The function MUST be executed by an active protector and later
-     approved by the tokensOwner
-  * @param tokensOwner_ The tokensOwner address
-  */
-  function unlockProtectorsFor(address tokensOwner_) external;
-
-  /**
-  * @dev Approves the unlock of the number of protectors for an tokensOwner
-  * @notice The function MUST be executed by the tokensOwner
-  * @param approved True if the tokensOwner approves the unlock,
-     false if the tokensOwner rejects the unlock
-  */
-  function approveUnlockProtectors(bool approved) external;
 
   /**
    * @dev Verifies if the transfer request is signed by a protector
