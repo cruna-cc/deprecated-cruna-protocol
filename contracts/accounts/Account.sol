@@ -14,13 +14,13 @@ import {IERC721Receiver} from "@openzeppelin/contracts/token/ERC721/IERC721Recei
 import {IERC1155Receiver} from "@openzeppelin/contracts/token/ERC1155/IERC1155Receiver.sol";
 import {IERC777Recipient} from "@openzeppelin/contracts/token/ERC777/ERC777.sol";
 
-import {IERC6551Account} from "../interfaces/IERC6551Account.sol";
-import {IERC6551Executable} from "../interfaces/IERC6551Executable.sol";
-import {ERC6551AccountLib} from "../lib/ERC6551AccountLib.sol";
+import {IERC6551Account} from "../erc6551/interfaces/IERC6551Account.sol";
+import {IERC6551Executable} from "../erc6551/interfaces/IERC6551Executable.sol";
+import {ERC6551AccountLib} from "../erc6551/lib/ERC6551AccountLib.sol";
 
 //import {console} from "hardhat/console.sol";
 
-contract ERC6551Account is
+contract Account is
   IERC165,
   IERC721Receiver,
   IERC1155Receiver,

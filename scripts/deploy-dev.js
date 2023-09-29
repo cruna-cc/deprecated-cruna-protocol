@@ -30,9 +30,9 @@ async function main() {
   // await flexiVault.allowFactoryFor(factory.address, 0);
 
   registry = await deployUtils.deploy("ERC6551Registry");
-  wallet = await deployUtils.deploy("ERC6551Account");
-  let implementation = await deployUtils.deploy("ERC6551AccountUpgradeable", guardian.address);
-  proxyWallet = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
+  wallet = await deployUtils.deploy("Account.sol");
+  let implementation = await deployUtils.deploy("AccountUpgradeable.sol", guardian.address);
+  proxyWallet = await deployUtils.deploy("AccountProxy.sol", implementation.address);
 
   flexiVaultManager = await deployUtils.deploy("FlexiVaultManager", flexiVault.address);
 

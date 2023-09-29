@@ -2,14 +2,14 @@
 pragma solidity ^0.8.19;
 
 import {StorageSlot} from "@openzeppelin/contracts/utils/StorageSlot.sol";
-import {ERC6551Account} from "./ERC6551Account.sol";
+import {Account} from "./Account.sol";
 import {AccountGuardian} from "./AccountGuardian.sol";
 
 /**
- * @title ERC6551AccountUpgradeable
- * @notice A lightweight smart contract wallet implementation that can be used by ERC6551AccountProxy
+ * @title AccountUpgradeable.sol
+ * @notice A lightweight smart contract wallet implementation that can be used by AccountProxy.sol
  */
-contract ERC6551AccountUpgradeable is ERC6551Account {
+contract AccountUpgradeable is Account {
   address public guardian;
 
   /**
