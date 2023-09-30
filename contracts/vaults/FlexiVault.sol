@@ -148,8 +148,8 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
 
   // Activation
 
-  function activateAccount(uint256 tokenId, bool useUpgradeableAccount) external virtual override onlyTokenOwner(tokenId) {
-    vaultManager.activateAccount(tokenId, useUpgradeableAccount);
+  function activateAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) {
+    vaultManager.activateAccount(tokenId);
   }
 
   // deposits

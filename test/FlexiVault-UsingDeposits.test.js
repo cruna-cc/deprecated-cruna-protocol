@@ -56,16 +56,16 @@ describe("FlexiVaultManager Using internal Deposits", function () {
     await actorsManager.init(flexiVault.address);
 
     registry = await deployContract("ERC6551Registry");
-    wallet = await deployContract("Account");
+
     guardian = await deployContract("AccountGuardian");
 
-    let implementation = await deployContract("AccountUpgradeable", guardian.address);
-    proxyWallet = await deployContract("AccountProxy", implementation.address);
+    let implementation = await deployContract("FlexiAccount", guardian.address);
+    proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
     flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address);
     expect(await flexiVaultManager.version()).to.equal("1.0.0");
 
-    await flexiVaultManager.init(registry.address, wallet.address, proxyWallet.address);
+    await flexiVaultManager.init(registry.address, proxyWallet.address);
     await flexiVault.initVault(flexiVaultManager.address);
 
     await expect(flexiVault.initVault(flexiVaultManager.address)).revertedWith("VaultManagerAlreadySet()");
@@ -154,7 +154,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   });
 
   it("should create a vaults and add more assets to it", async function () {
-    await flexiVault.connect(bob).activateAccount(1, false);
+    await flexiVault.connect(bob).activateAccount(1);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -188,7 +188,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   });
 
   it("should create a vaults and add generic assets in batch call", async function () {
-    await flexiVault.connect(bob).activateAccount(1, false);
+    await flexiVault.connect(bob).activateAccount(1);
 
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
     await stupidMonk.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -210,7 +210,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   });
 
   it("should revert if wrong token types", async function () {
-    await flexiVault.connect(bob).activateAccount(1, false);
+    await flexiVault.connect(bob).activateAccount(1);
 
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
     await stupidMonk.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -232,7 +232,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   });
 
   it("should create a vaults and deposit Ether ", async function () {
-    await flexiVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1);
 
     await flexiVault.connect(bob).depositAssets(1, [0], [ethers.constants.AddressZero], [0], [0], {value: amount("1000")});
     expect((await flexiVaultManager.amountOf(1, [ethers.constants.AddressZero], [0]))[0]).equal(amount("1000"));
@@ -243,7 +243,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   });
 
   it("should create a vaults, add assets to it, then eject and reinject again", async function () {
-    await flexiVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1);
 
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
     await uselessWeapons.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -289,7 +289,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
 
   it("should allow a transfer if a transfer initializer is pending", async function () {
     // expectCount = 1;
-    await flexiVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -318,7 +318,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   });
 
   it("should not allow a transfer if a protector is active", async function () {
-    await flexiVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -331,7 +331,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   });
 
   it("should allow a transfer of the protected if a valid protector's signature is provided", async function () {
-    await flexiVault.connect(bob).activateAccount(1, false);
+    await flexiVault.connect(bob).activateAccount(1);
     // expectCount = 1;
 
     await setProtector(bob, john);
@@ -381,7 +381,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   });
 
   it("should allow a transfer to a safe recipient level HIGH even if a protector is active", async function () {
-    await flexiVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -405,7 +405,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   });
 
   it("should require a protector's signature to save a new safe recipient after a protector is active", async function () {
-    await flexiVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -449,7 +449,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   });
 
   it("should not allow a transfer to a safe recipient level MEDIUM if a protector is active", async function () {
-    await flexiVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
@@ -466,7 +466,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   });
 
   it("should allow withdrawals when protectors are active if safe recipient", async function () {
-    await flexiVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1);
 
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);

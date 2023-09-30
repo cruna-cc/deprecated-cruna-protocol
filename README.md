@@ -40,7 +40,6 @@ Other beneficiaries can confirm the transfer or reject it. If rejected, they can
 
 This beneficiary management system enables orderly transfer of assets to successors in case of incapacity or demise of the vault owner. It provides individuals and entities a way to ensure business continuity and asset inheritance in a secure manner.
 
-
 ### 2. The Flexi Vault
 
 The Flexi Vault is a smart-contract managed by the Cruna Vault to securely store and protect assets (ERC20, ERC721, ERC1155). The ownership of the Flexi Vault is linked to the owning NFT, signifying that transferring the ownership of the NFT also transfers the ownership of the Flexi Vault.
@@ -100,6 +99,17 @@ Within the framework of the Cruna Protocol, we're introducing specialized USB ke
 A new family of Zero Knowledge based vaults will allow a high level of privacy.
 
 ## History
+
+**1.5.0**
+
+- Using erc6551 as an external dependency
+- Making upgradeable account only upgradeable by the vault owner
+- Remove immutable account option
+- Allowing migration of the vault to a new version (ejecting from V1 and reinjecting in V2)
+- Adding beneficiaries that can inherit the wallet if a proof-of-life is not provided
+- Adding allowlisted safe recipients to skip the protection (feature to be used carefully)
+- Changing the way how protectors allows transfers. Before the protector had to make a transaction to start the transfer than later was completed by the owner. In the new approach, the protectors sign the transfer and the owner can complete it with a single transaction, using protectors' signature. This also prepare for future hardware protectors that do not need to own value to perform a transaction.
+- Moving from simple message signature to typed V4 signatures to reduce the risk of misleading messages allowing phishing and possible fraud.
 
 **1.4.1**
 

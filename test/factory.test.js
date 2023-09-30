@@ -41,16 +41,16 @@ describe("VaultFactory", function () {
     await actorsManager.init(flexiVault.address);
 
     registry = await deployContract("ERC6551Registry");
-    wallet = await deployContract("Account");
+
     guardian = await deployContract("AccountGuardian");
 
-    let implementation = await deployContract("AccountUpgradeable", guardian.address);
-    proxyWallet = await deployContract("AccountProxy", implementation.address);
+    let implementation = await deployContract("FlexiAccount", guardian.address);
+    proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
     flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address);
     expect(await flexiVaultManager.version()).to.equal("1.0.0");
 
-    await flexiVaultManager.init(registry.address, wallet.address, proxyWallet.address);
+    await flexiVaultManager.init(registry.address, proxyWallet.address);
     await flexiVault.initVault(flexiVaultManager.address);
 
     await expect(flexiVault.initVault(flexiVaultManager.address)).revertedWith("VaultManagerAlreadySet()");

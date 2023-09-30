@@ -115,16 +115,16 @@ describe("Migration V1 to V2", function () {
     await actorsManager.init(flexiVault.address);
 
     registry = await deployContract("ERC6551Registry");
-    wallet = await deployContract("Account");
+
     guardian = await deployContract("AccountGuardian");
 
-    let implementation = await deployContract("AccountUpgradeable", guardian.address);
-    proxyWallet = await deployContract("AccountProxy", implementation.address);
+    let implementation = await deployContract("FlexiAccount", guardian.address);
+    proxyWallet = await deployContract("ERC6551AccountProxy", implementation.address);
 
     flexiVaultManager = await deployContract("FlexiVaultManager", flexiVault.address);
     expect(await flexiVaultManager.version()).to.equal("1.0.0");
 
-    await flexiVaultManager.init(registry.address, wallet.address, proxyWallet.address);
+    await flexiVaultManager.init(registry.address, proxyWallet.address);
     await flexiVault.initVault(flexiVaultManager.address);
 
     notAToken = await deployContract("NotAToken");
@@ -183,7 +183,7 @@ describe("Migration V1 to V2", function () {
 
     flexiVaultManager2 = await deployContract("FlexiVaultManagerV2", flexiVault2.address);
 
-    await flexiVaultManager2.init(registry.address, wallet.address, proxyWallet.address);
+    await flexiVaultManager2.init(registry.address, proxyWallet.address);
     await flexiVaultManager2.setPreviousTrustees([flexiVault.trustee()]);
     await flexiVault2.initVault(flexiVaultManager2.address);
 
@@ -206,7 +206,7 @@ describe("Migration V1 to V2", function () {
 
   it("should create a vaults, add assets to it, then eject and inject in V2", async function () {
     // expectCount = 1;
-    await flexiVault.connect(bob).activateAccount(1, true);
+    await flexiVault.connect(bob).activateAccount(1);
 
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
     await uselessWeapons.connect(bob).setApprovalForAll(flexiVaultManager.address, true);

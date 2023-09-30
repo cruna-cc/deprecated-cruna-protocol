@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
-import {IERC6551AccountExecutable} from "../../erc6551/interfaces/IERC6551AccountExecutable.sol";
+import {IERC6551AccountExecutable} from "../../accounts/IERC6551AccountExecutable.sol";
 
 contract Particle is ERC721, Ownable2Step {
   string private _baseTokenURI;

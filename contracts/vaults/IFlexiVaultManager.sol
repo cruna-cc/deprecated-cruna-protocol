@@ -34,9 +34,8 @@ interface IFlexiVaultManager {
    * @dev It allows to set the registry and the account proxy
    * @param registry The address of the registry
    * @param boundAccount The address of the account proxy
-   * @param boundAccountUpgradeable The address of the upgradeable account proxy
    */
-  function init(address registry, address payable boundAccount, address payable boundAccountUpgradeable) external;
+  function init(address registry, address payable boundAccount) external;
 
   function isERC721(address asset) external view returns (bool);
 

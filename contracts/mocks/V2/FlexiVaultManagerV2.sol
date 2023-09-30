@@ -34,24 +34,14 @@ contract FlexiVaultManagerV2 is FlexiVaultManager {
   /**
    * @dev {See IFlexiVaultManager.sol-init}
    */
-  function init(
-    address registry,
-    address payable boundAccount_,
-    address payable boundAccountUpgradeable_
-  ) external virtual override onlyOwner {
+  function init(address registry, address payable boundAccount_) external virtual override onlyOwner {
     if (_initiated) revert AlreadyInitiated();
-    if (!IERC165(registry).supportsInterface(type(IERC6551Registry).interfaceId)) revert InvalidRegistry();
     if (
       !IERC165(boundAccount_).supportsInterface(type(IERC6551Account).interfaceId) ||
       !IERC165(boundAccount_).supportsInterface(type(IERC6551Executable).interfaceId)
     ) revert InvalidAccount();
-    if (
-      !IERC165(boundAccountUpgradeable_).supportsInterface(type(IERC6551Account).interfaceId) ||
-      !IERC165(boundAccountUpgradeable_).supportsInterface(type(IERC6551Executable).interfaceId)
-    ) revert InvalidAccount();
     _registry = IERC6551Registry(registry);
     boundAccount = IERC6551AccountExecutable(boundAccount_);
-    boundAccountUpgradeable = IERC6551AccountExecutable(boundAccountUpgradeable_);
     trustee = new TrusteeV2();
     _initiated = true;
   }
