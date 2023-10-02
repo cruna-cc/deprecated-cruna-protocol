@@ -17,7 +17,7 @@ async function main() {
   const [owner, h1, h2, h3, h4, h5] = await ethers.getSigners();
 
   let flexiVault, flexiVaultManager;
-  let registry, wallet, proxyWallet, signatureValidator, actorsManager, guardian;
+  let registry, account, proxyWallet, signatureValidator, actorsManager, guardian;
   let usdc, usdt;
 
   actorsManager = await deployUtils.deploy("ActorsManager");
@@ -30,14 +30,13 @@ async function main() {
   // await flexiVault.allowFactoryFor(factory.address, 0);
 
   registry = await deployUtils.deploy("ERC6551Registry");
-  wallet = await deployUtils.deploy("Account.sol");
-  let implementation = await deployUtils.deploy("AccountUpgradeable.sol", guardian.address);
-  proxyWallet = await deployUtils.deploy("AccountProxy.sol", implementation.address);
+  let implementation = await deployUtils.deploy("FlexiAccount", guardian.address);
+  proxyWallet = await deployUtils.deploy("AccountProxy", implementation.address);
 
   flexiVaultManager = await deployUtils.deploy("FlexiVaultManager", flexiVault.address);
 
   await deployUtils.Tx(
-    flexiVaultManager.init(registry.address, wallet.address, proxyWallet.address, {gasLimit: 1500000}),
+    flexiVaultManager.init(registry.address, proxyWallet.address, {gasLimit: 1500000}),
     "flexiVaultManager.init"
   );
 
