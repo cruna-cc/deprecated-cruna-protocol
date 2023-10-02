@@ -7,14 +7,14 @@ import {Address} from "@openzeppelin/contracts/utils/Address.sol";
 import {IERC4906} from "../utils/IERC4906.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {ProtectedERC721, Strings} from "../protected/ProtectedERC721.sol";
-import {FlexiVaultManager} from "../vaults/FlexiVaultManager.sol";
+import {IFlexiVaultManager, FlexiVaultManager} from "../vaults/FlexiVaultManager.sol";
 import {IFlexiVault} from "./IFlexiVault.sol";
-import {Trustee} from "./Trustee.sol";
+import {CrunaWallet} from "./CrunaWallet.sol";
 
 //import "hardhat/console.sol";
 
 // reference implementation of a Cruna Vault
-contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
+contract CrunaFlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
   using Strings for uint256;
 
   event TokenURIFrozen();
@@ -32,7 +32,7 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
   error NotAllowedWhenProtector();
   error NotAPreviouslyEjectedAccount();
   error NotActivated();
-  error TrusteeNotFound();
+  error CrunaWalletNotFound();
   error TokenIdDoesNotExist();
 
   FlexiVaultManager public vaultManager;
@@ -40,11 +40,11 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
 
   uint public nextTokenId;
   uint public lastTokenId;
-  Trustee public trustee;
+  CrunaWallet public wallet;
 
   modifier onlyIfActiveAndTokenNotApproved(uint256 tokenId) {
     if (vaultManager.accountAddress(tokenId) == address(0)) revert NotActivated();
-    if (trustee.ownerOf(tokenId) != address(vaultManager)) revert TrusteeNotFound();
+    if (wallet.ownerOf(tokenId) != address(vaultManager)) revert CrunaWalletNotFound();
     // if the owningToken is approved for sale, the vaults cannot be modified to avoid scams
     if (getApproved(tokenId) != address(0)) revert ForbiddenWhenTokenApprovedForSale();
     _;
@@ -65,10 +65,10 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
     if (FlexiVaultManager(flexiVaultManager).isFlexiVaultManager() != FlexiVaultManager.isFlexiVaultManager.selector)
       revert NotTheVaultManager();
     vaultManager = FlexiVaultManager(flexiVaultManager);
-    trustee = Trustee(vaultManager.trustee());
-    if (address(trustee) == address(0)) revert VaultManagerNotInitiated();
-    nextTokenId = trustee.firstTokenId();
-    lastTokenId = trustee.lastTokenId();
+    wallet = CrunaWallet(vaultManager.wallet());
+    if (address(wallet) == address(0)) revert VaultManagerNotInitiated();
+    nextTokenId = wallet.firstTokenId();
+    lastTokenId = wallet.lastTokenId();
   }
 
   // set factory to 0x0 to disable a factory
@@ -103,7 +103,7 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
     _mintNow(to);
   }
 
-  function mintFromTrustee(uint) external virtual override {
+  function mintFromCrunaWallet(uint) external virtual override {
     revert NotImplemented(); // not enabled in version 1
   }
 
@@ -120,9 +120,9 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
     uint256 timestamp,
     uint256 validFor,
     bytes calldata signature
-  ) external virtual override onlyTokenOwner(tokenId) {
+  ) external virtual override onlyTokenOwner(tokenId) nonReentrant {
     if (!_exists(tokenId)) revert TokenIdDoesNotExist();
-    if (trustee.ownerOf(tokenId) != address(vaultManager)) revert AccountAlreadyEjected();
+    if (wallet.ownerOf(tokenId) != address(vaultManager)) revert AccountAlreadyEjected();
     if (getApproved(tokenId) != address(0)) revert ForbiddenWhenTokenApprovedForSale();
     if (timestamp != 0) {
       actorsManager.checkIfSignatureUsed(signature);
@@ -139,9 +139,9 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
   function injectEjectedAccount(uint256 tokenId) external virtual override onlyTokenOwner(tokenId) nonReentrant {
     if (!_exists(tokenId)) revert TokenIdDoesNotExist();
     // it reverts if called before initiating the vault, or with non-existing token
-    if (trustee.ownerOf(tokenId) != address(vaultManager)) {
+    if (wallet.ownerOf(tokenId) != address(vaultManager)) {
       // the contract must be approved
-      trustee.transferFrom(_msgSender(), address(vaultManager), tokenId);
+      wallet.transferFrom(_msgSender(), address(vaultManager), tokenId);
     }
     vaultManager.injectEjectedAccount(tokenId);
   }
@@ -156,17 +156,17 @@ contract FlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGuard {
 
   function depositAssets(
     uint256 tokenId,
-    FlexiVaultManager.TokenType[] memory tokenTypes,
+    IFlexiVaultManager.TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts
-  ) external payable override nonReentrant onlyIfActiveAndTokenNotApproved(tokenId) {
+  ) external payable nonReentrant onlyIfActiveAndTokenNotApproved(tokenId) {
     vaultManager.depositAssets{value: msg.value}(tokenId, tokenTypes, assets, ids, amounts, _msgSender());
   }
 
   function withdrawAssets(
     uint256 tokenId,
-    FlexiVaultManager.TokenType[] memory tokenTypes,
+    IFlexiVaultManager.TokenType[] memory tokenTypes,
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts,

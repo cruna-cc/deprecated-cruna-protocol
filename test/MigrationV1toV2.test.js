@@ -36,6 +36,7 @@ describe("Migration V1 to V2", function () {
     ERC20: 1,
     ERC721: 2,
     ERC1155: 3,
+    ERC777: 4,
   };
 
   async function depositETH(manager, signer, owningTokenId, params = {}) {
@@ -108,7 +109,7 @@ describe("Migration V1 to V2", function () {
     actorsManager = await deployContract("ActorsManager");
     signatureValidator = await deployContract("SignatureValidator", "Cruna", "1");
 
-    flexiVault = await deployContract("FlexiVaultMock", actorsManager.address, signatureValidator.address);
+    flexiVault = await deployContract("VaultMock", actorsManager.address, signatureValidator.address);
 
     expect(await flexiVault.version()).to.equal("1.0.0");
 
@@ -184,7 +185,7 @@ describe("Migration V1 to V2", function () {
     flexiVaultManager2 = await deployContract("FlexiVaultManagerV2", flexiVault2.address);
 
     await flexiVaultManager2.init(registry.address, proxyWallet.address);
-    await flexiVaultManager2.setPreviousTrustees([flexiVault.trustee()]);
+    await flexiVaultManager2.setPreviousCrunaWallets([flexiVault.wallet()]);
     await flexiVault2.initVault(flexiVaultManager2.address);
 
     await expect(flexiVault2.safeMint0(bob.address))
@@ -218,20 +219,20 @@ describe("Migration V1 to V2", function () {
     await depositAssets(fred, 1, [1], [bulls], [0], [amount("5000")]);
     expect((await flexiVaultManager.amountOf(1, [bulls.address], [0]))[0]).equal(amount("5000"));
 
-    const trusteeAddress = await flexiVaultManager.trustee();
-    const trustee = await deployUtils.attach("Trustee", trusteeAddress);
+    const walletAddress = await flexiVaultManager.wallet();
+    const wallet = await deployUtils.attach("CrunaWallet", walletAddress);
 
-    expect(await trustee.ownerOf(1)).equal(flexiVaultManager.address);
+    expect(await wallet.ownerOf(1)).equal(flexiVaultManager.address);
 
     await expect(flexiVault.connect(bob).ejectAccount(1, 0, 0, [])).emit(flexiVaultManager, "BoundAccountEjected").withArgs(1);
 
-    expect(await trustee.ownerOf(1)).equal(bob.address);
+    expect(await wallet.ownerOf(1)).equal(bob.address);
 
-    await trustee.connect(bob).approve(flexiVault2.address, 1);
+    await wallet.connect(bob).approve(flexiVault2.address, 1);
 
     await expect(flexiVault2.connect(bob).injectEjectedAccount(1)).revertedWith("ERC721: invalid token ID");
 
-    await expect(flexiVault2.connect(bob).mintFromTrustee(1))
+    await expect(flexiVault2.connect(bob).mintFromCrunaWallet(1))
       .emit(flexiVault2, "Transfer")
       .withArgs(ethers.constants.AddressZero, bob.address, 1);
 

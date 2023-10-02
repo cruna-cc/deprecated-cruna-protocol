@@ -24,7 +24,7 @@ async function main() {
   guardian = await deployUtils.deploy("AccountGuardian");
   signatureValidator = await deployUtils.deploy("SignatureValidator", "Cruna", "1");
 
-  flexiVault = await deployUtils.deploy("FlexiVault", actorsManager.address, signatureValidator.address);
+  flexiVault = await deployUtils.deploy("CrunaFlexiVault", actorsManager.address, signatureValidator.address);
 
   // factory = await deployUtils.deployProxy("CrunaClusterFactory", flexiVault.address);
   // await flexiVault.allowFactoryFor(factory.address, 0);

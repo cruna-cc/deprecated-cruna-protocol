@@ -150,10 +150,10 @@ interface IFlexiVaultManager {
 
   /**
    * @dev Delete the operators associated to an account
-      It must be called by the FlexiVault only.
+      It must be called by the CrunaFlexiVault.sol only.
    * @param tokenId The token id
    */
   function removeOperatorsFor(uint256 tokenId) external;
 
-  function setPreviousTrustees(address[] calldata previous_) external;
+  function setPreviousCrunaWallets(address[] calldata previous_) external;
 }

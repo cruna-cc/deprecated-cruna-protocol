@@ -37,7 +37,7 @@ async function main() {
 
   usdc = await deployUtils.attach("USDCoin");
   usdt = await deployUtils.attach("TetherUSD");
-  flexiVault = await deployUtils.attach("FlexiVault");
+  flexiVault = await deployUtils.attach("CrunaFlexiVault");
   factory = await deployUtils.deployProxy("VaultFactory", flexiVault.address);
 
   await flexiVault.setFactory(factory.address);

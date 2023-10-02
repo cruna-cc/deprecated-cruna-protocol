@@ -46,11 +46,12 @@ interface IFlexiVaultManagerExtended is IFlexiVaultManager {
   error OperatorNotActive();
   error OnlyProtectedOwningToken();
   error NoZeroAddress();
-  error InvalidTrustee();
+  error InvalidCrunaWallet();
   error OnlyVault();
   error NotImplemented();
   error InvalidAccountAddress();
-  error TrusteeNotFound();
+  error CrunaWalletNotFound();
   error TheERC721IsAProtector();
   error NotPermittedWhenProtectorsAreActive();
+  error TokenNotFound();
 }

@@ -10,7 +10,7 @@ import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
-import {FlexiVault} from "../vaults/FlexiVault.sol";
+import {CrunaFlexiVault} from "../vaults/CrunaFlexiVault.sol";
 import {IProtectedERC721} from "./IProtectedERC721.sol";
 import {ProtectedERC721Errors} from "./ProtectedERC721Errors.sol";
 import {ProtectedERC721Events} from "./ProtectedERC721Events.sol";
@@ -18,7 +18,7 @@ import {IVersioned} from "../utils/IVersioned.sol";
 import {IERC6454} from "./IERC6454.sol";
 import {Actors, IActors} from "./Actors.sol";
 import {IActorsManager} from "./IActorsManager.sol";
-import {FlexiVault} from "../vaults/FlexiVault.sol";
+import {CrunaFlexiVault} from "../vaults/CrunaFlexiVault.sol";
 import {ISignatureValidator} from "../utils/ISignatureValidator.sol";
 
 //import {console} from "hardhat/console.sol";
@@ -27,7 +27,7 @@ contract ActorsManager is IActorsManager, Actors, Ownable2Step, ERC165 {
   using ECDSA for bytes32;
   using Strings for uint256;
 
-  FlexiVault public flexiVault;
+  CrunaFlexiVault public flexiVault;
   ISignatureValidator public signatureValidator;
 
   // the address of a second wallet required to validate the transfer of a token
@@ -58,7 +58,7 @@ contract ActorsManager is IActorsManager, Actors, Ownable2Step, ERC165 {
 
   function init(address crunaVault) external onlyOwner {
     if (!IERC165(crunaVault).supportsInterface(type(IProtectedERC721).interfaceId)) revert InvalidProtectedERC721();
-    flexiVault = FlexiVault(crunaVault);
+    flexiVault = CrunaFlexiVault(crunaVault);
     if (address(flexiVault.actorsManager()) != address(this)) revert NotTheBondedProtectedERC721();
     signatureValidator = ISignatureValidator(flexiVault.signatureValidator());
   }

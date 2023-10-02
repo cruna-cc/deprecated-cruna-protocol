@@ -14,7 +14,7 @@ async function main() {
     ABIs.contracts[rename || name] = json.abi;
   }
   abi("CrunaClusterFactory", "contracts/factory");
-  abi("FlexiVault", "contracts/implementation");
+  abi("CrunaFlexiVault", "contracts/implementation");
   abi("ERC6551Registry", "contracts/erc6551");
   abi("Account.sol", "contracts/erc6551");
   abi("AccountUpgradeable.sol", "contracts/erc6551");
