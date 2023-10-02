@@ -32,7 +32,6 @@ contract CrunaFlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGu
   error NotAllowedWhenProtector();
   error NotAPreviouslyEjectedAccount();
   error NotActivated();
-  error CrunaWalletNotFound();
   error TokenIdDoesNotExist();
 
   FlexiVaultManager public vaultManager;
@@ -42,9 +41,13 @@ contract CrunaFlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGu
   uint public lastTokenId;
   CrunaWallet public wallet;
 
-  modifier onlyIfActiveAndTokenNotApproved(uint256 tokenId) {
-    if (vaultManager.accountAddress(tokenId) == address(0)) revert NotActivated();
-    if (wallet.ownerOf(tokenId) != address(vaultManager)) revert CrunaWalletNotFound();
+  modifier onlyIfActive(uint256 tokenId) {
+    // It will revert if wallet not set, i.e., it the cruna vault has not been initiated
+    if (wallet.ownerOf(tokenId) != address(vaultManager)) revert NotActivated();
+    _;
+  }
+
+  modifier onlyIfNotApproved(uint256 tokenId) {
     // if the owningToken is approved for sale, the vaults cannot be modified to avoid scams
     if (getApproved(tokenId) != address(0)) revert ForbiddenWhenTokenApprovedForSale();
     _;
@@ -108,6 +111,7 @@ contract CrunaFlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGu
   }
 
   function _mintNow(address to) internal {
+    if (lastTokenId == 0) revert VaultManagerNotInitiated();
     if (nextTokenId > lastTokenId) revert CapReached();
     _safeMint(to, nextTokenId++);
   }
@@ -160,7 +164,7 @@ contract CrunaFlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGu
     address[] memory assets,
     uint256[] memory ids,
     uint256[] memory amounts
-  ) external payable nonReentrant onlyIfActiveAndTokenNotApproved(tokenId) {
+  ) external payable nonReentrant onlyIfActive(tokenId) {
     vaultManager.depositAssets{value: msg.value}(tokenId, tokenTypes, assets, ids, amounts, _msgSender());
   }
 
@@ -174,7 +178,7 @@ contract CrunaFlexiVault is IFlexiVault, IERC4906, ProtectedERC721, ReentrancyGu
     uint256 timestamp,
     uint256 validFor,
     bytes calldata signature
-  ) external override onlyIfActiveAndTokenNotApproved(tokenId) nonReentrant {
+  ) external override onlyIfActive(tokenId) onlyIfNotApproved(tokenId) nonReentrant {
     vaultManager.withdrawAssets(
       tokenId,
       tokenTypes,

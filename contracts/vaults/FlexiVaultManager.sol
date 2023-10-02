@@ -433,9 +433,9 @@ contract FlexiVaultManager is
   }
 
   function isERC721(address asset) public view returns (bool) {
-    try IERC165(asset).supportsInterface(type(IProtectedERC721).interfaceId) returns (bool result) {
-      if (result) revert TheERC721IsAProtector();
-    } catch {}
+    //    try IERC165(asset).supportsInterface(type(IProtectedERC721).interfaceId) returns (bool result) {
+    //      if (result) revert TheERC721IsAProtector();
+    //    } catch {}
     try IERC165(asset).supportsInterface(type(IERC721).interfaceId) returns (bool result) {
       return result;
     } catch {}

@@ -150,7 +150,9 @@ describe("FlexiVaultManager Using internal Deposits", function () {
   it("should revert if not activated", async function () {
     // bob creates a vaults depositing a particle token
     await particle.connect(bob).setApprovalForAll(flexiVaultManager.address, true);
-    await expect(flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1])).revertedWith("NotActivated()");
+    await expect(flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [2], [1])).revertedWith(
+      "ERC721: invalid token ID"
+    );
   });
 
   it("should create a vaults and add more assets to it", async function () {
@@ -268,9 +270,7 @@ describe("FlexiVaultManager Using internal Deposits", function () {
 
     await expect(flexiVault.connect(bob).ejectAccount(1, 0, 0, [])).revertedWith("AccountAlreadyEjected()");
 
-    await expect(flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [4], [1])).revertedWith(
-      "CrunaWalletNotFound()"
-    );
+    await expect(flexiVault.connect(bob).depositAssets(1, [2], [particle.address], [4], [1])).revertedWith("NotActivated()");
 
     await wallet.connect(bob).approve(flexiVault.address, 1);
 
