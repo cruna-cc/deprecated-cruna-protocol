@@ -13,7 +13,7 @@ interface IFlexiVault {
 
   function safeMint(address to) external;
 
-  function mintFromTrustee(uint tokenId) external;
+  function mintFromCrunaWallet(uint tokenId) external;
 
   function ejectAccount(uint256 tokenId, uint256 timestamp, uint256 validFor, bytes calldata signature) external;
 

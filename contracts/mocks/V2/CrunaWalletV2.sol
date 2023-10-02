@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Trustee, ITrustee} from "../../vaults/Trustee.sol";
+import {CrunaWallet, ICrunaWallet} from "../../vaults/CrunaWallet.sol";
 
-contract TrusteeV2 is Trustee {
-  constructor() Trustee() {}
+contract CrunaWalletV2 is CrunaWallet {
+  constructor() CrunaWallet() {}
 
   function name() public pure virtual override returns (string memory) {
-    return "Cruna Trustee V2";
+    return "Cruna CrunaWallet V2";
   }
 
   function symbol() public pure virtual override returns (string memory) {
@@ -19,15 +19,15 @@ contract TrusteeV2 is Trustee {
   }
 
   function _baseURI() internal view virtual override returns (string memory) {
-    return "https://meta.cruna.io/trustee/v2/";
+    return "https://meta.cruna.io/wallet/v2/";
   }
 
   function contractURI() public view virtual override returns (string memory) {
-    return "https://meta.cruna.io/trustee/v2/info";
+    return "https://meta.cruna.io/wallet/v2/info";
   }
 
-  function isTrustee() external pure override returns (bytes4) {
-    return ITrustee.isTrustee.selector;
+  function isCrunaWallet() external pure override returns (bytes4) {
+    return ICrunaWallet.isCrunaWallet.selector;
   }
 
   function firstTokenId() public pure override returns (uint) {

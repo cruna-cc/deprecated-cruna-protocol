@@ -4,12 +4,12 @@ pragma solidity ^0.8.19;
 // Author: Francesco Sullo <francesco@sullo.co>
 
 import {FlexiVaultManager, IERC165, IERC6551Registry, IERC6551Account, IERC6551Executable, IERC6551AccountExecutable} from "../../vaults/FlexiVaultManager.sol";
-import {TrusteeV2, ITrustee, Trustee} from "./TrusteeV2.sol";
+import {CrunaWalletV2, ICrunaWallet, CrunaWallet} from "./CrunaWalletV2.sol";
 
 //import {console} from "hardhat/console.sol";
 
 contract FlexiVaultManagerV2 is FlexiVaultManager {
-  error PreviousTrusteeAlreadySet();
+  error PreviousCrunaWalletAlreadySet();
 
   // solhint-disable-next-line
   constructor(address owningToken) FlexiVaultManager(owningToken) {}
@@ -21,14 +21,14 @@ contract FlexiVaultManagerV2 is FlexiVaultManager {
     return "2.0.0";
   }
 
-  function setPreviousTrustees(address[] calldata previous_) external override onlyOwner {
-    if (previousTrusteesCount != 0) revert PreviousTrusteeAlreadySet();
+  function setPreviousCrunaWallets(address[] calldata previous_) external override onlyOwner {
+    if (previousCrunaWalletsCount != 0) revert PreviousCrunaWalletAlreadySet();
     for (uint i = 0; i < previous_.length; i++) {
-      Trustee trustee_ = Trustee(previous_[i]);
-      if (trustee_.isTrustee() != ITrustee.isTrustee.selector) revert InvalidTrustee();
-      previousTrustees[i] = trustee_;
+      CrunaWallet wallet_ = CrunaWallet(previous_[i]);
+      if (wallet_.isCrunaWallet() != ICrunaWallet.isCrunaWallet.selector) revert InvalidCrunaWallet();
+      previousCrunaWallets[i] = wallet_;
     }
-    previousTrusteesCount = previous_.length;
+    previousCrunaWalletsCount = previous_.length;
   }
 
   /**
@@ -42,7 +42,7 @@ contract FlexiVaultManagerV2 is FlexiVaultManager {
     ) revert InvalidAccount();
     _registry = IERC6551Registry(registry);
     boundAccount = IERC6551AccountExecutable(boundAccount_);
-    trustee = new TrusteeV2();
+    wallet = new CrunaWalletV2();
     _initiated = true;
   }
 
@@ -50,13 +50,13 @@ contract FlexiVaultManagerV2 is FlexiVaultManager {
     _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
     if (_accountAddresses[owningTokenId] == address(0)) {
       // it is coming from a previous version
-      for (uint i = 0; i < previousTrusteesCount; i++) {
-        if (previousTrustees[i].firstTokenId() <= owningTokenId && owningTokenId <= previousTrustees[i].lastTokenId()) {
-          _accountAddresses[owningTokenId] = previousTrustees[i].boundAccount(owningTokenId);
+      for (uint i = 0; i < previousCrunaWalletsCount; i++) {
+        if (previousCrunaWallets[i].firstTokenId() <= owningTokenId && owningTokenId <= previousCrunaWallets[i].lastTokenId()) {
+          _accountAddresses[owningTokenId] = previousCrunaWallets[i].boundAccount(owningTokenId);
           break;
         }
       }
-      if (_accountAddresses[owningTokenId] == address(0)) revert TrusteeNotFound();
+      if (_accountAddresses[owningTokenId] == address(0)) revert CrunaWalletNotFound();
     }
     emit EjectedBoundAccountReInjected(owningTokenId);
   }

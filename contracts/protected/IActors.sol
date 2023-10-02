@@ -30,7 +30,7 @@ interface IActors {
   /**
     * @dev Recipients can have different levels of protection
        a recipient level LOW or MEDIUM can move assets inside the vault skipping the protector
-       a recipient level HIGH can receive the FlexiVault skipping the protector
+       a recipient level HIGH can receive the CrunaFlexiVault.sol skipping the protector
     */
   enum Level {
     NONE,

@@ -50,6 +50,7 @@ describe("Beneficiaries", function () {
     ERC20: 1,
     ERC721: 2,
     ERC1155: 3,
+    ERC777: 4,
   };
 
   async function depositETH(signer, owningTokenId, params = {}) {
@@ -114,7 +115,7 @@ describe("Beneficiaries", function () {
     actorsManager = await deployContract("ActorsManager");
     signatureValidator = await deployContract("SignatureValidator", "Cruna", "1");
 
-    flexiVault = await deployContract("FlexiVaultMock", actorsManager.address, signatureValidator.address);
+    flexiVault = await deployContract("VaultMock", actorsManager.address, signatureValidator.address);
 
     expect(await flexiVault.version()).to.equal("1.0.0");
 

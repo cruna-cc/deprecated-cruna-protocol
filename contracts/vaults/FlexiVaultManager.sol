@@ -13,37 +13,46 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 import {Ownable2Step} from "@openzeppelin/contracts/access/Ownable2Step.sol";
 
 import {NFTOwned} from "../utils/NFTOwned.sol";
-import {FlexiVault} from "./FlexiVault.sol";
+import {CrunaFlexiVault} from "./CrunaFlexiVault.sol";
 import {IProtectedERC721} from "../protected/IProtectedERC721.sol";
 import {IERC6551AccountExecutable} from "../accounts/IERC6551AccountExecutable.sol";
 import {IERC6551Account} from "erc6551/interfaces/IERC6551Account.sol";
 import {IERC6551Executable} from "erc6551/interfaces/IERC6551Executable.sol";
 import {IERC6551Registry} from "erc6551/interfaces/IERC6551Registry.sol";
-import {Trustee, ITrustee} from "./Trustee.sol";
+import {CrunaWallet, ICrunaWallet} from "./CrunaWallet.sol";
 import {IVersioned} from "../utils/IVersioned.sol";
-import {IFlexiVaultManagerExtended} from "./IFlexiVaultManagerExtended.sol";
+import {IFlexiVaultManager, IFlexiVaultManagerExtended} from "./IFlexiVaultManagerExtended.sol";
 import {IActors} from "../protected/IActors.sol";
 import {IActorsManager} from "../protected/IActorsManager.sol";
 import {ISignatureValidator} from "../utils/ISignatureValidator.sol";
+import {IERCxyz} from "./IERCxyz.sol";
 
 //import {console} from "hardhat/console.sol";
 
-contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVersioned, Ownable2Step, NFTOwned, ReentrancyGuard {
+contract FlexiVaultManager is
+  IFlexiVaultManagerExtended,
+  IERCxyz,
+  IERC721Receiver,
+  IVersioned,
+  Ownable2Step,
+  NFTOwned,
+  ReentrancyGuard
+{
   mapping(bytes32 => uint256) private _unconfirmedDeposits;
 
   // modifiers
 
   IERC6551Registry internal _registry;
   IERC6551AccountExecutable public boundAccount;
-  Trustee public trustee;
+  CrunaWallet public wallet;
 
-  mapping(uint => Trustee) public previousTrustees;
-  uint public previousTrusteesCount;
+  mapping(uint => CrunaWallet) public previousCrunaWallets;
+  uint public previousCrunaWalletsCount;
 
   uint256 internal _salt;
   mapping(uint256 => address) internal _accountAddresses;
   bool internal _initiated;
-  FlexiVault internal _vault;
+  CrunaFlexiVault internal _vault;
   mapping(uint256 => AccountStatus) internal _accountStatuses;
 
   // The operators that can manage a specific tokenId.
@@ -78,7 +87,7 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
 
   modifier onlyIfActiveAndOwningTokenNotApproved(uint256 owningTokenId) {
     if (_accountAddresses[owningTokenId] == address(0)) revert NotActivated();
-    if (trustee.ownerOf(owningTokenId) != address(this)) revert AccountHasBeenEjected();
+    if (wallet.ownerOf(owningTokenId) != address(this)) revert AccountHasBeenEjected();
     // if the owningToken is approved for sale, the vaults cannot be modified to avoid scams
     if (_owningToken.getApproved(owningTokenId) != address(0)) revert ForbiddenWhenOwningTokenApprovedForSale();
     _;
@@ -86,7 +95,7 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
 
   // solhint-disable-next-line
   constructor(address owningToken) NFTOwned(owningToken) {
-    _vault = FlexiVault(owningToken);
+    _vault = CrunaFlexiVault(owningToken);
     if (!IERC165(_owningToken).supportsInterface(type(IProtectedERC721).interfaceId)) revert OwningTokenNotProtected();
     _salt = uint256(keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken))));
   }
@@ -113,11 +122,11 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
     ) revert InvalidAccount();
     _registry = IERC6551Registry(registry);
     boundAccount = IERC6551AccountExecutable(boundAccount_);
-    trustee = new Trustee();
+    wallet = new CrunaWallet();
     _initiated = true;
   }
 
-  function setPreviousTrustees(address[] calldata) external virtual override {
+  function setPreviousCrunaWallets(address[] calldata) external virtual override {
     revert NotImplemented();
   }
 
@@ -126,6 +135,18 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
    */
   function isFlexiVaultManager() external pure virtual override returns (bytes4) {
     return this.isFlexiVaultManager.selector;
+  }
+
+  // IERCxyz
+  function ownerOfToken(address tokenAddress, uint256 tokenId) external view virtual override returns (address) {
+    if (tokenAddress == address(wallet)) {
+      try wallet.ownerOf(tokenId) returns (address owner) {
+        if (owner == address(this)) {
+          return _owningToken.ownerOf(tokenId);
+        }
+      } catch {}
+    }
+    revert TokenNotFound();
   }
 
   /**
@@ -140,11 +161,11 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
    */
   function activateAccount(uint256 owningTokenId) external virtual onlyVault {
     address account = address(boundAccount);
-    address walletAddress = _registry.account(account, block.chainid, address(trustee), owningTokenId, _salt);
+    address walletAddress = _registry.account(account, block.chainid, address(wallet), owningTokenId, _salt);
     // revert if already activated
-    trustee.mint(address(this), owningTokenId);
+    wallet.mint(address(this), owningTokenId);
     _accountAddresses[owningTokenId] = walletAddress;
-    _registry.createAccount(account, block.chainid, address(trustee), owningTokenId, _salt, "");
+    _registry.createAccount(account, block.chainid, address(wallet), owningTokenId, _salt, "");
     _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
     emit BoundAccountActivated(owningTokenId, walletAddress);
   }
@@ -353,7 +374,7 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
     // we are ejecting a previously reInjected account
     delete _accountStatuses[owningTokenId]; // equal to = AccountStatus.INACTIVE;
     emit BoundAccountEjected(owningTokenId);
-    trustee.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
+    wallet.safeTransferFrom(address(this), ownerOf(owningTokenId), owningTokenId);
   }
 
   /**
@@ -412,9 +433,9 @@ contract FlexiVaultManager is IFlexiVaultManagerExtended, IERC721Receiver, IVers
   }
 
   function isERC721(address asset) public view returns (bool) {
-    try IERC165(asset).supportsInterface(type(IProtectedERC721).interfaceId) returns (bool result) {
-      if (result) revert TheERC721IsAProtector();
-    } catch {}
+    //    try IERC165(asset).supportsInterface(type(IProtectedERC721).interfaceId) returns (bool result) {
+    //      if (result) revert TheERC721IsAProtector();
+    //    } catch {}
     try IERC165(asset).supportsInterface(type(IERC721).interfaceId) returns (bool result) {
       return result;
     } catch {}

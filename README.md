@@ -124,7 +124,7 @@ A new family of Zero Knowledge based vaults will allow a high level of privacy.
 
 - Integrate ClusteredERC721 to manage clusters inside the Cruna Vault
 - Allow the user to choose between an immutable bound-account and an upgradeable one
-- Renames OwnerNFT to Trustee
+- Renames OwnerNFT to CrunaWallet
 - Rename TransparentVault to FlexiVault
 
 **1.2.5**

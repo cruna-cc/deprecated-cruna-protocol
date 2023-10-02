@@ -7,7 +7,7 @@ pragma solidity ^0.8.19;
 import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {IERC165Upgradeable} from "@openzeppelin/contracts-upgradeable/utils/introspection/IERC165Upgradeable.sol";
 
-import {FlexiVault} from "../vaults/FlexiVault.sol";
+import {CrunaFlexiVault} from "../vaults/CrunaFlexiVault.sol";
 import {UUPSUpgradableTemplate} from "../utils/UUPSUpgradableTemplate.sol";
 import {IProtectedERC721} from "../protected/IProtectedERC721.sol";
 
@@ -16,7 +16,7 @@ import {IVaultFactory} from "./IVaultFactory.sol";
 //import {console} from "hardhat/console.sol";
 
 contract VaultFactory is IVaultFactory, UUPSUpgradableTemplate {
-  FlexiVault public vault;
+  CrunaFlexiVault public vault;
   uint256 public price;
 
   mapping(address => bool) public stableCoins;
@@ -30,7 +30,7 @@ contract VaultFactory is IVaultFactory, UUPSUpgradableTemplate {
   function initialize(address vault_) public initializer {
     __UUPSUpgradableTemplate_init();
     if (!IERC165Upgradeable(vault_).supportsInterface(type(IProtectedERC721).interfaceId)) revert NotAVault();
-    vault = FlexiVault(vault_);
+    vault = CrunaFlexiVault(vault_);
   }
 
   // @notice The price is in points, so that 1 point = 0.01 USD
