@@ -218,10 +218,6 @@ A new family of Zero Knowledge based vaults will allow a high level of privacy.
 
 - first version
 
-## Contributions
-
-This project started from the collaboration between [Everdragons2](https://everdragons2.com), [Nduja Labs](https://ndujalabs.com) and [The Round Table](https://trt.gg).
-
 ## License
 
 Copyright (C) 2023 Cruna
