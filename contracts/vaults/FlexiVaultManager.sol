@@ -49,7 +49,7 @@ contract FlexiVaultManager is
   mapping(uint => CrunaWallet) public previousCrunaWallets;
   uint public previousCrunaWalletsCount;
 
-  uint256 internal _salt;
+  bytes32 internal _salt;
   mapping(uint256 => address) internal _accountAddresses;
   bool internal _initiated;
   CrunaFlexiVault internal _vault;
@@ -97,7 +97,7 @@ contract FlexiVaultManager is
   constructor(address owningToken) NFTOwned(owningToken) {
     _vault = CrunaFlexiVault(owningToken);
     if (!IERC165(_owningToken).supportsInterface(type(IProtectedERC721).interfaceId)) revert OwningTokenNotProtected();
-    _salt = uint256(keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken))));
+    _salt = keccak256(abi.encodePacked(address(this), block.chainid, address(owningToken)));
   }
 
   /**
@@ -161,11 +161,11 @@ contract FlexiVaultManager is
    */
   function activateAccount(uint256 owningTokenId) external virtual onlyVault {
     address account = address(boundAccount);
-    address walletAddress = _registry.account(account, block.chainid, address(wallet), owningTokenId, _salt);
+    address walletAddress = _registry.account(account, _salt, block.chainid, address(wallet), owningTokenId);
     // revert if already activated
     wallet.mint(address(this), owningTokenId);
     _accountAddresses[owningTokenId] = walletAddress;
-    _registry.createAccount(account, block.chainid, address(wallet), owningTokenId, _salt, "");
+    _registry.createAccount(account, _salt, block.chainid, address(wallet), owningTokenId);
     _accountStatuses[owningTokenId] = AccountStatus.ACTIVE;
     emit BoundAccountActivated(owningTokenId, walletAddress);
   }

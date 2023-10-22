@@ -15,8 +15,8 @@ dependencies:
     specifier: ^4.8.3
     version: 4.8.3
   erc6551:
-    specifier: ^0.2.4
-    version: 0.2.4
+    specifier: 0.3.1
+    version: 0.3.1
   ethereumjs-abi:
     specifier: ^0.6.8
     version: 0.6.8
@@ -1601,6 +1601,7 @@ packages:
 
   /aes-js@3.1.2:
     resolution: {integrity: sha512-e5pEa2kBnBOgR4Y/p20pskXI74UEz7de8ZGVo58asOtvSVG5YAbJeELPZxOmt+Bnz3rX753YKhfIn4X4l1PPRQ==}
+    requiresBuild: true
     dev: true
     optional: true
 
@@ -1642,6 +1643,7 @@ packages:
   /amdefine@1.0.1:
     resolution: {integrity: sha512-S2Hw0TtNkMJhIabBwIojKL9YHO5T0n5eNqWJ7Lrlel/zDbftQpxpapi8tZs3X1HWa+u+QeydGmzzNU0m09+Rcg==}
     engines: {node: '>=0.4.2'}
+    requiresBuild: true
     dev: true
     optional: true
 
@@ -3899,8 +3901,8 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /erc6551@0.2.4:
-    resolution: {integrity: sha512-uP3HcCUGw7ofaUO+0z574uS8OkdQQawxdi2IQx+GpvnPGN3yi3wkWXV6z2KdUQJqjhFQLQv7rjcrBL4a4Pi0tQ==}
+  /erc6551@0.3.1:
+    resolution: {integrity: sha512-4+O7CJ5gn3/s2Mum1QiJDJUbGE1P1m0t3do2nnFAKWEXLubWfZjS12HqraUJ6Y6su3WJ8EqdWm0270gC0bqpCA==}
     dev: false
 
   /errno@0.1.8:
@@ -8693,6 +8695,7 @@ packages:
 
   /scryptsy@1.2.1:
     resolution: {integrity: sha512-aldIRgMozSJ/Gl6K6qmJZysRP82lz83Wb42vl4PWN8SaLFHIaOzLPc9nUUW2jQN88CuGm5q5HefJ9jZ3nWSmTw==}
+    requiresBuild: true
     dependencies:
       pbkdf2: 3.1.2
     dev: true

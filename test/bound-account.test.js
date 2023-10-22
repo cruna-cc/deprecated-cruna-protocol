@@ -22,9 +22,9 @@ describe("Bound-account Integration", function () {
 
   beforeEach(async function () {
     registry = await deployUtils.deploy("ERC6551Registry");
-    guardian = await deployContract("AccountGuardian");
+    guardian = await deployUtils.deploy("AccountGuardian");
 
-    implementation = await deployContract("FlexiAccount", guardian.address);
+    implementation = await deployUtils.deploy("FlexiAccount", guardian.address);
     proxy = await deployUtils.deploy("ERC6551AccountProxy", implementation.address);
     particle = await deployUtils.deploy("Particle", "https://particle.xyz/meta/");
 
@@ -33,12 +33,12 @@ describe("Bound-account Integration", function () {
     await particle.safeMint(fred.address, tokenId3);
   });
 
-  it("Deploy bound account and ", async function () {
-    const salt = 100990033007;
+  it("Deploy bound account and make a transfer", async function () {
+    const salt = "0x" + "0".repeat(64);
 
-    const predictedAccount = await registry.account(proxy.address, chainId, particle.address, tokenId1, salt);
+    const predictedAccount = await registry.account(proxy.address, salt, chainId, particle.address, tokenId1);
 
-    await registry.createAccount(proxy.address, chainId, particle.address, tokenId1, salt, []);
+    await registry.createAccount(proxy.address, salt, chainId, particle.address, tokenId1);
 
     wallet = await deployUtils.attach("FlexiAccount", predictedAccount);
 
@@ -80,11 +80,11 @@ describe("Bound-account Integration", function () {
   });
 
   it("Tries to self-destruct the account ", async function () {
-    const salt = 100990033007;
+    const salt = "0x" + "0".repeat(64);
 
-    const predictedAccount = await registry.account(proxy.address, chainId, particle.address, tokenId1, salt);
+    const predictedAccount = await registry.account(proxy.address, salt, chainId, particle.address, tokenId1);
 
-    await registry.createAccount(proxy.address, chainId, particle.address, tokenId1, salt, []);
+    await registry.createAccount(proxy.address, salt, chainId, particle.address, tokenId1);
 
     wallet = await deployUtils.attach("FlexiAccount", predictedAccount);
 

@@ -38,7 +38,7 @@
     "@ethersproject/contracts": "^5.7.0",
     "@openzeppelin/contracts": "^4.8.3",
     "@openzeppelin/contracts-upgradeable": "^4.8.3",
-    "erc6551": "^0.2.4",
+    "erc6551": "0.3.1",
     "ethereumjs-abi": "^0.6.8"
   },
   "devDependencies": {
