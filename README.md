@@ -1,5 +1,12 @@
 # Cruna Core Protocol
 
+## THIS REPO CONTAINS THE FIRST VERSION OF THE CRUNA PROTOCOL, NEVER DEPLOYED IN PRODUCTION, AND REPLACED BY  
+
+https://github.com/cruna-cc/cruna-vault
+
+------
+
+
 The Cruna Protocol is an NFT-based system that enables secure consolidation and management of digital assets across multiple blockchains. It allows users to link ownership of their assets to NFTs called Cruna Vaults, providing a unified interface for managing and transferring the assets.
 
 The protocol implements robust security mechanisms including multi-factor authentication via entity termed Protectors. It also facilitates scheduled distribution and inheritance of assets held in the vaults. The first application in the protocol is the Flexi Vault, which offers safe storage and movement of tokens and NFTs.
